@@ -157,3 +157,54 @@ class TestMerge:
         assert field.value == 200090.0
         assert field.grounded is True
         assert field.confidence >= 0.9
+
+
+class TestDerivedConfidence:
+    """A value inferred from the document, not read off it.
+
+    The invoice currency is the live case: many Thai invoices never print a
+    code, so it is inferred from the amounts and the language on the page.
+    """
+
+    def test_never_reaches_the_auto_post_threshold(self):
+        """An inference must not be able to post on its own, however clean the page."""
+        from docuflow.confidence import score_derived
+
+        assert score_derived(ocr_quality=1.0, ocr_degraded=False) < 0.90
+
+    def test_bad_recognition_drags_it_down(self):
+        """It used to be a flat constant, reporting the same confidence on a page
+        nobody could read as on a perfect one."""
+        from docuflow.confidence import score_derived
+
+        clean = score_derived(ocr_quality=0.95, ocr_degraded=False)
+        barely_legible = score_derived(ocr_quality=0.40, ocr_degraded=True)
+        assert barely_legible < clean
+
+    def test_a_critical_field_is_penalised_further(self):
+        from docuflow.confidence import score_derived
+
+        ordinary = score_derived(ocr_quality=0.95, ocr_degraded=False)
+        critical = score_derived(ocr_quality=0.95, ocr_degraded=False, is_critical=True)
+        assert critical < ordinary
+
+    def test_the_pipeline_scores_derived_currency_this_way(self, settings, master, tmp_path):
+        """The page states amounts in Baht but never prints "THB"."""
+        from docuflow.agents.merge import merge_all
+        from docuflow.confidence import score_derived
+        from docuflow.pipeline import Pipeline
+        from docuflow.schemas.registry import get_schema
+
+        schema = get_schema("invoice")
+        pages = [(1, "Invoice No.: INV-1\nรวมทั้งสิ้น 1,070.00 บาท\n")]
+        # Neither channel found a currency code, which is the situation the
+        # derivation exists for.
+        merged = merge_all(schema, {}, {}, pages, 0.95, False)
+        fields = Pipeline(settings)._derive_currency(
+            merged, schema, pages, ocr_quality=0.95, ocr_degraded=False
+        )
+        currency = next(item for item in fields if item.name == "currency")
+        assert currency.value == "THB"
+        assert currency.source == "derived"
+        assert currency.grounded is False
+        assert currency.confidence == score_derived(ocr_quality=0.95, ocr_degraded=False)

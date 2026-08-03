@@ -15,12 +15,42 @@ AGREEMENT_BOTH_CHANNELS = 0.97
 SINGLE_CHANNEL_GROUNDED = 0.86
 CHANNELS_DISAGREE = 0.45
 SINGLE_CHANNEL_UNGROUNDED = 0.30
+# Nothing on the page states this value; it was inferred from the document as a
+# whole. Deliberately below `AUTO_POST_MIN_CONFIDENCE` so an inference can never
+# post on its own, however clean the page was.
 DERIVED = 0.70
 
 # Multipliers applied on top.
 DEGRADED_OCR_FACTOR = 0.90
 CRITICAL_UNGROUNDED_FACTOR = 0.60
 NORMALIZATION_NOTE_FACTOR = 0.85
+
+
+def _quality_factor(ocr_quality: float) -> float:
+    """Recognition quality caps everything.
+
+    Text we could not read well cannot produce a high-confidence value, whether
+    that value was read off the page or inferred from it.
+    """
+    return 0.55 + 0.45 * max(0.0, min(1.0, ocr_quality))
+
+
+def score_derived(*, ocr_quality: float, ocr_degraded: bool, is_critical: bool = False) -> float:
+    """Confidence for a value inferred from the document rather than read off it.
+
+    An inference is only as good as the text it was drawn from: a currency read
+    from the word "บาท" means nothing if the page was barely legible. Scored
+    through the same multipliers as everything else, because a flat constant
+    would keep reporting the same confidence on a document nobody could read.
+    """
+    score = DERIVED * _quality_factor(ocr_quality)
+    if ocr_degraded:
+        score *= DEGRADED_OCR_FACTOR
+    if is_critical:
+        # Inferred values are never grounded, so a critical one carries the same
+        # penalty a critical value the model could not quote would carry.
+        score *= CRITICAL_UNGROUNDED_FACTOR
+    return round(max(0.0, min(1.0, score)), 3)
 
 
 def score_field(
@@ -47,10 +77,7 @@ def score_field(
     else:
         return 0.0
 
-    # Recognition quality caps everything: text we could not read well cannot
-    # produce a high-confidence field.
-    quality_factor = 0.55 + 0.45 * max(0.0, min(1.0, ocr_quality))
-    score = base * quality_factor
+    score = base * _quality_factor(ocr_quality)
 
     if ocr_degraded:
         score *= DEGRADED_OCR_FACTOR

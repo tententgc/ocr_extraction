@@ -23,7 +23,7 @@ from docuflow.agents.verify_extractor import verify_with_llm
 from docuflow.agents.reconciler import Reconciliation, reconcile
 from docuflow.agents.rule_extractor import detect_currency_from_text, extract_with_rules, find_line_items
 from docuflow.config import Settings
-from docuflow.confidence import document_confidence
+from docuflow.confidence import document_confidence, score_derived
 from docuflow.ingest.store import StoredBlob, store_bytes
 from docuflow.llm.base import LlmProvider
 from docuflow.llm.factory import resolve_llm, resolve_verify_llm
@@ -47,9 +47,6 @@ from docuflow.store.documents import DocumentStore
 from docuflow.store.records import RecordStore, reference_field_for
 
 logger = logging.getLogger(__name__)
-
-# Currency inferred from context rather than read off the page.
-DERIVED_CURRENCY_CONFIDENCE = 0.72
 
 ProgressCallback = Callable[[str, str], None]
 
@@ -267,7 +264,7 @@ class Pipeline:
             verify_note = verify_note or secondary_result.note
 
         fields = merge_all(schema, primary, secondary, pages, ocr_quality, run.ocr.degraded)
-        fields = self._derive_currency(fields, schema, pages)
+        fields = self._derive_currency(fields, schema, pages, ocr_quality, run.ocr.degraded)
 
         populated = [field for field in fields if not field.is_empty]
         agreed = [field for field in populated if field.grounded and field.confidence >= 0.9]
@@ -291,7 +288,12 @@ class Pipeline:
         )
 
     def _derive_currency(
-        self, fields: tuple[ExtractedField, ...], schema: DocumentSchema, pages: list[tuple[int, str]]
+        self,
+        fields: tuple[ExtractedField, ...],
+        schema: DocumentSchema,
+        pages: list[tuple[int, str]],
+        ocr_quality: float,
+        ocr_degraded: bool,
     ) -> tuple[ExtractedField, ...]:
         """Fall back to a document-wide currency scan when the field is absent.
 
@@ -317,7 +319,9 @@ class Pipeline:
             value=detected,
             raw_value=detected,
             evidence=None,
-            confidence=DERIVED_CURRENCY_CONFIDENCE,
+            confidence=score_derived(
+                ocr_quality=ocr_quality, ocr_degraded=ocr_degraded, is_critical=spec.critical
+            ),
             grounded=False,
             source="derived",
             notes=("currency was not printed as a code; inferred from the amounts and language on the page",),
