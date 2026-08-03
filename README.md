@@ -27,12 +27,16 @@ documents that posted automatically while carrying a wrong critical value.
 
 Four mechanisms keep that number down:
 
-1. **Two independent extraction channels** — a deterministic label matcher and a
-   language model read the same page. Agreement scores 0.97; disagreement drops
-   to 0.45 and routes to a human.
-2. **Evidence grounding** — every extracted value must come with a verbatim quote,
-   and that quote is verified to (a) exist on the page and (b) actually contain
-   the value. Ungrounded critical fields can never auto-post.
+1. **Two independent extraction channels** — two language models read the same
+   page, one framed field-first and one label-first, neither seeing the other's
+   answers. Agreement scores 0.97; disagreement drops to 0.45 and routes to a
+   human. The deterministic label matcher takes the second slot only when no
+   second model is reachable, so the system still runs with no credentials.
+2. **Evidence grounding** — every extracted value must come with a verbatim
+   quote, verified to (a) exist on the page and (b) state the reported value.
+   That second check is type-aware: a page saying `11/02/2019` does state the
+   date `2019-02-11`, and `Subtotal 145.00` does state `145`. Ungrounded
+   critical fields can never auto-post.
 3. **Deterministic recomputation** — arithmetic is recomputed, never trusted from
    the model.
 4. **Conservative routing** — straight-through posting requires no blocking rule

@@ -35,12 +35,12 @@ wrong payments. Every design decision below follows from that.
 └─────┬───────┘
       ▼
 ┌─────────────┐   TWO INDEPENDENT CHANNELS
-│   extract   │   ├── rule channel: schema label aliases → value
-│             │   └── model channel: schema-driven JSON with a verbatim quote
+│   extract   │   ├── channel 1: field-first LLM, JSON with a verbatim quote
+│             │   └── channel 2: label-first LLM on a different backend
 └─────┬───────┘
       ▼
 ┌─────────────┐   does the quoted evidence exist on the page?
-│   ground    │   does the quote actually contain the reported value?
+│   ground    │   does the quote state the value (compared by field type)?
 └─────┬───────┘
       ▼
 ┌─────────────┐   dates (Buddhist era, Thai numerals), money, tax IDs, enums
@@ -72,16 +72,32 @@ rather than mutating, which keeps the trace a truthful history.
 
 ### 1. Two independent extraction channels
 
-The **rule channel** matches the schema's label aliases (`"Amount Due"`,
-`"จำนวนเงินรวมทั้งสิ้น"`) and takes the value that follows. The **model channel**
-asks the LLM for the same fields.
+Two language models read the same page. **Channel 1** is framed field-first
+("find this field"); **channel 2** is framed label-first ("find the label, then
+read what follows"). Neither sees the other's answers.
+
+`resolve_verify_llm` picks the second backend, and refuses two of them: the
+primary's own backend, because two passes of one model repeat one mistake and
+their agreement proves nothing; and the backend hosting local OCR, because a
+second local model does not run beside the OCR model, it evicts it. Claude leads
+the remaining order and the loop falls through when it is unreachable, so an
+outage degrades the cross-check rather than removing it. The pass carries a time
+budget (`LLM_VERIFY_TIMEOUT_SECONDS`) because a reasoning model can spend minutes
+on a page the first pass read in seconds.
 
 When both agree, confidence is 0.97 before penalties. When they disagree, it
 drops to 0.45 and the disagreement is written into the field's notes — that
-document goes to a human. Agreement between two mechanisms that fail differently
-is the cheapest reliable signal available.
+document goes to a human.
 
-The rule channel also means the system still works with no model at all
+Agreement is compared by type. Numbers compare numerically; a passage agrees with
+a longer reading of itself when its words are a subset of the longer one's, so
+"laws of Thailand" and "the laws of Thailand" are one answer rather than two.
+Numeric dates are resolved before comparison: the page's own convention decides,
+detected from any date on it carrying a component above 12, so both channels land
+on the same day rather than each guessing at `11/02/2019`.
+
+The deterministic label matcher takes the second slot only when no second model
+is reachable, so the system still works with no model at all
 (`LLM_PROVIDER=rules`), which is what CI runs.
 
 ### 2. Evidence grounding
@@ -90,7 +106,15 @@ The extraction prompt requires a verbatim quote for every non-null value.
 `agents/grounding.py` then checks two things:
 
 - the quote really appears in the OCR text (normalised, then fuzzy at 88%)
-- the reported value actually appears **inside that quote**
+- that quote **states** the reported value, compared by field type: dates as
+  dates, money and percentages numerically, and an enum not at all — it is a
+  classification the schema constrains, not a transcription
+
+Agreement can also ground a value on its own. When both channels report the same
+value and each quotes a line that is really on the page, they corroborate each
+other even if no single quote states the value verbatim. The limit is deliberate:
+that relaxes how a value ties to its quote, never whether the page contains the
+quote.
 
 The second check catches the most dangerous failure mode: a model that quotes a
 real line but reports a number that is not in it. An ungrounded critical field
@@ -201,3 +225,43 @@ safe to deploy, which the first constraint of the problem demands.
 
 `docuflow benchmark` runs the same corpus across several model combinations so
 engine choice is an evidence-based decision.
+
+## Batch processing
+
+`POST /api/documents/batch` accepts many files, validates each one, stages them
+to `data/inbox/` and queues them, returning immediately. The browser polls
+`/api/jobs`. Twenty documents is ten minutes of work and not something to hold a
+request open for.
+
+Pool size follows the engine: a local model is one resident model on one machine,
+so two documents at once make Ollama swap between them and the pair finishes
+slower than running them in sequence — local engines get one worker, cloud
+engines four. PDF rendering is behind a process-wide lock because PDFium is not
+thread-safe; without it, two workers segfault the interpreter.
+
+## Filing by document type
+
+Ingest storage is content-addressed, because when the bytes arrive nobody knows
+what the document is. Once classified, each document is also filed:
+
+```
+data/archive/invoice/2026-08/DOC-4F2A9B1C3D__acme-inv-88214.pdf
+data/archive/contract/2026-08/DOC-1A2B3C4D5E__facility-agreement.pdf
+```
+
+Hard-linked, so the archive costs no extra bytes. Filing never fails a run.
+
+## Runtime policy and user-authored rules
+
+The Settings screen changes the auto-post threshold, switches individual rules
+off, and turns every rule off (free mode) — persisted in `app_settings`, with
+`.env` remaining the declared default and a reset always available. A rule name
+that matches nothing is rejected rather than stored.
+
+Rules can also be written in plain language. The model compiles the sentence into
+a declarative expression **once**, at authoring time; from then on it is
+evaluated by `rules/expressions.py`, which has no `eval`, no attribute access and
+no user-supplied regex. A model consulted per document has its answer shaped by
+the document, which is what a supplier controls. Three guards sit on the compile
+step: the rule is read back in English, tried against documents already
+processed, and refused outright if it can never fail.

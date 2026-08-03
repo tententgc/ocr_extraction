@@ -167,17 +167,34 @@ dates, Thai numerals, HTML tables, and four documents rendered as degraded scans
 
 Four layers, in order of how much they catch:
 
-**1. Two independent channels.** A deterministic label matcher and the LLM read
-the same page. Agreement scores 0.97; disagreement drops to 0.45 and the conflict
-is written into the field's notes. Two mechanisms that fail differently agreeing
-is the cheapest reliable signal available — and the rule channel means the system
-still runs with no model at all.
+**1. Two independent channels.** Two language models read the same page — the
+first framed field-first ("find this field"), the second label-first ("find the
+label, then read what follows") — on different backends, neither seeing the
+other's answers. Agreement scores 0.97; disagreement drops to 0.45 and the
+conflict is written into the field's notes.
+
+Different *models* matters as much as different framing: two passes of one model
+over one page repeat the same mistake, and agreement between them is not a
+signal. The resolver therefore refuses to reuse the primary's backend, and
+refuses the backend hosting local OCR as well — a second local model does not run
+beside the OCR model, it evicts it.
+
+The deterministic label matcher takes the second slot only when no second model
+is reachable, so the system still runs with no credentials at all.
 
 **2. Evidence grounding.** Every non-null value must carry a verbatim quote. Two
 checks follow:
 
 - does the quote exist in the OCR text (normalised, then fuzzy at 88%)?
-- does the reported value actually appear **inside that quote**?
+- does that quote **state** the reported value?
+
+The second check compares like with like. Dates are compared as dates, so
+`INVOICE DATE 11/02/2019` supports `2019-02-11`; money and percentages are
+compared numerically, so `Subtotal 145.00` supports `145`; an enum is a
+classification the schema constrains, so a contract that "shall automatically
+renew" supports `auto_renew=yes` without the word "yes" appearing anywhere.
+A literal substring test failed all three — and reported correct readings as
+unverified more often than it caught a wrong one.
 
 The second check catches the worst failure: a model quoting a real line while
 reporting a number that is not in it — convincing to a reviewer skimming the page.
