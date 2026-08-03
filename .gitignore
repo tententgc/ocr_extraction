@@ -20,3 +20,4 @@ eval-report.json
 bench-report.json
 
 .DS_Store
+data-backup/

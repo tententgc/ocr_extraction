@@ -625,10 +625,32 @@ async function loadRecords() {
     <td class="num">${money(row.amount, row.currency)}</td>
     <td>${esc(row.issue_date || '—')}</td>
     <td>${esc(row.posted_by)}</td>
+    <td>${row.document_id
+      ? `<button class="btn small" data-open-record="${esc(row.document_id)}">View</button>`
+      : ''}</td>
   </tr>`).join('');
 }
 
 $('#records-refresh').addEventListener('click', loadRecords);
+
+/* A posted record is only as trustworthy as the page it came from, so opening
+   one shows the same panel the reviewer saw: the document image beside every
+   extracted field, its evidence and every rule that ran. Read-only - this
+   document is already in the ledger. */
+$('#records-table').addEventListener('click', async (event) => {
+  const button = event.target.closest('button[data-open-record]');
+  if (!button) return;
+  const host = $('#record-detail-host');
+  host.innerHTML = '<div class="card"><p class="muted">Loading document…</p></div>';
+  try {
+    const data = await api(`/api/documents/${encodeURIComponent(button.dataset.openRecord)}`);
+    renderResult(data, host, false);
+    host.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (error) {
+    host.innerHTML = '';
+    toast(error.message, 'error');
+  }
+});
 
 /* -------------------------------------------------------------- insights */
 
