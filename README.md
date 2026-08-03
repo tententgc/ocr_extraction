@@ -13,6 +13,8 @@ OpenAI, Claude, MLX). Runs fully offline with no API key.
 
 ---
 
+> **เอกสารภาษาไทย:** [ตอบคำถาม 3 ข้อ](docs/APPROACH.th.md) · [สถาปัตยกรรมและ workflow แบบละเอียด](docs/ARCHITECTURE.th.md)
+
 ## The constraint that shaped this
 
 > *Documents are varied and not perfectly structured. Accuracy matters — wrong
