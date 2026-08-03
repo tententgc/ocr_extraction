@@ -48,6 +48,12 @@ class Settings(BaseSettings):
 
     # --- LLM ---------------------------------------------------------------
     llm_provider: LlmProviderName = "auto"
+    # The second, independent extraction pass. `auto` picks a *different*
+    # backend from the primary where one is available, because two runs of the
+    # same model repeat the same mistake and the agreement signal is worthless.
+    # `off` disables verification and leaves the run on a single channel.
+    llm_verify_provider: LlmProviderName = "auto"
+    llm_verify_model: str = ""
     llm_cloud_model: str = "typhoon-v2.5-30b-a3b-instruct"
     llm_local_model: str = "tawankri/typhoon2.5-qwen3-4b-mlx-4Bit"
 

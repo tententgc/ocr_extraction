@@ -91,12 +91,27 @@ class TestGrounding:
 
 
 class TestMerge:
-    def _merge(self, name, rule_value, llm_value, evidence, ocr_pages):
-        from docuflow.agents.rule_extractor import RuleCandidate
+    """Both channels are normally language-model passes; the label matcher only
+    fills the second slot when no second model is reachable."""
 
-        rule = RuleCandidate(name, rule_value, evidence or "", 3.0, 1) if rule_value else None
-        llm = LlmCandidate(name, llm_value, evidence) if llm_value else None
-        return merge_field(spec(name), rule, llm, ocr_pages, ocr_quality=0.95, ocr_degraded=False)
+    def _merge(self, name, primary_value, secondary_value, evidence, ocr_pages, label_channel=False):
+        from docuflow.agents.candidates import Candidate
+
+        primary = (
+            Candidate(field=name, raw_value=primary_value, evidence=evidence, channel="model")
+            if primary_value else None
+        )
+        secondary = (
+            Candidate(
+                field=name,
+                raw_value=secondary_value,
+                evidence=evidence or "",
+                page=1,
+                channel="label" if label_channel else "verify",
+            )
+            if secondary_value else None
+        )
+        return merge_field(spec(name), primary, secondary, ocr_pages, ocr_quality=0.95, ocr_degraded=False)
 
     def test_agreement_scores_highest(self, ocr_pages):
         field = self._merge("total_amount", "200,090.00", "200,090.00", "Amount Due 200,090.00 THB", ocr_pages)
@@ -105,22 +120,22 @@ class TestMerge:
         assert field.grounded is True
 
     def test_disagreement_drops_confidence_and_is_explained(self, ocr_pages):
-        field = self._merge("total_amount", "187,000.00", "200,090.00", "Amount Due 200,090.00 THB", ocr_pages)
+        field = self._merge("total_amount", "200,090.00", "187,000.00", "Amount Due 200,090.00 THB", ocr_pages)
         assert field.confidence < 0.6
         assert any("disagree" in note for note in field.notes)
 
-    def test_ungrounded_llm_value_is_penalised(self, ocr_pages):
-        field = self._merge("total_amount", None, "999,999.00", "Amount Due 999,999.00 THB", ocr_pages)
+    def test_single_ungrounded_reading_is_penalised(self, ocr_pages):
+        field = self._merge("total_amount", "999,999.00", None, "Amount Due 999,999.00 THB", ocr_pages)
         assert field.grounded is False
         assert field.confidence < 0.4
 
-    def test_rule_only_value_is_grounded_by_construction(self, ocr_pages):
-        field = self._merge("payment_terms", "Net 30", None, "Payment Terms: Net 30", ocr_pages)
+    def test_label_channel_value_is_grounded_by_construction(self, ocr_pages):
+        field = self._merge("payment_terms", None, "Net 30", "Payment Terms: Net 30", ocr_pages, label_channel=True)
         assert field.value == "Net 30"
         assert field.grounded is True
 
     def test_quote_that_does_not_contain_the_value_is_rejected(self, ocr_pages):
-        field = self._merge("total_amount", None, "555,555.00", "Amount Due 200,090.00 THB", ocr_pages)
+        field = self._merge("total_amount", "555,555.00", None, "Amount Due 200,090.00 THB", ocr_pages)
         assert field.grounded is False
         assert any("quoted text does not contain" in note for note in field.notes)
 
@@ -128,3 +143,17 @@ class TestMerge:
         field = self._merge("bank_account", None, None, None, ocr_pages)
         assert field.is_empty
         assert field.confidence == 0.0
+
+    def test_second_reading_can_supply_the_evidence(self, ocr_pages):
+        """Agreeing values where only the second pass could quote the page."""
+        from docuflow.agents.candidates import Candidate
+
+        primary = Candidate(field="total_amount", raw_value="200,090.00",
+                            evidence="a line that is not on the page", channel="model")
+        secondary = Candidate(field="total_amount", raw_value="200,090.00",
+                              evidence="Amount Due 200,090.00 THB", channel="verify")
+        field = merge_field(spec("total_amount"), primary, secondary, ocr_pages,
+                            ocr_quality=0.95, ocr_degraded=False)
+        assert field.value == 200090.0
+        assert field.grounded is True
+        assert field.confidence >= 0.9

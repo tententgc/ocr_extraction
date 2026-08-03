@@ -15,16 +15,18 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
+from docuflow.agents.candidates import from_llm, from_rule
 from docuflow.agents.classifier import classify
 from docuflow.agents.llm_extractor import extract_with_llm
 from docuflow.agents.merge import merge_all
+from docuflow.agents.verify_extractor import verify_with_llm
 from docuflow.agents.reconciler import Reconciliation, reconcile
 from docuflow.agents.rule_extractor import detect_currency_from_text, extract_with_rules, find_line_items
 from docuflow.config import Settings
 from docuflow.confidence import document_confidence
 from docuflow.ingest.store import StoredBlob, store_bytes
 from docuflow.llm.base import LlmProvider
-from docuflow.llm.factory import resolve_llm
+from docuflow.llm.factory import resolve_llm, resolve_verify_llm
 from docuflow.masterdata.repository import MasterDataRepository, VendorMatch
 from docuflow.models import (
     DocumentRun,
@@ -237,31 +239,53 @@ class Pipeline:
         progress("extract", f"Extracting {len(schema.fields)} fields")
         started = time.perf_counter()
 
-        rule_candidates = extract_with_rules(pages, schema)
-        llm_result = extract_with_llm(run.ocr.full_text, schema, llm)
-        fields = merge_all(
-            schema, rule_candidates, llm_result.candidates, pages, ocr_quality, run.ocr.degraded
-        )
+        # Channel 1: field-first extraction.
+        primary_result = extract_with_llm(run.ocr.full_text, schema, llm)
+        primary = {
+            name: from_llm(name, candidate.raw_value, candidate.evidence, channel="model")
+            for name, candidate in primary_result.candidates.items()
+        }
+
+        # Channel 2: an independent second reading, label-first and preferably
+        # on a different model. Falls back to the deterministic label matcher
+        # when no second model is reachable, so a keyless run still gets a
+        # cross-check rather than silently dropping to one channel.
+        verify_llm, verify_note = resolve_verify_llm(self.settings, llm)
+        secondary_result = verify_with_llm(run.ocr.full_text, schema, verify_llm)
+        if secondary_result.ok:
+            secondary = {
+                name: from_llm(name, candidate.raw_value, candidate.evidence, channel="verify")
+                for name, candidate in secondary_result.candidates.items()
+            }
+            channel_name = getattr(verify_llm, "model", None) or getattr(verify_llm, "name", "model")
+        else:
+            secondary = {
+                name: from_rule(candidate)
+                for name, candidate in extract_with_rules(pages, schema).items()
+            }
+            channel_name = "label matcher"
+            verify_note = verify_note or secondary_result.note
+
+        fields = merge_all(schema, primary, secondary, pages, ocr_quality, run.ocr.degraded)
         fields = self._derive_currency(fields, schema, pages)
 
         populated = [field for field in fields if not field.is_empty]
-        agreed = [
-            field for field in populated if field.grounded and field.confidence >= 0.9
-        ]
-        status = "ok" if llm_result.ok else "warning"
+        agreed = [field for field in populated if field.grounded and field.confidence >= 0.9]
+        status = "ok" if primary_result.ok else "warning"
         return run.with_fields(fields).with_step(
             TraceStep(
                 step="extract",
                 status=status,
                 summary=f"{len(populated)}/{len(schema.fields)} fields extracted, "
-                f"{len(agreed)} verified by both channels"
-                + ("" if llm_result.ok else f" ({llm_result.note})"),
+                f"{len(agreed)} confirmed by both readings (second reading: {channel_name})"
+                + ("" if primary_result.ok else f" ({primary_result.note})"),
                 duration_ms=int((time.perf_counter() - started) * 1000),
                 detail={
-                    "rule_fields": sorted(rule_candidates),
-                    "llm_fields": sorted(llm_result.candidates),
-                    "llm_ok": llm_result.ok,
-                    "note": llm_result.note,
+                    "primary_fields": sorted(primary),
+                    "secondary_fields": sorted(secondary),
+                    "secondary_channel": channel_name,
+                    "primary_ok": primary_result.ok,
+                    "note": "; ".join(filter(None, [primary_result.note, verify_note])),
                 },
             )
         )

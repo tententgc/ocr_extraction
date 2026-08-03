@@ -37,6 +37,41 @@ Return every field name, using null where the value is absent:
 --- END ---"""
 
 
+VERIFY_SYSTEM = """You are checking a document by locating labels on the page.
+
+Work label-first, not field-first:
+1. Find where the label for each item appears in the text.
+2. Report the value printed next to that label, exactly as printed.
+3. If no label for an item appears anywhere, return null. Do not deduce it from
+   other values, and do not calculate.
+
+Output JSON only."""
+
+
+def verification_prompt(schema: DocumentSchema, document_text: str) -> str:
+    """A second, independent reading.
+
+    Deliberately framed differently from `extraction_prompt` and run without
+    sight of the first pass's answers. Two channels only detect an error when
+    they can fail differently, so anchoring this pass on the first result would
+    destroy the signal it exists to provide.
+    """
+    items = "\n".join(
+        f"- {spec.name}: printed near a label such as "
+        f"{', '.join(spec.aliases[:4]) or spec.label}"
+        for spec in schema.fields
+    )
+    return f"""Locate each item on this {schema.display_name} and report what is printed.
+
+{items}
+
+Return {{"fields": {{"<name>": {{"value": <value|null>, "evidence": "<the line you read it from|null>"}}}}}}
+
+--- DOCUMENT ---
+{document_text}
+--- END ---"""
+
+
 CLASSIFIER_SYSTEM = "You classify business documents. Output JSON only."
 
 

@@ -12,10 +12,9 @@ from docuflow.models import ExtractedField, RuleFinding
 
 # Base scores by evidential situation, before penalties.
 AGREEMENT_BOTH_CHANNELS = 0.97
-LLM_GROUNDED = 0.86
-RULE_ONLY = 0.80
+SINGLE_CHANNEL_GROUNDED = 0.86
 CHANNELS_DISAGREE = 0.45
-LLM_UNGROUNDED = 0.30
+SINGLE_CHANNEL_UNGROUNDED = 0.30
 DERIVED = 0.70
 
 # Multipliers applied on top.
@@ -27,21 +26,24 @@ NORMALIZATION_NOTE_FACTOR = 0.85
 def score_field(
     *,
     both_channels_agree: bool,
-    has_llm: bool,
-    has_rule: bool,
+    has_primary: bool,
+    has_secondary: bool,
     grounded: bool,
     is_critical: bool,
     ocr_quality: float,
     ocr_degraded: bool,
     had_normalization_note: bool = False,
 ) -> float:
-    """Confidence for one field in [0, 1]."""
-    if has_llm and has_rule:
+    """Confidence for one field in [0, 1].
+
+    Two channels reading the page and agreeing is the strongest evidence
+    available; one channel reading it alone is materially weaker, whether that
+    channel is a model or the label matcher.
+    """
+    if has_primary and has_secondary:
         base = AGREEMENT_BOTH_CHANNELS if both_channels_agree else CHANNELS_DISAGREE
-    elif has_llm:
-        base = LLM_GROUNDED if grounded else LLM_UNGROUNDED
-    elif has_rule:
-        base = RULE_ONLY
+    elif has_primary or has_secondary:
+        base = SINGLE_CHANNEL_GROUNDED if grounded else SINGLE_CHANNEL_UNGROUNDED
     else:
         return 0.0
 
