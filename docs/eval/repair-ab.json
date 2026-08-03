@@ -1,0 +1,337 @@
+{
+  "baseline": [
+    {
+      "doc_id": "inv-clean-classic",
+      "doc_type": "invoice",
+      "decision": "auto_post",
+      "confidence": 0.934,
+      "blocking": [],
+      "failing": [],
+      "fields_filled": 14,
+      "recovered": [],
+      "repair_summary": "",
+      "repair_rejected": [],
+      "seconds": 23.7
+    },
+    {
+      "doc_id": "inv-bad-math",
+      "doc_type": "invoice",
+      "decision": "needs_review",
+      "confidence": 0.45,
+      "blocking": [
+        "invoice_totals_consistent"
+      ],
+      "failing": [
+        "invoice_totals_consistent"
+      ],
+      "fields_filled": 14,
+      "recovered": [],
+      "repair_summary": "",
+      "repair_rejected": [],
+      "seconds": 29.2
+    },
+    {
+      "doc_id": "inv-thai-scan",
+      "doc_type": "invoice",
+      "decision": "auto_post",
+      "confidence": 0.94,
+      "blocking": [],
+      "failing": [],
+      "fields_filled": 14,
+      "recovered": [],
+      "repair_summary": "",
+      "repair_rejected": [],
+      "seconds": 35.6
+    },
+    {
+      "doc_id": "inv-unknown-vendor",
+      "doc_type": "invoice",
+      "decision": "needs_review",
+      "confidence": 0.383,
+      "blocking": [
+        "purchase_order_required",
+        "vendor_known"
+      ],
+      "failing": [
+        "purchase_order_required",
+        "vendor_known"
+      ],
+      "fields_filled": 13,
+      "recovered": [],
+      "repair_summary": "",
+      "repair_rejected": [],
+      "seconds": 99.0
+    },
+    {
+      "doc_id": "inv-duplicate",
+      "doc_type": "invoice",
+      "decision": "needs_review",
+      "confidence": 0.45,
+      "blocking": [
+        "duplicate_document"
+      ],
+      "failing": [
+        "duplicate_document"
+      ],
+      "fields_filled": 14,
+      "recovered": [],
+      "repair_summary": "",
+      "repair_rejected": [],
+      "seconds": 42.0
+    },
+    {
+      "doc_id": "inv-eur-over-po",
+      "doc_type": "invoice",
+      "decision": "needs_review",
+      "confidence": 0.45,
+      "blocking": [
+        "po_amount_within_tolerance"
+      ],
+      "failing": [
+        "po_amount_within_tolerance"
+      ],
+      "fields_filled": 13,
+      "recovered": [],
+      "repair_summary": "",
+      "repair_rejected": [],
+      "seconds": 36.5
+    },
+    {
+      "doc_id": "contract-facility",
+      "doc_type": "contract",
+      "decision": "needs_review",
+      "confidence": 0.793,
+      "blocking": [],
+      "failing": [
+        "contract_expiring_soon"
+      ],
+      "fields_filled": 13,
+      "recovered": [],
+      "repair_summary": "",
+      "repair_rejected": [],
+      "seconds": 45.1
+    },
+    {
+      "doc_id": "form-vendor-onboarding",
+      "doc_type": "form",
+      "decision": "needs_review",
+      "confidence": 0.45,
+      "blocking": [
+        "tax_id_checksum"
+      ],
+      "failing": [
+        "tax_id_checksum",
+        "vendor_known"
+      ],
+      "fields_filled": 10,
+      "recovered": [],
+      "repair_summary": "",
+      "repair_rejected": [],
+      "seconds": 25.4
+    },
+    {
+      "doc_id": "receipt-fuel",
+      "doc_type": "receipt",
+      "decision": "needs_review",
+      "confidence": 0.712,
+      "blocking": [],
+      "failing": [
+        "line_items_sum_to_subtotal",
+        "vendor_known"
+      ],
+      "fields_filled": 10,
+      "recovered": [],
+      "repair_summary": "",
+      "repair_rejected": [],
+      "seconds": 22.8
+    },
+    {
+      "doc_id": "po-orient-paper",
+      "doc_type": "purchase_order",
+      "decision": "needs_review",
+      "confidence": 0.45,
+      "blocking": [
+        "vendor_active"
+      ],
+      "failing": [
+        "vendor_active"
+      ],
+      "fields_filled": 7,
+      "recovered": [],
+      "repair_summary": "",
+      "repair_rejected": [],
+      "seconds": 25.2
+    }
+  ],
+  "repaired": [
+    {
+      "doc_id": "inv-clean-classic",
+      "doc_type": "invoice",
+      "decision": "auto_post",
+      "confidence": 0.934,
+      "blocking": [],
+      "failing": [],
+      "fields_filled": 14,
+      "recovered": [],
+      "repair_summary": "",
+      "repair_rejected": [],
+      "seconds": 26.4
+    },
+    {
+      "doc_id": "inv-bad-math",
+      "doc_type": "invoice",
+      "decision": "needs_review",
+      "confidence": 0.45,
+      "blocking": [
+        "invoice_totals_consistent"
+      ],
+      "failing": [
+        "invoice_totals_consistent"
+      ],
+      "fields_filled": 14,
+      "recovered": [],
+      "repair_summary": "All totals are consistent with the document's line items and stated values.",
+      "repair_rejected": [
+        {
+          "field": "subtotal",
+          "reason": "subtotal was already read and verified; not overwritten"
+        }
+      ],
+      "seconds": 37.3
+    },
+    {
+      "doc_id": "inv-thai-scan",
+      "doc_type": "invoice",
+      "decision": "auto_post",
+      "confidence": 0.94,
+      "blocking": [],
+      "failing": [],
+      "fields_filled": 14,
+      "recovered": [],
+      "repair_summary": "",
+      "repair_rejected": [],
+      "seconds": 33.2
+    },
+    {
+      "doc_id": "inv-unknown-vendor",
+      "doc_type": "invoice",
+      "decision": "needs_review",
+      "confidence": 0.383,
+      "blocking": [
+        "purchase_order_required",
+        "vendor_known"
+      ],
+      "failing": [
+        "purchase_order_required",
+        "vendor_known"
+      ],
+      "fields_filled": 13,
+      "recovered": [],
+      "repair_summary": "No purchase order reference found on the document, which is required by policy.",
+      "repair_rejected": [],
+      "seconds": 33.2
+    },
+    {
+      "doc_id": "inv-duplicate",
+      "doc_type": "invoice",
+      "decision": "needs_review",
+      "confidence": 0.45,
+      "blocking": [
+        "duplicate_document"
+      ],
+      "failing": [
+        "duplicate_document"
+      ],
+      "fields_filled": 14,
+      "recovered": [],
+      "repair_summary": "No missing or incorrect values found; duplicate check failed due to prior posting of identical invoice.",
+      "repair_rejected": [],
+      "seconds": 32.4
+    },
+    {
+      "doc_id": "inv-eur-over-po",
+      "doc_type": "invoice",
+      "decision": "needs_review",
+      "confidence": 0.45,
+      "blocking": [
+        "po_amount_within_tolerance"
+      ],
+      "failing": [
+        "po_amount_within_tolerance"
+      ],
+      "fields_filled": 14,
+      "recovered": [
+        "tax_rate"
+      ],
+      "repair_summary": "Recovered 1 field(s) from the page: tax_rate",
+      "repair_rejected": [],
+      "seconds": 31.8
+    },
+    {
+      "doc_id": "contract-facility",
+      "doc_type": "contract",
+      "decision": "needs_review",
+      "confidence": 0.775,
+      "blocking": [],
+      "failing": [
+        "contract_expiring_soon"
+      ],
+      "fields_filled": 13,
+      "recovered": [],
+      "repair_summary": "The contract expired 4 days ago, but all required values are correctly stated on the document.",
+      "repair_rejected": [],
+      "seconds": 43.0
+    },
+    {
+      "doc_id": "form-vendor-onboarding",
+      "doc_type": "form",
+      "decision": "needs_review",
+      "confidence": 0.45,
+      "blocking": [
+        "tax_id_checksum"
+      ],
+      "failing": [
+        "tax_id_checksum",
+        "vendor_known"
+      ],
+      "fields_filled": 10,
+      "recovered": [],
+      "repair_summary": "The requested amount is missing from the document and cannot be recovered.",
+      "repair_rejected": [],
+      "seconds": 30.4
+    },
+    {
+      "doc_id": "receipt-fuel",
+      "doc_type": "receipt",
+      "decision": "needs_review",
+      "confidence": 0.713,
+      "blocking": [],
+      "failing": [
+        "line_items_sum_to_subtotal",
+        "vendor_known"
+      ],
+      "fields_filled": 10,
+      "recovered": [],
+      "repair_summary": "The currency is not stated on the document, so no value can be proposed.",
+      "repair_rejected": [],
+      "seconds": 26.4
+    },
+    {
+      "doc_id": "po-orient-paper",
+      "doc_type": "purchase_order",
+      "decision": "needs_review",
+      "confidence": 0.45,
+      "blocking": [
+        "vendor_active"
+      ],
+      "failing": [
+        "vendor_active"
+      ],
+      "fields_filled": 7,
+      "recovered": [],
+      "repair_summary": "Vendor status prevents processing; no extraction errors found.",
+      "repair_rejected": [],
+      "seconds": 28.9
+    }
+  ]
+}
