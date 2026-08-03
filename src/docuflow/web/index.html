@@ -181,6 +181,31 @@
     </div>
 
     <div class="card">
+      <h3>Write a rule</h3>
+      <p class="muted">Describe a check in your own words. The model turns it into a
+        condition <em>once</em>, here — you read it back and try it on documents already
+        processed before it is saved. After that it is evaluated by plain code, never by
+        a model, so it always answers to what you approved.</p>
+      <form class="rule-form" id="rule-form">
+        <textarea id="rule-prompt" rows="2" required
+          placeholder="Invoices over 100,000 baht must quote a purchase order"></textarea>
+        <div class="rule-form-row">
+          <select id="rule-types" multiple size="4" title="Document types this applies to"></select>
+          <button class="btn primary" type="submit" id="rule-compile">Compile</button>
+        </div>
+      </form>
+      <div id="rule-draft"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <h3>Your rules</h3>
+        <span class="muted" id="custom-count"></span>
+      </div>
+      <div id="custom-rule-list"></div>
+    </div>
+
+    <div class="card">
       <div class="card-head">
         <h3>Rule catalogue</h3>
         <div class="filters">

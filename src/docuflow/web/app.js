@@ -10,6 +10,8 @@ const state = {
   samples: [],
   schemas: {},
   settings: null,       // business policy and the rule catalogue
+  customRules: [],      // rules the user wrote
+  draft: null,          // a compiled rule awaiting approval
   currentDoc: null,     // document being reviewed
   edits: {},            // pending reviewer edits
   page: 1,
@@ -62,7 +64,7 @@ $$('.tab').forEach((tab) => tab.addEventListener('click', () => {
   if (tab.dataset.view === 'queue') loadQueue();
   if (tab.dataset.view === 'records') loadRecords();
   if (tab.dataset.view === 'insights') loadInsights();
-  if (tab.dataset.view === 'settings') loadSettings();
+  if (tab.dataset.view === 'settings') { loadSettings(); loadCustomRules(); }
 }));
 
 /* ---------------------------------------------------------------- status */
@@ -778,6 +780,157 @@ $('#rule-list').addEventListener('change', (event) => {
     .filter((rule) => (rule.rule_id === box.dataset.rule ? !box.checked : !rule.enabled))
     .map((rule) => rule.rule_id);
   saveSettings({ disabled_rules: disabled });
+});
+
+/* ------------------------------------------------------- authoring rules */
+
+async function loadCustomRules() {
+  let payload;
+  try {
+    payload = await api('/api/rules/custom');
+  } catch (error) {
+    toast(`Could not load your rules: ${error.message}`, 'error');
+    return;
+  }
+  state.customRules = payload.rules;
+
+  const picker = $('#rule-types');
+  if (!picker.options.length) {
+    // Invoices are the common case; starting on whatever sorts first would have
+    // people writing invoice rules against the contract schema.
+    picker.innerHTML = payload.doc_types
+      .filter((t) => t !== 'unknown')
+      .map((t) => `<option value="${esc(t)}"${t === 'invoice' ? ' selected' : ''}>${esc(t.replace('_', ' '))}</option>`)
+      .join('');
+  }
+  renderCustomRules();
+}
+
+function renderCustomRules() {
+  const rules = state.customRules || [];
+  $('#custom-count').textContent = rules.length ? `${rules.length} rule(s)` : '';
+  $('#custom-rule-list').innerHTML = rules.length
+    ? rules.map((rule) => `
+      <div class="custom-rule ${rule.enabled ? '' : 'off'}">
+        <input type="checkbox" data-custom="${esc(rule.rule_id)}" ${rule.enabled ? 'checked' : ''} />
+        <span class="grow">
+          <b class="rid">${esc(rule.rule_id)}</b>
+          <span class="chip ${rule.severity === 'blocking' ? 'bad' : 'warn'}">${esc(rule.severity)}</span>
+          <span class="desc">${esc(rule.explanation)}</span>
+          ${rule.prompt ? `<span class="said">you wrote: “${esc(rule.prompt)}”</span>` : ''}
+          <span class="types">${rule.doc_types.map((t) => `<span class="chip">${esc(t.replace('_', ' '))}</span>`).join('')}</span>
+        </span>
+        <button class="btn small danger" data-delete="${esc(rule.rule_id)}">Delete</button>
+      </div>`).join('')
+    : '<p class="muted">No rules of your own yet. Describe one above.</p>';
+}
+
+const selectedDocTypes = () => [...$('#rule-types').selectedOptions].map((o) => o.value);
+
+function renderDraft(draft) {
+  state.draft = draft;
+  if (!draft) { $('#rule-draft').innerHTML = ''; return; }
+
+  const { rule, preview } = draft;
+  const evaluated = preview.passed + preview.failed;
+  // A rule nothing passes, or nothing fails, is the shape of an inverted
+  // condition — worth showing loudly rather than burying in the counts.
+  const suspect = evaluated > 0 && (preview.passed === 0 || preview.failed === 0);
+
+  $('#rule-draft').innerHTML = `
+    <div class="draft">
+      <h4>${esc(rule.title)} <span class="chip ${rule.severity === 'blocking' ? 'bad' : 'warn'}">${esc(rule.severity)}</span></h4>
+      <div class="reads">${esc(rule.explanation)}</div>
+      <p class="muted">Reviewers will see: “${esc(rule.message)}”</p>
+      <div class="tally">
+        <span>Tried on <b>${preview.considered}</b> document(s)</span>
+        <span>would pass <b class="hi">${preview.passed}</b></span>
+        <span>would fail <b class="lo">${preview.failed}</b></span>
+        <span>not applicable <b>${preview.not_applicable}</b></span>
+      </div>
+      <p class="${suspect ? '' : 'muted'}" style="font-size:13px">${suspect ? '⚠ ' : ''}${esc(preview.note)}</p>
+      ${preview.examples.length ? `<pre>${esc(preview.examples.map((e) =>
+        `${e.outcome.toUpperCase().padEnd(5)} ${e.filename}  ${JSON.stringify(e.observed || {})}`).join('\n'))}</pre>` : ''}
+      <details><summary class="muted" style="cursor:pointer;font-size:12.5px">Show the compiled condition</summary>
+        <pre>${esc(JSON.stringify({ when: rule.when, assert: rule['assert'] }, null, 2))}</pre></details>
+      <div class="actions">
+        <button class="btn primary" id="draft-save">Save this rule</button>
+        <button class="btn" id="draft-discard">Discard</button>
+      </div>
+    </div>`;
+
+  $('#draft-save').addEventListener('click', saveDraft);
+  $('#draft-discard').addEventListener('click', () => renderDraft(null));
+}
+
+async function saveDraft() {
+  const button = $('#draft-save');
+  button.disabled = true;
+  try {
+    await api('/api/rules/custom', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rule: state.draft.rule, prompt: state.draft.rule.prompt }),
+    });
+  } catch (error) {
+    toast(error.message, 'error');
+    button.disabled = false;
+    return;
+  }
+  renderDraft(null);
+  $('#rule-prompt').value = '';
+  await loadCustomRules();
+  toast('Rule saved. It runs on the next document.');
+}
+
+$('#rule-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const docTypes = selectedDocTypes();
+  if (!docTypes.length) { toast('Pick at least one document type.', 'error'); return; }
+
+  const button = $('#rule-compile');
+  button.disabled = true;
+  button.textContent = 'Compiling…';
+  try {
+    const draft = await api('/api/rules/draft', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: $('#rule-prompt').value, doc_types: docTypes }),
+    });
+    renderDraft(draft);
+  } catch (error) {
+    toast(error.message, 'error');
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Compile';
+  }
+});
+
+$('#custom-rule-list').addEventListener('change', async (event) => {
+  const box = event.target.closest('input[data-custom]');
+  if (!box) return;
+  try {
+    await api(`/api/rules/custom/${encodeURIComponent(box.dataset.custom)}/enabled?enabled=${box.checked}`,
+      { method: 'POST' });
+  } catch (error) {
+    toast(error.message, 'error');
+  }
+  loadCustomRules();
+});
+
+$('#custom-rule-list').addEventListener('click', async (event) => {
+  const button = event.target.closest('button[data-delete]');
+  if (!button) return;
+  const ruleId = button.dataset.delete;
+  if (!confirm(`Delete the rule "${ruleId}"? It will stop running on new documents.`)) return;
+  try {
+    await api(`/api/rules/custom/${encodeURIComponent(ruleId)}`, { method: 'DELETE' });
+  } catch (error) {
+    toast(error.message, 'error');
+    return;
+  }
+  loadCustomRules();
+  toast(`Deleted ${ruleId}.`);
 });
 
 /* ------------------------------------------------------------------ init */

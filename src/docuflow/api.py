@@ -22,12 +22,16 @@ from docuflow.config import Settings, get_settings
 from docuflow.models_registry import list_models
 from docuflow.runtime import SelectionError, SelectionStore
 from docuflow.ingest.fetch import FetchError, fetch_url
-from docuflow.llm.factory import describe_llms
+from docuflow.llm.factory import describe_llms, resolve_llm
 from docuflow.masterdata.repository import MasterDataRepository
 from docuflow.ocr.factory import describe_providers
 from docuflow.pipeline import Pipeline, PipelineResult
 from docuflow.policy import PolicyError, PolicyStore
 from docuflow.rules import describe_rules
+from docuflow.rules.authoring import available_fields, compile_rule
+from docuflow.rules.custom import CustomRuleError, build_rule
+from docuflow.rules.preview import preview_rule
+from docuflow.store.custom_rules import CustomRuleStore
 from docuflow.review import ReviewError, apply_review
 from docuflow.samples.catalog import SAMPLE_DOCUMENTS
 from docuflow.schemas.registry import DOCUMENT_SCHEMAS
@@ -243,6 +247,100 @@ def reset_settings() -> dict[str, Any]:
     """Return to the policy declared in configuration."""
     active_policy().reset()
     return _settings_payload()
+
+
+# ---------------------------------------------------------------------------
+# Custom rules, written from a description
+# ---------------------------------------------------------------------------
+
+
+class RuleDraftRequest(BaseModel):
+    prompt: str = Field(..., description="The check, in plain language")
+    doc_types: list[str] = Field(default_factory=lambda: ["invoice"])
+
+
+class RuleSaveRequest(BaseModel):
+    rule: dict[str, Any] = Field(..., description="A compiled rule from /api/rules/draft")
+    prompt: str = ""
+    replace: bool = False
+
+
+def _rule_store() -> CustomRuleStore:
+    return CustomRuleStore(settings.db_path)
+
+
+@app.get("/api/rules/custom")
+def list_custom_rules() -> dict[str, Any]:
+    return {
+        "rules": [rule.to_json() for rule in _rule_store().list_rules()],
+        "doc_types": sorted(DOCUMENT_SCHEMAS),
+    }
+
+
+@app.get("/api/rules/fields")
+def rule_fields(doc_types: str = Query(default="invoice")) -> dict[str, Any]:
+    """Variables a rule for these document types may reference."""
+    wanted = tuple(part.strip() for part in doc_types.split(",") if part.strip())
+    return {"doc_types": list(wanted), "fields": available_fields(wanted or ("invoice",))}
+
+
+@app.post("/api/rules/draft")
+def draft_rule(request: RuleDraftRequest) -> dict[str, Any]:
+    """Compile a description into a rule. Nothing is saved until confirmed.
+
+    The model runs here and only here. What it returns is data, shown back to
+    the author in words before they accept it, and evaluated afterwards by the
+    expression interpreter rather than by a model.
+    """
+    current = active_settings()
+    llm, note = resolve_llm(current)
+    result = compile_rule(request.prompt, tuple(request.doc_types), llm)
+    if not result.ok:
+        raise HTTPException(status_code=422, detail=result.error or note or "Could not compile the rule.")
+    return {
+        "rule": result.rule.to_json(),
+        "explanation": result.rule.explanation,
+        # Reading it back catches most mistakes; trying it on real documents
+        # catches an inverted condition, which reads perfectly well.
+        "preview": preview_rule(result.rule, current).to_json(),
+    }
+
+
+@app.post("/api/rules/preview")
+def preview_custom_rule(request: RuleSaveRequest) -> dict[str, Any]:
+    """Replay a rule over documents already processed. Writes nothing."""
+    try:
+        rule = build_rule(request.rule, prompt=request.prompt)
+    except CustomRuleError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"rule": rule.to_json(), "preview": preview_rule(rule, active_settings()).to_json()}
+
+
+@app.post("/api/rules/custom")
+def save_custom_rule(request: RuleSaveRequest) -> dict[str, Any]:
+    """Store a compiled rule after the author has read it back."""
+    try:
+        rule = build_rule(request.rule, prompt=request.prompt)
+        _rule_store().save(rule, replace=request.replace)
+    except CustomRuleError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"rule": rule.to_json()}
+
+
+@app.post("/api/rules/custom/{rule_id}/enabled")
+def toggle_custom_rule(rule_id: str, enabled: bool = Query(...)) -> dict[str, Any]:
+    try:
+        rule = _rule_store().set_enabled(rule_id, enabled)
+    except CustomRuleError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return {"rule": rule.to_json()}
+
+
+@app.delete("/api/rules/custom/{rule_id}")
+def delete_custom_rule(rule_id: str) -> dict[str, Any]:
+    if not _rule_store().delete(rule_id):
+        raise HTTPException(status_code=404, detail=f"There is no rule called '{rule_id}'.")
+    return {"deleted": rule_id}
 
 
 @app.get("/api/models")

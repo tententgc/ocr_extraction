@@ -121,6 +121,15 @@ CREATE TABLE IF NOT EXISTS app_settings (
     value       TEXT NOT NULL,
     updated_at  TEXT NOT NULL
 );
+
+-- Checks a user wrote themselves. The condition is a tree, so it is stored as
+-- JSON; its shape is the expression language's business, not the database's.
+CREATE TABLE IF NOT EXISTS custom_rules (
+    rule_id     TEXT PRIMARY KEY,
+    enabled     INTEGER NOT NULL DEFAULT 1,
+    created_at  TEXT NOT NULL,
+    payload     TEXT NOT NULL
+);
 """
 
 

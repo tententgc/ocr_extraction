@@ -9,7 +9,10 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field as dataclass_field
-from typing import Callable, Iterable
+from typing import TYPE_CHECKING, Callable, Iterable
+
+if TYPE_CHECKING:  # pragma: no cover - import cycle: custom rules need the registry
+    from docuflow.rules.custom import CustomRule
 
 from docuflow.models import RuleFinding, Severity
 from docuflow.rules.context import RuleContext
@@ -120,13 +123,15 @@ def run_rules(
     *,
     free_mode: bool = False,
     skip: Iterable[str] = (),
+    custom: Iterable["CustomRule"] = (),
 ) -> tuple[RuleFinding, ...]:
     """Execute every applicable rule, isolating failures.
 
     `free_mode` evaluates nothing at all and reports that it did so. `skip`
     silences individual rules by id (as shown in the UI) or by function name,
     which is the safer knob: it turns off the checks that do not apply to the
-    documents at hand and leaves the rest doing their job.
+    documents at hand and leaves the rest doing their job. `custom` carries the
+    rules a user wrote, which run under the same isolation as the built-ins.
     """
     if free_mode:
         return (
@@ -160,7 +165,42 @@ def run_rules(
         # reads off the screen, so honour it directly too.
         if finding is not None and finding.rule_id not in skipped:
             findings.append(finding)
+
+    findings.extend(_run_custom(context, custom, skipped))
     return tuple(findings)
+
+
+def _run_custom(
+    context: RuleContext, custom: Iterable["CustomRule"], skipped: frozenset[str]
+) -> list[RuleFinding]:
+    """Evaluate user-authored rules with the same isolation as the built-ins."""
+    from docuflow.rules.custom import run_custom_rule
+
+    findings: list[RuleFinding] = []
+    for rule in custom:
+        if rule.rule_id in skipped:
+            continue
+        try:
+            # Applicability is inside the guard too: a rule that cannot even
+            # decide whether it applies must not take the rest of them down.
+            if not rule.applies_to(context.doc_type):
+                continue
+            finding = run_custom_rule(rule, context)
+        except Exception as exc:  # noqa: BLE001 - one bad rule must not stop the rest
+            logger.exception("custom rule %s raised", rule.rule_id)
+            findings.append(
+                RuleFinding(
+                    rule_id=rule.rule_id,
+                    passed=False,
+                    severity="warning",
+                    message=f"Custom rule could not be evaluated: {exc}",
+                    detail={"custom": True},
+                )
+            )
+            continue
+        if finding is not None:
+            findings.append(finding)
+    return findings
 
 
 def passed(rule_id: str, message: str, severity: Severity = "info", **detail) -> RuleFinding:

@@ -19,6 +19,7 @@ from docuflow.models import DocumentRun, ExtractedField, TraceStep
 from docuflow.normalize.apply import normalize_field_value
 from docuflow.routing import decide
 from docuflow.rules import RuleContext, run_rules
+from docuflow.store.custom_rules import CustomRuleStore
 from docuflow.schemas.registry import get_schema
 from docuflow.store.corrections import CorrectionStore
 from docuflow.store.documents import DocumentStore
@@ -142,7 +143,10 @@ def apply_review(
         **RuleContext.policy_from(settings),
     )
     findings = run_rules(
-        context, free_mode=settings.rules_free_mode, skip=settings.skipped_rules
+        context,
+        free_mode=settings.rules_free_mode,
+        skip=settings.skipped_rules,
+        custom=CustomRuleStore(settings.db_path).active_for(run.doc_type),
     )
     run = run.evolve(findings=findings)
     run = run.evolve(

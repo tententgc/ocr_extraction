@@ -43,6 +43,7 @@ from docuflow.ocr.quality import score_document_text
 from docuflow.routing import decide
 from docuflow.rules import RuleContext, run_rules
 from docuflow.schemas.registry import DocumentSchema, get_schema
+from docuflow.store.custom_rules import CustomRuleStore
 from docuflow.store.documents import DocumentStore
 from docuflow.store.records import RecordStore, reference_field_for
 
@@ -67,6 +68,7 @@ class Pipeline:
         self.master = MasterDataRepository(settings.db_path)
         self.documents = DocumentStore(settings.db_path)
         self.records = RecordStore(settings.db_path)
+        self.custom_rules = CustomRuleStore(settings.db_path)
 
     # --- entry points ------------------------------------------------------
     def process_bytes(
@@ -390,7 +392,8 @@ class Pipeline:
         )
         free_mode = self.settings.rules_free_mode
         skipped = self.settings.skipped_rules
-        findings = run_rules(context, free_mode=free_mode, skip=skipped)
+        custom = self.custom_rules.active_for(run.doc_type)
+        findings = run_rules(context, free_mode=free_mode, skip=skipped, custom=custom)
 
         failed = [finding for finding in findings if not finding.passed]
         blocking = [finding for finding in failed if finding.severity == "blocking"]
@@ -402,6 +405,7 @@ class Pipeline:
                 f"{len(findings) - len(failed)}/{len(findings)} checks passed"
                 + (f", {len(blocking)} blocking" if blocking else "")
                 + (f", {len(skipped)} disabled" if skipped else "")
+                + (f", {len(custom)} custom" if custom else "")
             )
 
         return (
@@ -418,6 +422,7 @@ class Pipeline:
                         "blocking": [finding.rule_id for finding in blocking],
                         "free_mode": free_mode,
                         "disabled_rules": sorted(skipped),
+                        "custom_rules": [rule.rule_id for rule in custom],
                     },
                 )
             ),
