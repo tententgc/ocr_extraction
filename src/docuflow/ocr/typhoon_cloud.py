@@ -13,6 +13,8 @@ class TyphoonCloudOcr(OcrProvider):
     """Hosted Typhoon OCR 1.5 - fastest path, requires an API key."""
 
     name = "typhoon-ocr1.5-cloud"
+    # Typhoon OCR is a document-transcription model.
+    purpose_built = True
 
     def __init__(
         self,

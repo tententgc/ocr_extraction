@@ -346,3 +346,68 @@ class TestStrictOcrMode:
         chain = provider_chain(settings.model_copy(update={"ocr_strict": True}))
         assert len(chain) == 1
         assert chain[0].name == "pdf-text-layer"
+
+
+class TestEngineTrust:
+    """Whether OCR output is trusted is a property of the engine, not its name."""
+
+    def test_typhoon_and_the_pdf_text_layer_are_purpose_built(self, settings):
+        from docuflow.ocr.factory import build_provider
+
+        for key in ("typhoon_api", "pdftext"):
+            assert build_provider(key, settings).purpose_built, key
+
+    def test_a_general_vision_model_is_not(self, settings):
+        from docuflow.ocr.factory import build_provider
+
+        assert build_provider("claude", settings).purpose_built is False
+        assert build_provider("tesseract", settings).purpose_built is False
+
+    def test_ollama_is_judged_by_its_model_not_its_host(self, settings):
+        """Typhoon OCR on Ollama is the same model as Typhoon OCR in the cloud.
+
+        Treating it as a fallback engine degraded every locally-recognised run,
+        which cost 0.1 confidence per field and blocked straight-through posting
+        on documents that were read perfectly.
+        """
+        from docuflow.ocr.factory import build_provider
+
+        typhoon = build_provider("ollama", settings.model_copy(
+            update={"ocr_ollama_model": "scb10x/typhoon-ocr1.5-3b"}))
+        general = build_provider("ollama", settings.model_copy(
+            update={"ocr_ollama_model": "granite3.2-vision:2b"}))
+        assert typhoon.purpose_built is True
+        assert general.purpose_built is False
+
+
+class TestVerificationBudget:
+    """The cross-check must not be able to hold up the document."""
+
+    def test_the_second_pass_gets_the_configured_timeout(self, settings):
+        from docuflow.llm.factory import build_llm, resolve_verify_llm
+
+        config = settings.model_copy(update={
+            "llm_verify_provider": "ollama", "llm_verify_timeout_seconds": 12.0,
+        })
+        verify, _ = resolve_verify_llm(config, build_llm("openai", config))
+        assert verify is not None and verify.timeout == 12.0
+
+    def test_the_ocr_host_is_not_reused_for_verification(self, settings):
+        """A second local model evicts the local OCR model instead of running
+        beside it, so every page then pays a cold load."""
+        from docuflow.llm.factory import resolve_verify_llm
+
+        config = settings.model_copy(update={"ocr_provider": "ollama"})
+        verify, _ = resolve_verify_llm(config, _FakeCloudLlm())
+        assert getattr(verify, "base_url", "") != config.ollama_base_url
+
+
+class _FakeCloudLlm:
+    """Stands in for a reachable cloud primary without needing a key."""
+
+    name = "fake-cloud"
+    model = "fake-cloud-model"
+    base_url = "https://example.invalid/v1"
+
+    def available(self) -> tuple[bool, str]:
+        return True, ""

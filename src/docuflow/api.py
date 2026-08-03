@@ -32,6 +32,7 @@ from docuflow.schemas.registry import DOCUMENT_SCHEMAS
 from docuflow.store.corrections import CorrectionStore
 from docuflow.store.documents import DocumentStore
 from docuflow.store.records import RecordStore
+from docuflow.warmup import warm_ollama_in_background
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +52,9 @@ def active_settings() -> Settings:
 async def lifespan(_: FastAPI):
     """Create the database, seed master data and render the demo corpus."""
     bootstrap(settings, with_samples=True)
+    # Loads the local models in the background so the first upload does not wait
+    # on a cold vision model. Startup is not held up and a failure is harmless.
+    warm_ollama_in_background(active_settings())
     yield
 
 

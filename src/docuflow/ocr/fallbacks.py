@@ -24,6 +24,8 @@ class PdfTextLayerOcr(OcrProvider):
     """Zero-cost reader for PDFs that already contain selectable text."""
 
     name = "pdf-text-layer"
+    # Not recognition at all - the characters the PDF itself stores.
+    purpose_built = True
 
     def available(self) -> tuple[bool, str]:
         return True, ""

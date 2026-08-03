@@ -30,6 +30,20 @@ class OcrProvider(ABC):
 
     name: str = "base"
 
+    @property
+    def purpose_built(self) -> bool:
+        """Whether this engine was built to transcribe documents.
+
+        A purpose-built engine - Typhoon OCR, or a PDF's own text layer - is
+        trusted at full confidence. A general vision model or a classical OCR
+        binary is doing its best on a task it was not trained for, so the run is
+        marked degraded and the values are worth a second look.
+
+        Asked of the provider rather than matched against a list of names, so
+        the same model reached through a different host is judged the same way.
+        """
+        return False
+
     @abstractmethod
     def recognize(self, page: PageImage) -> str:
         """Return the recognised text for a single page."""

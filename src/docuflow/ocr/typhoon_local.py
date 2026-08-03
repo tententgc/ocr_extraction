@@ -47,6 +47,8 @@ class TyphoonLocalOcr(OcrProvider):
     """On-device Typhoon OCR 1.5."""
 
     name = "typhoon-ocr1.5-local"
+    # The same model as the cloud engine, running on-device.
+    purpose_built = True
 
     def __init__(
         self,

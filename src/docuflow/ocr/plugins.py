@@ -14,6 +14,7 @@ from typing import Callable
 from docuflow.config import Settings
 from docuflow.ocr.base import OcrProvider
 from docuflow.ocr.fallbacks import PdfTextLayerOcr, TesseractOcr
+from docuflow.ocr.ollama_ocr import OllamaVisionOcr
 from docuflow.ocr.typhoon_cloud import TyphoonCloudOcr
 from docuflow.ocr.typhoon_local import TyphoonLocalOcr
 from docuflow.ocr.vision_anthropic import AnthropicVisionOcr
@@ -104,13 +105,12 @@ register_ocr(
         key="ollama",
         model_field="ocr_ollama_model",
         label="Ollama (local)",
-        build=lambda settings, model: OpenAiVisionOcr(
-            name=f"ollama:{model or settings.ocr_ollama_model}",
+        build=lambda settings, model: OllamaVisionOcr(
             model=model or settings.ocr_ollama_model,
             base_url=settings.ollama_base_url,
-            api_key="ollama",
-            max_tokens=settings.ocr_max_tokens,
-            missing_key_reason="",
+            num_ctx=settings.ollama_num_ctx,
+            num_predict=settings.ocr_max_tokens,
+            keep_alive=settings.ollama_keep_alive,
         ),
         default_model=lambda settings: settings.ocr_ollama_model,
         list_models=_ollama_vision_models,

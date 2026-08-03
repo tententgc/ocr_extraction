@@ -63,16 +63,36 @@ def resolve_verify_llm(
     if configured == "off" or primary is None:
         return None, "verification disabled" if configured == "off" else "no primary model"
 
+    def budgeted(provider: LlmProvider | None) -> LlmProvider | None:
+        """Hold the second pass to its time budget.
+
+        Safe to set here because the provider was just built and has not opened
+        a client yet. Without it a local reasoning model can spend the full
+        request timeout thinking, and a cross-check that takes minutes is worse
+        than no cross-check - the run has a deterministic fallback either way.
+        """
+        if provider is not None and hasattr(provider, "timeout"):
+            provider.timeout = min(provider.timeout, settings.llm_verify_timeout_seconds)
+        return provider
+
     if configured != "auto":
         provider = build_llm(configured, settings, settings.llm_verify_model or None)
         if provider is None:
             return None, "verification provider is 'rules'"
         available, reason = provider.available()
-        return (provider, "") if available else (None, f"{configured} unavailable ({reason})")
+        return (budgeted(provider), "") if available else (None, f"{configured} unavailable ({reason})")
 
     # Auto: first available backend whose model differs from the primary's.
     primary_model = getattr(primary, "model", None) or getattr(primary, "model_id", None)
+    # A second local model does not run beside the local OCR model, it replaces
+    # it: Ollama evicts one to load the other, so every page pays a cold load
+    # and the verification pass runs on a machine already busy. Measured, that
+    # turns a ~30s document into minutes. A deterministic cross-check now beats
+    # a model cross-check that arrives after the demo is over.
+    contended = "ollama" if settings.resolved_ocr_provider() == "ollama" else None
     for key in auto_order():
+        if key == contended:
+            continue
         try:
             provider = build_llm(key, settings)
         except ValueError:
@@ -84,7 +104,7 @@ def resolve_verify_llm(
             continue
         candidate_model = getattr(provider, "model", None) or getattr(provider, "model_id", None)
         if candidate_model != primary_model:
-            return provider, ""
+            return budgeted(provider), ""
 
     # Only one model is reachable. Still useful - the verification prompt reads
     # the page label-first rather than field-first - but weaker, so it is named.

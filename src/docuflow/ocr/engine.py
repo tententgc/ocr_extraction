@@ -18,20 +18,19 @@ from docuflow.ocr.quality import score_document_text, score_page_text
 
 logger = logging.getLogger(__name__)
 
-# Providers whose output is good enough to trust at full confidence.
-STRONG_PROVIDERS = frozenset({"typhoon-ocr1.5-local", "typhoon-ocr1.5-cloud", "pdf-text-layer"})
-
 
 def _recognize_page(
     page: PageImage, chain: list[OcrProvider]
-) -> tuple[str, str, list[str]]:
+) -> tuple[str, OcrProvider | None, list[str]]:
     """Try each provider until one returns acceptable text.
 
-    Returns `(text, provider_name, warnings)`. Falls back to the best text seen
-    if every provider produced something questionable.
+    Returns `(text, provider, warnings)`. Falls back to the best text seen if
+    every provider produced something questionable. The provider itself comes
+    back rather than its name, because whether the text can be trusted is a
+    property of the engine, not something to infer from what it is called.
     """
     warnings: list[str] = []
-    best_text, best_provider, best_score = "", "none", -1.0
+    best_text, best_provider, best_score = "", None, -1.0
 
     for provider in chain:
         available, reason = provider.available()
@@ -50,9 +49,9 @@ def _recognize_page(
 
         report = score_page_text(text)
         if report.score > best_score:
-            best_text, best_provider, best_score = text, provider.name, report.score
+            best_text, best_provider, best_score = text, provider, report.score
         if report.acceptable:
-            return text, provider.name, warnings
+            return text, provider, warnings
         warnings.append(f"{provider.name} low quality: {'; '.join(report.reasons)}")
 
     return best_text, best_provider, warnings
@@ -72,10 +71,14 @@ def run_ocr(pages: list[PageImage], settings: Settings) -> OcrResult:
     providers_used: set[str] = set()
     all_notes: list[str] = []
 
+    improvised: set[str] = set()
     for page in pages:
         page_started = time.perf_counter()
-        text, provider_name, warnings = _recognize_page(page, chain)
+        text, provider, warnings = _recognize_page(page, chain)
+        provider_name = provider.name if provider is not None else "none"
         providers_used.add(provider_name)
+        if provider is None or not provider.purpose_built:
+            improvised.add(provider_name)
         all_notes.extend(warnings)
         ocr_pages.append(
             OcrPage(
@@ -89,10 +92,12 @@ def run_ocr(pages: list[PageImage], settings: Settings) -> OcrResult:
         )
 
     report = score_document_text([page.text for page in ocr_pages])
-    degraded = not report.acceptable or not providers_used <= STRONG_PROVIDERS
-    if not providers_used <= STRONG_PROVIDERS:
-        weak = ", ".join(sorted(providers_used - STRONG_PROVIDERS))
-        all_notes.append(f"recognised with fallback engine ({weak}); accuracy is reduced")
+    degraded = not report.acceptable or bool(improvised)
+    if improvised:
+        all_notes.append(
+            f"recognised with a general-purpose engine ({', '.join(sorted(improvised))}); "
+            "accuracy is reduced"
+        )
 
     return OcrResult(
         pages=tuple(ocr_pages),

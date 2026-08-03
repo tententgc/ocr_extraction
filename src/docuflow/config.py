@@ -54,6 +54,12 @@ class Settings(BaseSettings):
     # `off` disables verification and leaves the run on a single channel.
     llm_verify_provider: LlmProviderName = "auto"
     llm_verify_model: str = ""
+    # Time budget for the second pass. It is a cross-check, not the extraction:
+    # if it cannot answer in this long the run falls back to the deterministic
+    # label matcher rather than holding the document. Reasoning models are the
+    # reason this exists - a local 4B model that "thinks" before answering can
+    # spend minutes on a page the primary pass read in seconds.
+    llm_verify_timeout_seconds: float = Field(default=90.0, gt=0.0)
     llm_cloud_model: str = "typhoon-v2.5-30b-a3b-instruct"
     llm_local_model: str = "tawankri/typhoon2.5-qwen3-4b-mlx-4Bit"
 
@@ -104,6 +110,18 @@ class Settings(BaseSettings):
     future_date_tolerance_days: int = Field(default=2, ge=0)
     # Take the issuing party from the letterhead when no label names it.
     use_letterhead_heuristic: bool = True
+
+    # --- Ollama runtime ----------------------------------------------------
+    # How long Ollama holds a model in memory after the last request. Its own
+    # default is 5 minutes, which in a demo means almost every document pays a
+    # cold model load; that measured 168s against 15s warm.
+    ollama_keep_alive: str = "30m"
+    # Context window for local OCR. The page image alone costs ~3,100 tokens
+    # and Ollama's default window is 4096, which leaves too little room for a
+    # dense page - the model then transcribes a page it can no longer see.
+    ollama_num_ctx: int = Field(default=8192, ge=2048)
+    # Load the local models at server start instead of on the first document.
+    ollama_preload: bool = True
 
     # --- Rule execution ----------------------------------------------------
     # Free mode runs extraction only: no rule is evaluated, nothing is checked
