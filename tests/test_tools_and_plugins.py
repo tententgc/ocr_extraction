@@ -280,3 +280,66 @@ class TestModelSelection:
         assert described["ocr_provider"] == "ollama"
         assert described["ocr_model"] == "vision-model"
         assert described["llm_provider"] == "rules"
+
+
+class TestTranscriptTrimming:
+    """Providers cap the message list; Typhoon rejects more than 50 items."""
+
+    def _transcript(self, turns: int) -> list[dict]:
+        messages = [{"role": "system", "content": "s"}, {"role": "user", "content": "u"}]
+        for index in range(turns):
+            messages.append(
+                {
+                    "role": "assistant",
+                    "content": None,
+                    "tool_calls": [
+                        {"id": f"c{index}", "type": "function",
+                         "function": {"name": "read_document", "arguments": "{}"}}
+                    ],
+                }
+            )
+            messages.append({"role": "tool", "tool_call_id": f"c{index}", "name": "read_document", "content": "{}"})
+        return messages
+
+    def test_short_transcripts_are_untouched(self):
+        from docuflow.agents.agent_loop import _trim_history
+
+        messages = self._transcript(3)
+        assert _trim_history(messages) is messages
+
+    def test_long_transcripts_are_capped(self):
+        from docuflow.agents.agent_loop import MAX_MESSAGES, _trim_history
+
+        trimmed = _trim_history(self._transcript(30))
+        assert len(trimmed) <= MAX_MESSAGES
+
+    def test_system_prompt_and_original_request_survive(self):
+        from docuflow.agents.agent_loop import _trim_history
+
+        trimmed = _trim_history(self._transcript(30))
+        assert trimmed[0]["role"] == "system"
+        assert trimmed[1]["role"] == "user"
+
+    def test_no_tool_result_is_orphaned(self):
+        """A `tool` message without its `tool_calls` parent is a malformed request."""
+        from docuflow.agents.agent_loop import _trim_history
+
+        trimmed = _trim_history(self._transcript(30))
+        for index, message in enumerate(trimmed):
+            if message["role"] == "tool":
+                assert index > 0
+                assert "tool_calls" in trimmed[index - 1], "tool result lost its tool_call"
+
+
+class TestStrictOcrMode:
+    def test_fallback_chain_is_used_by_default(self, settings):
+        from docuflow.ocr.factory import provider_chain
+
+        assert len(provider_chain(settings)) > 1
+
+    def test_strict_mode_measures_only_the_named_engine(self, settings):
+        from docuflow.ocr.factory import provider_chain
+
+        chain = provider_chain(settings.model_copy(update={"ocr_strict": True}))
+        assert len(chain) == 1
+        assert chain[0].name == "pdf-text-layer"

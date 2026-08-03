@@ -25,6 +25,10 @@ logger = logging.getLogger(__name__)
 
 MAX_ITERATIONS = 6
 MAX_TOOL_RESULT_CHARS = 2_500
+# Providers cap the message list (Typhoon rejects more than 50). A loop that
+# makes several tool calls per turn reaches that quickly, so the transcript is
+# trimmed rather than allowed to grow until the request is refused.
+MAX_MESSAGES = 40
 
 
 @dataclass(frozen=True)
@@ -55,6 +59,31 @@ class AgentResult:
 
 def _truncate(value: str) -> str:
     return value if len(value) <= MAX_TOOL_RESULT_CHARS else value[:MAX_TOOL_RESULT_CHARS] + " …[truncated]"
+
+
+def _trim_history(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Keep the transcript under the provider's message limit.
+
+    The system prompt and the original request are always kept. Older turns are
+    dropped from the front of the middle section - but only at a turn boundary,
+    because an assistant message carrying `tool_calls` must keep the matching
+    `tool` replies next to it or the request is rejected as malformed.
+    """
+    if len(messages) <= MAX_MESSAGES:
+        return messages
+
+    head, tail = messages[:2], messages[2:]
+    budget = MAX_MESSAGES - len(head)
+
+    # Walk back from the end and cut at the first assistant turn that fits.
+    start = len(tail) - budget
+    while start < len(tail) and tail[start].get("role") != "assistant":
+        start += 1
+    if start >= len(tail):  # no clean boundary; keep the most recent turn only
+        start = max(0, len(tail) - 2)
+
+    logger.debug("trimmed agent transcript from %s to %s messages", len(messages), len(head) + len(tail) - start)
+    return head + tail[start:]
 
 
 def _run_without_tools(
@@ -104,6 +133,7 @@ def run_agent(
     calls: list[ToolInvocation] = []
 
     for iteration in range(1, max_iterations + 1):
+        messages = _trim_history(messages)
         try:
             turn = llm.complete_with_tools(messages, schemas, max_tokens=max_tokens, temperature=0.0)
         except ToolsUnsupportedError:
@@ -174,7 +204,7 @@ def run_agent(
         }
     )
     try:
-        final = llm.complete_with_tools(messages, [], max_tokens=max_tokens, temperature=0.0)
+        final = llm.complete_with_tools(_trim_history(messages), [], max_tokens=max_tokens, temperature=0.0)
         payload = extract_json(final.content)
     except Exception as exc:  # noqa: BLE001
         return AgentResult(

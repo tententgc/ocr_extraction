@@ -26,7 +26,11 @@ def provider_chain(settings: Settings) -> list[OcrProvider]:
     download or an expired key degrades the demo instead of breaking it.
     """
     primary = settings.resolved_ocr_provider()
-    order = [primary] + [key for key in fallback_order() if key != primary]
+    if settings.ocr_strict:
+        # Measure exactly the engine that was asked for.
+        order = [primary]
+    else:
+        order = [primary] + [key for key in fallback_order() if key != primary]
 
     chain: list[OcrProvider] = []
     for key in order:

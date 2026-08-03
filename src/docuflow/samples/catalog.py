@@ -32,6 +32,10 @@ class SampleDoc:
     language: Literal["en", "th"] = "en"
     # Rule IDs this document is expected to trip.
     expected_findings: tuple[str, ...] = ()
+    # A defect that only exists relative to an earlier posting: this document
+    # can only be a duplicate if `requires_posted` reached the ledger first.
+    # Evaluation seeds that record so engine comparisons stay fair.
+    requires_posted: str | None = None
 
 
 VENDORS: tuple[dict[str, Any], ...] = (
@@ -298,6 +302,7 @@ SAMPLE_DOCUMENTS: tuple[SampleDoc, ...] = (
             {"description": "USB-C docking station", "quantity": 5, "unit_price": 5_400.00, "amount": 27_000.00},
         ),
         expected_findings=("duplicate_document",),
+        requires_posted="inv-clean-classic",
     ),
     # ---- 6. Foreign currency invoice over PO amount ------------------------
     SampleDoc(

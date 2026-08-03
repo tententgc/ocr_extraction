@@ -37,7 +37,11 @@ Four mechanisms keep that number down:
    failure, confidence above threshold, all required fields present, and all
    critical fields grounded.
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full design.
+- [docs/APPROACH.md](docs/APPROACH.md) — the reasoning: model and technique
+  choices, where agents belong versus deterministic steps, and how value is
+  proven and improved before scaling.
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — the mechanics: pipeline stages,
+  confidence model, plugin system, data model.
 
 ---
 
@@ -117,15 +121,28 @@ OCR ENGINES
    openai:gpt-4o                             unavailable (OPENAI_API_KEY is not set)
 ```
 
-| Engine | Speed/page | Key | Notes |
-|---|---|---|---|
-| Typhoon Cloud `typhoon-ocr-v1.5` | ~2 s | yes | Fastest; purpose-built for Thai documents |
-| Ollama `typhoon-ocr1.5-3b` | ~15 s | no | Best fully-local option |
-| MLX `typhoon-ocr1.5-2b-8bit` | ~20 s | no | Apple Silicon, no Ollama needed |
-| Claude `claude-sonnet-5` | ~15 s | yes | Strong on damaged scans |
-| OpenAI `gpt-5.1` | ~7 s | yes | See the caution below |
-| PDF text layer | instant | no | Digital PDFs only, no model |
-| Tesseract | ~2 s | no | Last resort; weak on layout |
+Measured by `docuflow benchmark` on five corpus documents (three digital PDFs,
+two degraded scans), each engine run in strict mode so no engine is credited
+with a fallback's output:
+
+| Engine | Field accuracy | Silent errors | Defects caught | s/page | Key |
+|---|---|---|---|---|---|
+| **Typhoon Cloud `typhoon-ocr-v1.5`** | **94.3%** | 0% | 100% | 19.1 | yes |
+| MLX `typhoon-ocr1.5-2b-8bit` | 92.9% | 0% | 100% | 37.0 | no |
+| Claude `claude-sonnet-5` | 91.4% | 0% | 100% | 30.2 | yes |
+| OpenAI `gpt-5.1` | 85.7% | 0% | 100% | 29.0 | yes |
+| Tesseract | 78.6% | 0% | 100% | 27.7 | no |
+| PDF text layer | 61.4% | 0% | 50% | 17.2 | no |
+
+Read the **silent-error column first**: it is 0% for every engine, including the
+weakest. Engine quality determines *how much work gets automated*, not *whether
+wrong values escape* — that is what the grounding and rule layers are for.
+
+The PDF text layer reads digital PDFs perfectly and scans not at all, which is
+why it scores 61% and misses half the planted defects; in normal (non-strict)
+operation it falls through to a real engine on those pages. Ollama's
+`typhoon-ocr1.5-3b` measured 82.9% at 75 s/page in an earlier run — slower *and*
+less accurate than the 2B MLX build, so prefer MLX when running locally on a Mac.
 
 > **Prefer a document-OCR model over a general vision model.** On a degraded Thai
 > scan in the demo corpus, `gpt-5.1` returned a company name and a full street

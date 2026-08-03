@@ -63,6 +63,28 @@ model asked to "read this document" will happily produce fluent, wrong text. Thi
 is exactly the failure mode that grounding exists to catch, and exactly why the
 default engine is a document OCR model.
 
+Across the whole corpus (`docuflow benchmark`, strict mode, five documents):
+
+| Engine | Field accuracy | Silent errors | Defects caught | s/page |
+|---|---|---|---|---|
+| Typhoon Cloud `typhoon-ocr-v1.5` | 94.3% | 0% | 100% | 19.1 |
+| MLX `typhoon-ocr1.5-2b-8bit` | 92.9% | 0% | 100% | 37.0 |
+| Claude `claude-sonnet-5` | 91.4% | 0% | 100% | 30.2 |
+| OpenAI `gpt-5.1` | 85.7% | 0% | 100% | 29.0 |
+| Tesseract | 78.6% | 0% | 100% | 27.7 |
+| PDF text layer | 61.4% | 0% | 50% | 17.2 |
+
+**The silent-error column is the point.** It is 0% for every engine, from the
+best to the one that cannot read scans at all. Engine quality moves the
+straight-through rate; it does not move whether wrong values escape. That
+separation is the whole design, and this table is the evidence for it — a weaker
+engine buys you more review work, not more bad payments.
+
+Two counter-intuitive results worth noting: the 2B MLX build beat the 3B Ollama
+build (92.9% at 37 s/page versus 82.9% at 75 s/page), and a general-purpose
+frontier model came fourth behind a 2B local one. Neither is what a model card
+would predict, which is the argument for benchmarking on your own documents.
+
 **Reasoning: a general instruct model with tool calling.** Typhoon 2.5 for Thai
 documents, or Claude / OpenAI / a local Ollama model — all interchangeable.
 
@@ -368,6 +390,25 @@ docuflow benchmark --combo "ocr=ollama:scb10x/typhoon-ocr1.5-3b,llm=typhoon" \
 Engine choice is then an evidence-based decision on *your* documents, ranked by
 fewest silent errors, then accuracy, then speed. This is how the gpt-5.1
 hallucination was found — not by reading model cards.
+
+**Measurement itself has to be audited.** The first benchmark run produced three
+wrong conclusions, all found by inspecting the results rather than trusting them:
+
+- The PDF-text-layer engine scored 95.7% — because it silently fell through to
+  the cloud model on every scanned page and was credited with that model's
+  output. A `strict` mode now disables fallback during benchmarking, and its
+  honest score is 61.4%.
+- Every engine appeared to miss the `duplicate_document` defect. It was not a
+  detection failure: a document can only be a duplicate if its predecessor
+  posted, and the more cautious engines had held that predecessor for review.
+  The benchmark was penalising engines for being careful. Evaluation now seeds
+  the prerequisite record.
+- A 422 buried in the logs revealed a production bug: the agent's transcript grew
+  past the provider's 50-message cap, so the reconciliation agent silently lost
+  its investigation on long documents. The transcript is now trimmed at a turn
+  boundary, so no tool result is ever orphaned from its call.
+
+A benchmark that is never questioned is just a more confident guess.
 
 ### Improving before scaling
 

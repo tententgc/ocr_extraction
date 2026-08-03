@@ -45,6 +45,29 @@ def _isolated_settings(settings: Settings, label: str = "run") -> Settings:
     return settings.model_copy(update={"data_dir": eval_dir})
 
 
+def seed_prerequisite(pipeline, sample, processed: dict[str, Any]) -> None:
+    """Force-post the record a relative defect depends on.
+
+    `inv-duplicate` is only a duplicate if `inv-clean-classic` already posted.
+    A cautious engine that held the predecessor for review would otherwise be
+    scored as having *missed* the duplicate, penalising it for being careful.
+    """
+    required = getattr(sample, "requires_posted", None)
+    if not required:
+        return
+
+    earlier = processed.get(required)
+    if earlier is None or earlier.run.record_id:
+        return
+
+    try:
+        pipeline.records.post_record(
+            earlier.run, earlier.vendor_match.vendor_id, actor="evaluation", force=True
+        )
+    except Exception as exc:  # noqa: BLE001 - seeding is best-effort
+        logger.warning("could not seed prerequisite %s: %s", required, exc)
+
+
 def _sample_path(settings: Settings, doc_id: str) -> Path | None:
     scan = settings.sample_dir / f"{doc_id}.jpg"
     pdf = settings.sample_dir / f"{doc_id}.pdf"
@@ -66,6 +89,7 @@ def run_evaluation(settings: Settings, limit: int = 0) -> dict[str, Any]:
         documents = documents[:limit]
 
     results: list[dict[str, Any]] = []
+    processed: dict[str, Any] = {}
     started = time.perf_counter()
 
     for sample in documents:
@@ -75,7 +99,9 @@ def run_evaluation(settings: Settings, limit: int = 0) -> dict[str, Any]:
             continue
 
         logger.info("evaluating %s", sample.doc_id)
+        seed_prerequisite(pipeline, sample, processed)
         outcome = pipeline.process_file(path, source_kind="sample")
+        processed[sample.doc_id] = outcome
         run = outcome.run
         schema = get_schema(sample.doc_type)
         specs = {spec.name: spec for spec in schema.fields}

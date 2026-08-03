@@ -16,7 +16,12 @@ from typing import Any
 
 from docuflow.bootstrap import bootstrap
 from docuflow.config import Settings
-from docuflow.evaluation.harness import _isolated_settings, _sample_path, _summarize
+from docuflow.evaluation.harness import (
+    _isolated_settings,
+    _sample_path,
+    _summarize,
+    seed_prerequisite,
+)
 from docuflow.evaluation.compare import compare_document
 from docuflow.pipeline import Pipeline
 from docuflow.samples.catalog import SAMPLE_DOCUMENTS
@@ -35,8 +40,11 @@ class Combination:
     llm_provider: str | None = None
     llm_model: str | None = None
 
-    def apply(self, settings: Settings) -> Settings:
-        updates: dict[str, Any] = {"ocr_provider": self.ocr_provider}
+    def apply(self, settings: Settings, strict: bool = True) -> Settings:
+        # `strict` stops a weak engine from quietly scoring its fallback's
+        # accuracy: without it, `pdftext` falls through to the cloud model on
+        # every scanned page and reports that model's numbers as its own.
+        updates: dict[str, Any] = {"ocr_provider": self.ocr_provider, "ocr_strict": strict}
         field = {
             "ollama": "ocr_ollama_model",
             "typhoon_api": "ocr_cloud_model",
@@ -89,6 +97,7 @@ def run_one(settings: Settings, combination: Combination, limit: int = 0) -> dic
 
     documents = list(SAMPLE_DOCUMENTS)[: limit or None]
     results: list[dict[str, Any]] = []
+    processed: dict[str, Any] = {}
     started = time.perf_counter()
     pages_read = 0
 
@@ -96,7 +105,9 @@ def run_one(settings: Settings, combination: Combination, limit: int = 0) -> dic
         path = _sample_path(settings, sample.doc_id)
         if path is None:
             continue
+        seed_prerequisite(pipeline, sample, processed)
         outcome = pipeline.process_file(path, source_kind="sample")
+        processed[sample.doc_id] = outcome
         run = outcome.run
         schema = get_schema(sample.doc_type)
         specs = {spec.name: spec for spec in schema.fields}
