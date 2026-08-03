@@ -137,7 +137,7 @@ class TestMerge:
     def test_quote_that_does_not_contain_the_value_is_rejected(self, ocr_pages):
         field = self._merge("total_amount", "555,555.00", None, "Amount Due 200,090.00 THB", ocr_pages)
         assert field.grounded is False
-        assert any("quoted text does not contain" in note for note in field.notes)
+        assert any("quoted text does not state" in note for note in field.notes)
 
     def test_missing_from_both_channels_is_empty(self, ocr_pages):
         field = self._merge("bank_account", None, None, None, ocr_pages)
@@ -208,3 +208,95 @@ class TestDerivedConfidence:
         assert currency.source == "derived"
         assert currency.grounded is False
         assert currency.confidence == score_derived(ocr_quality=0.95, ocr_degraded=False)
+
+
+class TestTypeAwareGrounding:
+    """A date written one way still states the date read another way.
+
+    The literal substring test used to call "INVOICE DATE 11/02/2019" evidence
+    that does not contain 2019-02-11 - marking a correct reading unverified and
+    dropping it to 40% confidence. That was the single most common thing the
+    check reported, and it was wrong every time.
+    """
+
+    @pytest.mark.parametrize("value,evidence", [
+        ("2019-02-11", "INVOICE DATE 11/02/2019"),
+        ("2019-02-26", "DUE DATE 26/02/2019"),
+        ("2026-07-08", "Invoice Date: 8 July 2026"),
+        ("2026-07-08", "Invoice Date: 2026-07-08"),
+    ])
+    def test_a_date_is_supported_however_it_is_written(self, value, evidence):
+        assert value_supported_by_evidence(value, evidence, "date", value) is True
+
+    def test_a_date_the_page_does_not_state_is_still_rejected(self):
+        assert value_supported_by_evidence(
+            "2019-02-11", "INVOICE DATE 03/09/2021", "date", "2019-02-11") is False
+
+    @pytest.mark.parametrize("value,evidence", [
+        ("154.06", "TOTAL $154.06"),
+        ("145", "Subtotal 145.00"),
+        ("200090.00", "Amount Due 200,090.00 THB"),
+    ])
+    def test_an_amount_is_supported_however_it_is_formatted(self, value, evidence):
+        assert value_supported_by_evidence(value, evidence, "money", value) is True
+
+    def test_an_amount_the_page_does_not_state_is_still_rejected(self):
+        assert value_supported_by_evidence(
+            "154.06", "TOTAL $999.00", "money", "154.06") is False
+
+    def test_the_screenshot_case_end_to_end(self, ocr_pages):
+        """One channel, ISO value, day-first source: verified, not flagged."""
+        from docuflow.agents.candidates import Candidate
+
+        pages = [(1, "INVOICE # US-001\nINVOICE DATE 11/02/2019\nDUE DATE 26/02/2019\n")]
+        field = merge_field(
+            spec("invoice_date"),
+            Candidate("invoice_date", "2019-02-11", "INVOICE DATE 11/02/2019", channel="model"),
+            None, pages, ocr_quality=0.95, ocr_degraded=False,
+        )
+        assert field.grounded is True
+        assert field.confidence > 0.75
+
+
+class TestCorroboration:
+    """Two independent readings agreeing is why two channels exist."""
+
+    PAGES = [(1, "Bill To\nMirtphol Industries PCL\n88/9 Rama IV Road\nBangkok 10110\n")]
+
+    def _candidate(self, channel, value="Mirtphol Industries PCL", evidence="Bill To"):
+        from docuflow.agents.candidates import Candidate
+
+        return Candidate("buyer_name", value, evidence, channel=channel)
+
+    def test_agreement_grounds_a_value_no_single_quote_states(self):
+        """The value is split across lines, so neither quote contains it - but
+        both channels read the page and reached the same answer."""
+        field = merge_field(
+            spec("buyer_name"),
+            self._candidate("model"),
+            self._candidate("verify"),
+            self.PAGES, ocr_quality=0.95, ocr_degraded=False,
+        )
+        assert field.grounded is True
+        assert any("both readings" in note for note in field.notes)
+
+    def test_a_quote_that_is_not_on_the_page_is_never_corroborated(self):
+        """Agreement relaxes how a value ties to its quote, never whether the
+        page contains the quote at all."""
+        field = merge_field(
+            spec("buyer_name"),
+            self._candidate("model", evidence="Bill To: Stark Industries Ltd of Malibu"),
+            self._candidate("verify", evidence="Bill To: Stark Industries Ltd of Malibu"),
+            self.PAGES, ocr_quality=0.95, ocr_degraded=False,
+        )
+        assert field.grounded is False
+
+    def test_disagreement_is_untouched_by_corroboration(self):
+        field = merge_field(
+            spec("buyer_name"),
+            self._candidate("model", value="Mirtphol Industries PCL"),
+            self._candidate("verify", value="Stark Industries Ltd"),
+            self.PAGES, ocr_quality=0.95, ocr_degraded=False,
+        )
+        assert field.confidence < 0.6
+        assert any("disagree" in note for note in field.notes)

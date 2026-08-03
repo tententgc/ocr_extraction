@@ -8,16 +8,31 @@ marked and can never be auto-posted.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
+from datetime import date
+from typing import Any
 
 from rapidfuzz import fuzz
 
+from docuflow.normalize.amounts import parse_number
+from docuflow.normalize.dates import parse_date
 from docuflow.normalize.text import normalize_for_match, squash
 
 # A quote this similar to page text is considered present despite OCR noise.
 FUZZY_MATCH_THRESHOLD = 88.0
 # Quotes shorter than this are too generic to prove anything.
 MIN_EVIDENCE_CHARS = 3
+
+# Anything that might be a written date: 11/02/2019, 2019-02-11, 8 July 2026,
+# ๘ กรกฎาคม ๒๕๖๙. Deliberately loose - `parse_date` decides what is real.
+_DATE_TOKEN_RE = re.compile(
+    r"\d{1,4}[/\-.]\d{1,2}[/\-.]\d{1,4}"
+    r"|[\d๐-๙]{1,2}\s+[^\W\d_]{3,12}\.?\s+[\d๐-๙]{2,4}"
+    r"|[^\W\d_]{3,12}\.?\s+[\d๐-๙]{1,2},?\s+[\d๐-๙]{2,4}",
+    re.UNICODE,
+)
+_NUMBER_TOKEN_RE = re.compile(r"[-+]?[\d๐-๙][\d๐-๙,.']*")
 
 
 @dataclass(frozen=True)
@@ -70,14 +85,62 @@ def find_evidence(evidence: str, ocr_pages: list[tuple[int, str]]) -> GroundingR
     )
 
 
-def value_supported_by_evidence(raw_value: str | None, evidence: str | None) -> bool:
-    """Check the extracted value actually appears inside its own quote.
+def _dates_in(text: str) -> list[date]:
+    """Every date the page text could be stating, however it is written."""
+    return [parsed for token in _DATE_TOKEN_RE.findall(text) if (parsed := parse_date(token))]
+
+
+def _date_supported(value: Any, evidence: str) -> bool | None:
+    """Whether `evidence` states this date. None when it states no date at all."""
+    wanted = parse_date(value) if not isinstance(value, date) else value
+    if wanted is None:
+        return None
+    found = _dates_in(evidence)
+    return (wanted in found) if found else None
+
+
+def _amount_supported(value: Any, evidence: str) -> bool | None:
+    """Whether `evidence` states this amount. None when it states no number."""
+    wanted = parse_number(value)
+    if wanted is None:
+        return None
+    found = [parsed for token in _NUMBER_TOKEN_RE.findall(evidence) if (parsed := parse_number(token)) is not None]
+    if not found:
+        return None
+    return any(abs(candidate - wanted) < 0.005 for candidate in found)
+
+
+def value_supported_by_evidence(
+    raw_value: str | None,
+    evidence: str | None,
+    field_type: str | None = None,
+    value: Any = None,
+) -> bool:
+    """Check the extracted value is really stated by its own quote.
 
     Catches the failure where a model quotes a real line but reports a number
     that is not in it - the most dangerous kind of error, because the quote looks
     convincing to a reviewer skimming the page.
+
+    Dates and amounts are compared as dates and amounts, not as text. A page
+    saying "INVOICE DATE 11/02/2019" does state the date 2019-02-11, and a
+    literal substring test calls that a hallucination - which is both wrong and
+    the most common thing this check used to report. `value` is the normalised
+    reading; `raw_value` is what the model actually wrote down.
     """
-    if not raw_value or not evidence:
+    if not evidence:
+        return False
+
+    if field_type == "date":
+        verdict = _date_supported(value if value is not None else raw_value, evidence)
+        if verdict is not None:
+            return verdict
+    elif field_type in {"money", "number", "percent"}:
+        verdict = _amount_supported(value if value is not None else raw_value, evidence)
+        if verdict is not None:
+            return verdict
+
+    if not raw_value:
         return False
     value_squashed = squash(str(raw_value))
     if not value_squashed:

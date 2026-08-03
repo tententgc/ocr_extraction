@@ -47,21 +47,48 @@ def _values_agree(left: Any, right: Any) -> bool:
     return normalize_for_match(str(left)) == normalize_for_match(str(right))
 
 
-def _ground(candidate: Candidate | None, ocr_pages: list[tuple[int, str]]) -> tuple[bool, int | None, str]:
-    """Check a candidate's quote against the page. Returns (grounded, page, note)."""
+@dataclass(frozen=True)
+class _Grounding:
+    """Two separate questions about one candidate's evidence."""
+
+    # Is the quoted text actually on the page?
+    quote_found: bool
+    # Does that quote state the value the channel reported?
+    value_supported: bool
+    page: int | None = None
+    note: str = ""
+
+    @property
+    def grounded(self) -> bool:
+        return self.quote_found and self.value_supported
+
+
+def _ground(
+    candidate: Candidate | None,
+    ocr_pages: list[tuple[int, str]],
+    spec: FieldSpec,
+    value: Any = None,
+) -> _Grounding:
+    """Check a candidate's quote against the page."""
     if candidate is None:
-        return False, None, ""
+        return _Grounding(False, False)
     # The label matcher quotes a literal line of the page, so it is grounded by
     # construction; only a model's claim needs verifying.
     if candidate.channel in {"label", "letterhead"}:
-        return True, candidate.page, ""
+        return _Grounding(True, True, candidate.page)
 
     result = find_evidence(candidate.evidence or "", ocr_pages)
     if not result.grounded:
-        return False, None, f"evidence not verified: {result.reason}"
-    if not value_supported_by_evidence(candidate.raw_value, candidate.evidence):
-        return False, None, "the quoted text does not contain the reported value"
-    return True, result.page, ""
+        return _Grounding(False, False, None, f"evidence not verified: {result.reason}")
+    supported = value_supported_by_evidence(
+        candidate.raw_value, candidate.evidence, spec.type, value
+    )
+    return _Grounding(
+        True,
+        supported,
+        result.page,
+        "" if supported else "the quoted text does not state the reported value",
+    )
 
 
 def merge_field(
@@ -78,8 +105,16 @@ def merge_field(
     primary_norm = _normalize(primary, spec)
     secondary_norm = _normalize(secondary, spec)
 
-    primary_grounded, primary_page, primary_note = _ground(primary, ocr_pages)
-    secondary_grounded, secondary_page, secondary_note = _ground(secondary, ocr_pages)
+    primary_ground = _ground(primary, ocr_pages, spec, primary_norm.value if primary_norm else None)
+    secondary_ground = _ground(
+        secondary, ocr_pages, spec, secondary_norm.value if secondary_norm else None
+    )
+    primary_grounded, primary_page, primary_note = (
+        primary_ground.grounded, primary_ground.page, primary_ground.note
+    )
+    secondary_grounded, secondary_page, secondary_note = (
+        secondary_ground.grounded, secondary_ground.page, secondary_ground.note
+    )
 
     has_primary = primary_norm is not None and primary_norm.value is not None
     has_secondary = secondary_norm is not None and secondary_norm.value is not None
@@ -100,6 +135,23 @@ def merge_field(
         )
 
     agree = has_primary and has_secondary and _values_agree(primary_norm.value, secondary_norm.value)
+
+    # Two independent readings arriving at the same value, each quoting a line
+    # that is really on the page, corroborate each other. That is stronger
+    # evidence than one channel's quote containing the value literally, and it
+    # is the whole reason for running two channels - a literal containment test
+    # must not be able to overrule it. The quotes still have to be real: this
+    # relaxes how the value is tied to the page, never whether the page says it.
+    corroborated = (
+        agree and primary_ground.quote_found and secondary_ground.quote_found
+        and not (primary_grounded and secondary_grounded)
+    )
+    if corroborated:
+        primary_grounded = secondary_grounded = True
+        primary_page = primary_page or secondary_page
+        notes.append(
+            "both readings independently reported this value and each quoted the page"
+        )
 
     # --- choose which reading to keep --------------------------------------
     if has_primary and has_secondary and not agree:
