@@ -15,6 +15,14 @@ AGREEMENT_BOTH_CHANNELS = 0.97
 SINGLE_CHANNEL_GROUNDED = 0.86
 CHANNELS_DISAGREE = 0.45
 SINGLE_CHANNEL_UNGROUNDED = 0.30
+# A value nothing on the page states, filled in from elsewhere. Two strengths,
+# because they are not the same kind of claim: a counterparty's billing currency
+# is a fact in the register, while "this document is written in Thai, so the
+# amounts are baht" is a reasonable inference about the document. Both sit below
+# AUTO_POST_MIN_CONFIDENCE, so neither can post a document on its own.
+FROM_RECORD = 0.84
+FROM_INFERENCE = 0.70
+
 # Multipliers applied on top.
 DEGRADED_OCR_FACTOR = 0.90
 CRITICAL_UNGROUNDED_FACTOR = 0.60
@@ -28,6 +36,20 @@ def _quality_factor(ocr_quality: float) -> float:
     that value was read off the page or inferred from it.
     """
     return 0.55 + 0.45 * max(0.0, min(1.0, ocr_quality))
+
+
+def score_inferred(*, ocr_quality: float, ocr_degraded: bool, from_record: bool) -> float:
+    """Confidence for a value filled in rather than read off the page.
+
+    Still scaled by recognition quality: an inference drawn from a page nobody
+    could read is worth less than the same inference from a clean one, and the
+    signals it rests on - the script, an address, a tax identifier - all come
+    out of that same text.
+    """
+    score = (FROM_RECORD if from_record else FROM_INFERENCE) * _quality_factor(ocr_quality)
+    if ocr_degraded:
+        score *= DEGRADED_OCR_FACTOR
+    return round(max(0.0, min(1.0, score)), 3)
 
 
 def score_field(

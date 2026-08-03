@@ -28,7 +28,7 @@ from docuflow.agents.rule_extractor import (
     find_line_items,
 )
 from docuflow.config import Settings
-from docuflow.confidence import document_confidence, score_field
+from docuflow.confidence import document_confidence, score_field, score_inferred
 from docuflow.ingest.store import StoredBlob, store_bytes
 from docuflow.llm.base import LlmProvider
 from docuflow.llm.factory import resolve_llm, resolve_verify_llm
@@ -42,6 +42,7 @@ from docuflow.models import (
     TraceStep,
 )
 from docuflow.normalize.amounts import parse_money, parse_number
+from docuflow.normalize.locale import infer_currency
 from docuflow.ocr.render import UnsupportedDocumentError, render_document
 from docuflow.ocr.engine import run_ocr
 from docuflow.ocr.quality import score_document_text
@@ -317,11 +318,13 @@ class Pipeline:
             return fields
 
         found = detect_currency_from_pages(pages)
-        if found is None:
-            return fields
+        if found is None or found[0] not in spec.choices:
+            # The page never names a currency. The amounts are still in one, and
+            # a ledger cannot hold "1,070 of something", so fall back to what the
+            # register knows about this counterparty and then to where the
+            # document is from. Both are inferences and are labelled as such.
+            return self._infer_currency(fields, spec, pages, ocr_quality, ocr_degraded)
         detected, evidence, page = found
-        if detected not in spec.choices:
-            return fields
 
         # A page printing "$154.06" states its currency as plainly as one
         # printing "USD" - it just says it with a symbol. That line is real page
@@ -346,6 +349,66 @@ class Pipeline:
             grounded=True,
             source="derived",
             notes=(f"currency taken from the symbol or wording on the page: “{evidence}”",),
+        )
+        return tuple(replacement if item.name == "currency" else item for item in fields)
+
+    def _infer_currency(
+        self,
+        fields: tuple[ExtractedField, ...],
+        spec,
+        pages: list[tuple[int, str]],
+        ocr_quality: float,
+        ocr_degraded: bool,
+    ) -> tuple[ExtractedField, ...]:
+        """Currency for a document that never printed one.
+
+        Never grounded - there is nothing on the page to point at - so it cannot
+        post on its own. That is the right outcome: an inferred currency should
+        be seen by a person once, not silently trusted for every document from
+        that supplier afterwards.
+        """
+        text = "\n".join(page_text for _, page_text in pages)
+
+        # The counterparty's registered billing currency, when we can identify
+        # them. Looked up here rather than reused from validation because that
+        # stage runs later; the query is a cheap local lookup.
+        vendor_name = next(
+            (f.value for f in fields if f.name in {"vendor_name", "merchant_name"} and not f.is_empty),
+            None,
+        )
+        tax_id = next(
+            (f.value for f in fields
+             if f.name in {"vendor_tax_id", "merchant_tax_id", "tax_id"} and not f.is_empty),
+            None,
+        )
+        vendor = None
+        if vendor_name or tax_id:
+            match = self.master.find_vendor(
+                str(vendor_name) if vendor_name else None, str(tax_id) if tax_id else None
+            )
+            vendor = match.vendor
+
+        guess = infer_currency(text, vendor, spec.choices)
+        if guess is None:
+            return fields
+
+        replacement = ExtractedField(
+            name="currency",
+            label=spec.label,
+            value=guess.currency,
+            raw_value=guess.currency,
+            evidence=None,
+            confidence=score_inferred(
+                ocr_quality=ocr_quality,
+                ocr_degraded=ocr_degraded,
+                from_record=guess.from_record,
+            ),
+            grounded=False,
+            source="derived",
+            notes=(
+                f"no currency is printed on the document; {guess.currency} inferred because "
+                f"{guess.reason}",
+            ),
         )
         return tuple(replacement if item.name == "currency" else item for item in fields)
 
