@@ -9,9 +9,7 @@ from docuflow.normalize.text import normalize_for_match
 from docuflow.rules.context import RuleContext
 from docuflow.rules.engine import failed, passed, rule
 
-# Renewal decisions need lead time; surface contracts inside this window.
-EXPIRY_WARNING_DAYS = 90
-MAX_REASONABLE_TERM_YEARS = 25
+# The renewal warning window and maximum plausible term come from configuration.
 
 
 def _iso(value: str | None) -> date | None:
@@ -39,7 +37,7 @@ def contract_dates_ordered(context: RuleContext) -> RuleFinding | None:
             fields=["effective_date", "expiry_date"],
         )
     years = (end - start).days / 365.25
-    if years > MAX_REASONABLE_TERM_YEARS:
+    if years > context.max_contract_years:
         return failed(
             "contract_dates_ordered",
             f"Term of {years:.0f} years is implausible; a year may have been mis-read.",
@@ -65,7 +63,7 @@ def contract_expiring_soon(context: RuleContext) -> RuleFinding | None:
             fields=["expiry_date"],
             days_remaining=days,
         )
-    if days <= EXPIRY_WARNING_DAYS:
+    if days <= context.contract_expiry_warning_days:
         notice = context.value("notice_period_days")
         notice_note = (
             f" Notice of {notice:g} days is required, so the decision window is "

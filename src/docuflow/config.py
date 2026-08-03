@@ -95,6 +95,10 @@ class Settings(BaseSettings):
     # than editing rule modules.
     po_required_above: float = Field(default=50_000.0, ge=0.0)
     expected_vat_rates: str = "0,7"
+    # Document types where an unregistered counterparty blocks posting. A
+    # receipt records money already spent and a vendor onboarding form exists
+    # because the applicant is not registered yet, so neither belongs here.
+    unknown_vendor_blocks: str = "invoice,purchase_order"
     contract_expiry_warning_days: int = Field(default=90, ge=0)
     max_contract_years: int = Field(default=25, ge=1)
     future_date_tolerance_days: int = Field(default=2, ge=0)
@@ -114,6 +118,13 @@ class Settings(BaseSettings):
             except ValueError:
                 continue
         return tuple(rates)
+
+    @property
+    def vendor_blocking_types(self) -> frozenset[str]:
+        """Parsed `unknown_vendor_blocks`."""
+        return frozenset(
+            part.strip() for part in str(self.unknown_vendor_blocks).split(",") if part.strip()
+        )
 
     # --- Ingest ------------------------------------------------------------
     allow_url_fetch: bool = True

@@ -12,6 +12,7 @@ from docuflow.bootstrap import bootstrap
 from docuflow.config import get_settings
 from docuflow.ingest.fetch import FetchError, fetch_url
 from docuflow.llm.factory import describe_llms
+from docuflow.masterdata import MasterDataRepository
 from docuflow.ocr.factory import describe_providers
 from docuflow.pipeline import Pipeline, PipelineResult
 from docuflow.store.documents import DocumentStore
@@ -265,6 +266,43 @@ def cmd_evaluate(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_vendor(args: argparse.Namespace) -> int:
+    """Manage the vendor master file, so unknown counterparties can be registered."""
+    settings = get_settings()
+    bootstrap(settings, with_samples=False)
+    master = MasterDataRepository(settings.db_path)
+
+    if args.vendor_command == "list":
+        vendors = master.list_vendors()
+        print(f"{'ID':10} {'LEGAL NAME':44} {'TAX ID':16} {'ACCOUNT':24} STATUS")
+        print("-" * 108)
+        for vendor in vendors:
+            print(
+                f"{vendor['vendor_id']:10} {vendor['legal_name'][:43]:44} "
+                f"{str(vendor['tax_id'] or '-'):16} {str(vendor['bank_account'] or '-'):24} {vendor['status']}"
+            )
+        print(f"\n{len(vendors)} vendor(s).")
+        return 0
+
+    try:
+        vendor = master.add_vendor(
+            legal_name=args.name,
+            tax_id=args.tax_id,
+            bank_account=args.account,
+            aliases=args.alias or "",
+            status=args.status,
+            payment_terms=args.terms,
+            currency=args.currency,
+        )
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+
+    print(f"Registered {vendor['legal_name']} as {vendor['vendor_id']}.")
+    print("Documents from this vendor will now match instead of being blocked.")
+    return 0
+
+
 def cmd_models(args: argparse.Namespace) -> int:
     from docuflow.models_registry import list_models
 
@@ -350,6 +388,19 @@ def main(argv: list[str] | None = None) -> int:
     eval_parser.add_argument("--limit", type=int, default=0)
     eval_parser.add_argument("--out", help="write the JSON report here")
     eval_parser.set_defaults(func=cmd_evaluate)
+
+    vendor_parser = subparsers.add_parser("vendor", help="manage the vendor master file")
+    vendor_sub = vendor_parser.add_subparsers(dest="vendor_command", required=True)
+    vendor_sub.add_parser("list", help="list registered vendors")
+    vendor_add = vendor_sub.add_parser("add", help="register a vendor")
+    vendor_add.add_argument("name", help="legal name as printed on documents")
+    vendor_add.add_argument("--tax-id", help="tax identification number")
+    vendor_add.add_argument("--account", help="registered bank account")
+    vendor_add.add_argument("--alias", help="other names, separated by ';'")
+    vendor_add.add_argument("--status", default="active", choices=["active", "on_hold", "blocked"])
+    vendor_add.add_argument("--terms", help="payment terms, e.g. 'Net 30'")
+    vendor_add.add_argument("--currency", default="THB")
+    vendor_parser.set_defaults(func=cmd_vendor)
 
     models_parser = subparsers.add_parser("models", help="list selectable OCR and agent models")
     models_parser.set_defaults(func=cmd_models)

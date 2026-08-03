@@ -14,10 +14,8 @@ from docuflow.rules.context import RuleContext
 from docuflow.rules.engine import failed, passed, rule
 
 MONEY_DOCS = ("invoice", "receipt", "purchase_order")
-# Standard Thai VAT rates; anything else on a THB document is worth a look.
-EXPECTED_THAI_VAT_RATES = (0.0, 7.0)
-# Invoices at or above this value must quote a purchase order.
-PO_REQUIRED_ABOVE = 50_000.0
+# VAT rates and the purchase-order threshold are finance policy and come from
+# configuration via RuleContext, not from constants here.
 # Absolute currency units of slack when comparing computed and printed totals.
 ARITHMETIC_ABSOLUTE_SLACK = 0.02
 
@@ -82,11 +80,12 @@ def vat_rate_expected(context: RuleContext) -> RuleFinding | None:
     currency = context.value("currency")
     if rate is None or currency != "THB":
         return None
-    if float(rate) in EXPECTED_THAI_VAT_RATES:
+    if float(rate) in context.expected_vat_rates:
         return passed("vat_rate_expected", f"VAT rate of {rate:g}% is standard for Thailand.")
     return failed(
         "vat_rate_expected",
-        f"VAT rate of {rate:g}% is not a standard Thai rate (expected 0% or 7%).",
+        f"VAT rate of {rate:g}% is not one of the expected rates "
+        f"({', '.join(f'{r:g}%' for r in context.expected_vat_rates)}).",
         severity="warning",
         fields=["tax_rate"],
     )
@@ -138,12 +137,21 @@ def vendor_known(context: RuleContext) -> RuleFinding | None:
             score=match.score,
         )
 
+    # Only documents that commit money to a party block on an unknown
+    # counterparty. A receipt records a purchase already made, and an onboarding
+    # form is submitted *because* the applicant is not registered yet.
+    blocks = context.doc_type in context.unknown_vendor_blocks
     suggestions = ", ".join(candidate["legal_name"] for candidate in match.candidates[:3])
-    hint = f" Closest master records: {suggestions}." if suggestions else ""
+    hint = f" Names that look similar (not confirmed): {suggestions}." if suggestions else ""
+    consequence = (
+        " Register the vendor before this can post."
+        if blocks
+        else " It will be recorded against an unregistered counterparty."
+    )
     return failed(
         "vendor_known",
-        f"'{name}' is not in the vendor master file.{hint}",
-        severity="blocking",
+        f"'{name}' is not in the vendor master file.{hint}{consequence}",
+        severity="blocking" if blocks else "warning",
         fields=["vendor_name", "merchant_name", "applicant_name"],
         best_score=match.score,
         candidates=[candidate["legal_name"] for candidate in match.candidates[:3]],
@@ -214,15 +222,16 @@ def purchase_order_required(context: RuleContext) -> RuleFinding | None:
         return None
     if reference:
         return passed("purchase_order_required", f"Invoice quotes purchase order {reference}.")
-    if float(total) < PO_REQUIRED_ABOVE:
+    if float(total) < context.po_required_above:
         return passed(
             "purchase_order_required",
-            f"No purchase order quoted, but the value ({total:,.2f}) is below the {PO_REQUIRED_ABOVE:,.0f} threshold.",
+            f"No purchase order quoted, but the value ({total:,.2f}) is below the "
+            f"{context.po_required_above:,.0f} threshold.",
         )
     return failed(
         "purchase_order_required",
         f"No purchase order quoted on an invoice of {total:,.2f}, which is above the "
-        f"{PO_REQUIRED_ABOVE:,.0f} threshold.",
+        f"{context.po_required_above:,.0f} threshold.",
         severity="blocking",
         fields=["purchase_order_ref"],
     )

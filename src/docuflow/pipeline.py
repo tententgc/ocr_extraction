@@ -380,10 +380,9 @@ class Pipeline:
             vendor_match=vendor_match,
             ocr_text=run.ocr.full_text,
             ocr_degraded=run.ocr.degraded,
-            amount_tolerance=self.settings.amount_tolerance,
             today=date.today(),
             duplicate_of=duplicate,
-            extras={"field_review_confidence": self.settings.field_review_confidence},
+            **RuleContext.policy_from(self.settings),
         )
         findings = run_rules(context)
 

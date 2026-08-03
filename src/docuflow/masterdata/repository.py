@@ -97,6 +97,63 @@ class MasterDataRepository:
             counts["contracts"] = len(data.get("contracts", ()))
         return counts
 
+    # --- writes ------------------------------------------------------------
+    def add_vendor(
+        self,
+        legal_name: str,
+        tax_id: str | None = None,
+        bank_account: str | None = None,
+        aliases: str = "",
+        status: str = "active",
+        payment_terms: str | None = None,
+        currency: str = "THB",
+        vendor_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Register a vendor, so documents from it stop being blocked.
+
+        Without this the only way to add a counterparty was to edit the sample
+        catalogue and re-seed, which is not something a finance user can do.
+        """
+        if not legal_name.strip():
+            raise ValueError("A vendor needs a legal name.")
+
+        existing = self.find_vendor(legal_name, tax_id)
+        if existing.matched and existing.score >= 0.97:
+            raise ValueError(
+                f"'{legal_name}' already exists as {existing.vendor['legal_name']} "
+                f"({existing.vendor_id})."
+            )
+
+        identifier = vendor_id or self._next_vendor_id()
+        row = {
+            "vendor_id": identifier,
+            "legal_name": legal_name.strip(),
+            "aliases": aliases,
+            "tax_id": parse_tax_id(tax_id) if tax_id else None,
+            "bank_account": bank_account,
+            "status": status,
+            "payment_terms": payment_terms,
+            "currency": currency,
+        }
+        with transaction(self.db_path) as connection:
+            connection.execute(
+                """INSERT INTO vendors
+                   (vendor_id, legal_name, aliases, tax_id, bank_account, status, payment_terms, currency)
+                   VALUES (:vendor_id, :legal_name, :aliases, :tax_id, :bank_account, :status,
+                           :payment_terms, :currency)""",
+                row,
+            )
+        return row
+
+    def _next_vendor_id(self) -> str:
+        """Next id in the V-#### series."""
+        numbers = [
+            int(vendor["vendor_id"].split("-")[-1])
+            for vendor in self.list_vendors()
+            if vendor["vendor_id"].startswith("V-") and vendor["vendor_id"].split("-")[-1].isdigit()
+        ]
+        return f"V-{max(numbers, default=1000) + 1}"
+
     # --- reads -------------------------------------------------------------
     def list_vendors(self) -> list[dict[str, Any]]:
         rows = connect(self.db_path).execute("SELECT * FROM vendors ORDER BY legal_name").fetchall()

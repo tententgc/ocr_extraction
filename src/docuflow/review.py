@@ -137,10 +137,9 @@ def apply_review(
         vendor_match=vendor_match,
         ocr_text=run.ocr.full_text,
         ocr_degraded=run.ocr.degraded,
-        amount_tolerance=settings.amount_tolerance,
         today=date.today(),
         duplicate_of=duplicate,
-        extras={"field_review_confidence": settings.field_review_confidence},
+        **RuleContext.policy_from(settings),
     )
     findings = run_rules(context)
     run = run.evolve(findings=findings)

@@ -9,8 +9,6 @@ from docuflow.normalize.identifiers import thai_tax_id_checksum_ok
 from docuflow.rules.context import RuleContext
 from docuflow.rules.engine import failed, passed, rule
 
-# A document dated further ahead than this is almost certainly misread.
-FUTURE_DATE_TOLERANCE_DAYS = 2
 THAI_TAX_ID_LENGTH = 13
 
 
@@ -61,7 +59,7 @@ def critical_fields_grounded(context: RuleContext) -> RuleFinding | None:
 @rule("*")
 def low_confidence_fields(context: RuleContext) -> RuleFinding | None:
     """Flag fields the extractor itself is unsure about."""
-    threshold = context.extras.get("field_review_confidence", 0.75)
+    threshold = context.field_review_confidence
     weak = [
         item
         for item in context.fields
@@ -140,7 +138,7 @@ def dates_not_in_future(context: RuleContext) -> RuleFinding | None:
             parsed = date.fromisoformat(value)
         except (TypeError, ValueError):
             continue
-        if (parsed - context.today).days > FUTURE_DATE_TOLERANCE_DAYS:
+        if (parsed - context.today).days > context.future_date_tolerance_days:
             offenders.append((name, value))
 
     if not offenders:

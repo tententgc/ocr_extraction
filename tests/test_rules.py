@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date
 
 import pytest
@@ -281,3 +282,80 @@ class TestRouting:
 
         run = self._run(make_run, GOOD_INVOICE).evolve(ocr=OcrResult())
         assert decide(run, get_schema("invoice"), 0.90).decision == "rejected"
+
+
+class TestUnknownVendorSeverity:
+    """An unregistered counterparty means different things per document type."""
+
+    UNKNOWN = {**GOOD_INVOICE, "vendor_name": "PTT Station Rama IV", "vendor_tax_id": None}
+
+    def test_invoice_blocks(self, master, make_run):
+        # About to pay a party nobody registered: stop.
+        finding = result_for(run_rules(build_context(master, self.UNKNOWN, make_run=make_run)), "vendor_known")
+        assert finding.passed is False
+        assert finding.severity == "blocking"
+
+    def test_receipt_only_warns(self, master, make_run):
+        # Money already spent at a petrol station; it was never going to be an
+        # AP vendor. Blocking this was a modelling error.
+        fields = {
+            "receipt_number": "R-770412",
+            "receipt_date": "2026-07-17",
+            "merchant_name": "PTT Station Rama IV",
+            "total_amount": 1500.00,
+            "currency": "THB",
+        }
+        finding = result_for(
+            run_rules(build_context(master, fields, doc_type="receipt", make_run=make_run)), "vendor_known"
+        )
+        assert finding.passed is False
+        assert finding.severity == "warning"
+
+    def test_onboarding_form_only_warns(self, master, make_run):
+        # The applicant is not registered *because that is what the form is for*.
+        fields = {
+            "form_type": "Vendor Onboarding",
+            "applicant_name": "Andaman Marine Supply Co., Ltd.",
+            "reference_number": "VOF-2026-0219",
+        }
+        finding = result_for(
+            run_rules(build_context(master, fields, doc_type="form", make_run=make_run)), "vendor_known"
+        )
+        assert finding.passed is False
+        assert finding.severity == "warning"
+
+    def test_registering_the_vendor_clears_it(self, master, make_run):
+        master.add_vendor("PTT Station Rama IV", tax_id="0107544000108")
+        finding = result_for(run_rules(build_context(master, self.UNKNOWN, make_run=make_run)), "vendor_known")
+        assert finding.passed is True
+
+
+class TestPolicyIsConfigurable:
+    """Finance thresholds come from settings, not from constants in the rules."""
+
+    def test_purchase_order_threshold_is_read_from_policy(self, master, make_run):
+        from docuflow.rules.context import RuleContext
+
+        fields = {**GOOD_INVOICE, "purchase_order_ref": None}
+        base = build_context(master, fields, make_run=make_run)
+
+        strict = replace(base, po_required_above=1_000.0)
+        assert result_for(run_rules(strict), "purchase_order_required").passed is False
+
+        lenient = replace(base, po_required_above=10_000_000.0)
+        assert result_for(run_rules(lenient), "purchase_order_required").passed is True
+
+    def test_expected_vat_rates_are_read_from_policy(self, master, make_run):
+        fields = {**GOOD_INVOICE, "tax_rate": 10.0, "tax_amount": 18_700.00, "total_amount": 205_700.00}
+        base = build_context(master, fields, make_run=make_run)
+
+        assert result_for(run_rules(base), "vat_rate_expected").passed is False
+        allowed = replace(base, expected_vat_rates=(0.0, 7.0, 10.0))
+        assert result_for(run_rules(allowed), "vat_rate_expected").passed is True
+
+    def test_blocking_document_types_are_read_from_policy(self, master, make_run):
+        fields = {**GOOD_INVOICE, "vendor_name": "Nobody Ltd.", "vendor_tax_id": None}
+        base = build_context(master, fields, make_run=make_run)
+
+        relaxed = replace(base, unknown_vendor_blocks=frozenset())
+        assert result_for(run_rules(relaxed), "vendor_known").severity == "warning"

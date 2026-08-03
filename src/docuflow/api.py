@@ -421,6 +421,25 @@ def list_vendors() -> list[dict[str, Any]]:
     return MasterDataRepository(settings.db_path).list_vendors()
 
 
+class NewVendorRequest(BaseModel):
+    legal_name: str = Field(..., min_length=1)
+    tax_id: str | None = None
+    bank_account: str | None = None
+    aliases: str = ""
+    status: str = Field(default="active", pattern="^(active|on_hold|blocked)$")
+    payment_terms: str | None = None
+    currency: str = "THB"
+
+
+@app.post("/api/master/vendors", status_code=201)
+def add_vendor(request: NewVendorRequest) -> dict[str, Any]:
+    """Register a vendor so its documents stop being blocked as unknown."""
+    try:
+        return MasterDataRepository(settings.db_path).add_vendor(**request.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
 @app.get("/api/master/purchase-orders")
 def list_purchase_orders() -> list[dict[str, Any]]:
     return MasterDataRepository(settings.db_path).list_purchase_orders()
