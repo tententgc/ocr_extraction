@@ -145,3 +145,38 @@ class TestArgumentParsing:
     def test_every_command_is_registered(self, command):
         parser_commands = {"init", "status", "process", "demo", "records", "serve", "evaluate", "models", "benchmark"}
         assert command[0] in parser_commands
+
+
+class TestServePortCheck:
+    def test_busy_port_reports_clearly_instead_of_a_traceback(self, monkeypatch):
+        import socket
+
+        # Hold a port, then ask the CLI to serve on it.
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as held:
+            held.bind(("127.0.0.1", 0))
+            held.listen(1)
+            port = held.getsockname()[1]
+
+            err = io.StringIO()
+            with redirect_stdout(io.StringIO()), redirect_stderr(err):
+                code = cli.main(["serve", "--port", str(port), "--no-samples"])
+
+        assert code == 1
+        message = err.getvalue()
+        assert "already in use" in message
+        assert f"--port {port + 1}" in message
+
+    def test_free_port_proceeds_to_uvicorn(self, monkeypatch):
+        started: dict = {}
+
+        def fake_run(app, **kwargs):
+            started.update(kwargs)
+
+        import uvicorn
+
+        monkeypatch.setattr(uvicorn, "run", fake_run)
+        with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+            code = cli.main(["serve", "--port", "0", "--no-samples"])
+
+        assert code == 0
+        assert started.get("port") == 0

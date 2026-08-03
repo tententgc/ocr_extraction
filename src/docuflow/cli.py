@@ -196,10 +196,55 @@ def cmd_records(args: argparse.Namespace) -> int:
     return 0
 
 
+def _port_is_free(host: str, port: int) -> bool:
+    import socket
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            probe.bind((host, port))
+        except OSError:
+            return False
+    return True
+
+
+def _describe_port_holder(port: int) -> str:
+    """Best-effort description of whatever already owns the port."""
+    import shutil
+    import subprocess
+
+    if shutil.which("lsof") is None:
+        return ""
+    try:
+        result = subprocess.run(
+            ["lsof", "-nP", f"-iTCP:{port}", "-sTCP:LISTEN"],
+            capture_output=True, text=True, timeout=5, check=False,
+        )
+    except (subprocess.SubprocessError, OSError):
+        return ""
+    lines = [line for line in result.stdout.splitlines()[1:] if line.strip()]
+    if not lines:
+        return ""
+    fields = lines[0].split()
+    return f" (held by {fields[0]}, PID {fields[1]})" if len(fields) > 1 else ""
+
+
 def cmd_serve(args: argparse.Namespace) -> int:
     import uvicorn
 
     settings = get_settings()
+
+    # Bind failures surface from deep inside uvicorn as a bare traceback, which
+    # is a poor first experience for something as ordinary as a busy port.
+    if not _port_is_free(args.host, args.port):
+        holder = _describe_port_holder(args.port)
+        print(
+            f"error: port {args.port} on {args.host} is already in use{holder}.\n"
+            f"       Start on another port:  docuflow serve --port {args.port + 1}",
+            file=sys.stderr,
+        )
+        return 1
+
     bootstrap(settings, with_samples=not args.no_samples)
     print(f"DocuFlow running at http://{args.host}:{args.port}")
     uvicorn.run("docuflow.api:app", host=args.host, port=args.port, reload=args.reload, log_level="info")
