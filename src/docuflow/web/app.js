@@ -261,7 +261,7 @@ function renderResult(data, host, editable) {
 
     <div class="result-grid">
       <div>
-        <div class="card page-viewer" id="page-viewer"></div>
+        <div class="card page-viewer" data-page-viewer></div>
         <div class="card"><h3>Pipeline</h3><div class="trace">${renderTrace(doc.trace)}</div></div>
         ${renderVendorCard(data)}
       </div>
@@ -280,7 +280,7 @@ function renderResult(data, host, editable) {
       </div>
     </div>`;
 
-  renderPageViewer(doc);
+  renderPageViewer(doc, host);
   if (editable) wireReview(doc, schema, host);
 }
 
@@ -294,22 +294,36 @@ function renderTrace(trace = []) {
     </div>`).join('');
 }
 
-function renderPageViewer(doc) {
-  const host = $('#page-viewer');
-  if (!host) return;
+/** `resultHost` scopes the lookup: the Process pane and the Review pane can
+ *  each hold a rendered result, so a document-wide query would fill the wrong
+ *  one and leave the visible pane blank. */
+function renderPageViewer(doc, resultHost) {
+  const viewer = $('[data-page-viewer]', resultHost);
+  if (!viewer) return;
   const total = doc.page_images?.length || 0;
-  if (!total) { host.innerHTML = '<p class="muted">No page image available.</p>'; return; }
-  host.innerHTML = `
+  if (!total) { viewer.innerHTML = '<p class="muted">No page image available.</p>'; return; }
+  // No loading="lazy": the panel is inserted while its tab may still be
+  // hidden, and the lazy observer then never re-evaluates once it is shown —
+  // leaving a blank card. There is one image and it is the point of the panel.
+  viewer.innerHTML = `
     <img src="/api/documents/${encodeURIComponent(doc.document_id)}/page/${state.page}"
-         alt="Page ${state.page}" loading="lazy" />
+         alt="Page ${state.page} of ${esc(doc.source.filename)}" decoding="async" />
     ${total > 1 ? `<div class="page-nav">
       <button class="btn small" data-page="prev" ${state.page === 1 ? 'disabled' : ''}>◀</button>
       Page ${state.page} of ${total}
       <button class="btn small" data-page="next" ${state.page === total ? 'disabled' : ''}>▶</button>
     </div>` : ''}`;
-  $$('[data-page]', host).forEach((button) => button.addEventListener('click', () => {
+
+  $('img', viewer).addEventListener('error', function onImageError() {
+    this.replaceWith(Object.assign(document.createElement('p'), {
+      className: 'muted',
+      textContent: 'Page image could not be loaded.',
+    }));
+  });
+
+  $$('[data-page]', viewer).forEach((button) => button.addEventListener('click', () => {
     state.page += button.dataset.page === 'next' ? 1 : -1;
-    renderPageViewer(doc);
+    renderPageViewer(doc, resultHost);
   }));
 }
 
