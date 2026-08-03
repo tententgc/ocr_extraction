@@ -1,0 +1,83 @@
+"""Human-readable rendering of an evaluation report."""
+
+from __future__ import annotations
+
+from typing import Any
+
+BAR_WIDTH = 22
+
+
+def _bar(fraction: float, width: int = BAR_WIDTH) -> str:
+    filled = max(0, min(width, round(fraction * width)))
+    return "█" * filled + "·" * (width - filled)
+
+
+def print_report(report: dict[str, Any]) -> None:
+    """Print the accuracy report to stdout."""
+    summary = report.get("summary", {})
+    if not summary.get("documents"):
+        print("No documents were evaluated.")
+        return
+
+    print("\n" + "=" * 78)
+    print("ACCURACY REPORT")
+    print("=" * 78)
+    print(f"Documents evaluated : {summary['documents']}  ({summary['elapsed_seconds']}s)")
+    print(f"Document type        : {_bar(summary['type_accuracy'])} {summary['type_accuracy']:.1%}")
+    print(f"Field accuracy       : {_bar(summary['field_accuracy'])} {summary['field_accuracy']:.1%} "
+          f"({summary['fields_correct']}/{summary['fields_total']} exact)")
+    print(f"  allowing near-miss : {_bar(summary['field_accuracy_with_near'])} "
+          f"{summary['field_accuracy_with_near']:.1%}")
+    print(f"  not found          : {summary['fields_missing']}")
+
+    print("\n--- Straight-through processing " + "-" * 45)
+    print(f"Auto-posted          : {summary['auto_posted']}/{summary['documents']} "
+          f"({summary['auto_post_rate']:.0%})")
+    print(f"Sent to a human      : {summary['documents'] - summary['auto_posted']}")
+
+    print("\n--- Business safety " + "-" * 57)
+    silent = summary["silent_errors"]
+    verdict = "PASS" if silent == 0 else "FAIL"
+    print(f"Silent error rate    : {summary['silent_error_rate']:.1%}  [{verdict}]")
+    print("  (auto-posted documents carrying a wrong critical value)")
+    if summary["silent_error_documents"]:
+        for doc_id in summary["silent_error_documents"]:
+            print(f"    ! {doc_id}")
+    print(f"Auto-post precision  : {summary['auto_post_precision']:.1%}")
+    print(f"Planted defects      : {summary['planted_defects_caught']}/{summary['planted_defects']} caught "
+          f"({summary['defect_recall']:.0%} recall)")
+
+    breakdown = report.get("field_breakdown", {})
+    weak = [(name, data) for name, data in breakdown.items() if data["accuracy"] < 1.0]
+    if weak:
+        print("\n--- Fields needing work " + "-" * 53)
+        print(f"{'FIELD':24} {'ACCURACY':>9}  {'OK':>3} {'WRONG':>5} {'NEAR':>4} {'MISS':>4}")
+        for name, data in weak[:15]:
+            print(f"{name:24} {data['accuracy']:>8.0%}  {data['correct']:>3} "
+                  f"{data['wrong']:>5} {data['near']:>4} {data['missing']:>4}")
+
+    print("\n--- Per document " + "-" * 60)
+    print(f"{'DOCUMENT':26} {'TYPE':>5} {'FIELDS':>8} {'DECISION':>14} {'CONF':>6} DEFECTS")
+    for item in report.get("documents", []):
+        type_mark = "ok" if item["type_correct"] else "WRONG"
+        fields = f"{item['fields_correct']}/{item['fields_total']}"
+        defects = ""
+        if item["expected_findings"]:
+            missed = item["expected_findings_missed"]
+            defects = "all caught" if not missed else f"MISSED {', '.join(missed)}"
+        if item["silent_error"]:
+            defects += f"  SILENT ERROR: {', '.join(item['wrong_critical'])}"
+        print(f"{item['doc_id']:26} {type_mark:>5} {fields:>8} {item['decision']:>14} "
+              f"{item['confidence']:>6.0%} {defects}")
+
+    print("\n--- Wrong values " + "-" * 60)
+    any_wrong = False
+    for item in report.get("documents", []):
+        for comparison in item["comparisons"]:
+            if comparison["status"] in {"wrong", "near", "spurious"}:
+                any_wrong = True
+                print(f"{item['doc_id']:26} {comparison['field']:20} "
+                      f"expected {str(comparison['expected'])[:26]!r} got {str(comparison['actual'])[:26]!r}")
+    if not any_wrong:
+        print("(none)")
+    print()

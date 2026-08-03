@@ -1,0 +1,22 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.dist/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Secrets
+.env
+
+# Generated at runtime: blobs, rendered pages, the database, and the demo
+# corpus (regenerated from src/docuflow/samples/catalog.py on startup).
+data/
+eval/out/
+
+# Generated reports
+eval-report.json
+bench-report.json
+
+.DS_Store
