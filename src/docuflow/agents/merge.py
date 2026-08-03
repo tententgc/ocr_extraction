@@ -52,9 +52,9 @@ def _normalize(
     return _Normalized(value=value, note=note, raw=str(candidate.raw_value))
 
 
-# Below this, one string containing another proves nothing: "no" is inside
-# "notice". Long passages are a different matter - see `_values_agree`.
-MIN_CONTAINMENT_CHARS = 24
+# A single token containing another proves nothing - "INV-001" sits inside
+# "INV-0012" and "no" inside "notice". Two or more is where phrasing begins.
+MIN_SHARED_TOKENS = 2
 
 
 def _values_agree(left: Any, right: Any) -> bool:
@@ -68,13 +68,23 @@ def _values_agree(left: Any, right: Any) -> bool:
     if first == second:
         return True
 
-    # A long free-text field is a passage, and two readings of a passage differ
-    # by where they stopped, not by what they say: one pass quoted "the laws of
-    # the State of California, without regard to its conflict of law principles"
-    # and the other "the laws of the State of California". Reporting that as a
+    # Two readings of a passage differ by where each one started and stopped,
+    # not by what they say: "laws of Thailand" against "the laws of Thailand",
+    # or "the laws of the State of California" against the same clause carrying
+    # "without regard to its conflict of law principles". Calling that a
     # disagreement puts a correct answer in front of a human for no reason.
-    longer, shorter = (first, second) if len(first) >= len(second) else (second, first)
-    return len(shorter) >= MIN_CONTAINMENT_CHARS and shorter in longer
+    #
+    # Tested on words rather than characters, so the shorter reading has to be
+    # made of the longer one's words - "laws of Cambodia" is still a
+    # disagreement with "laws of Thailand", and a truncated identifier is never
+    # a match because one token is not a phrase.
+    first_tokens, second_tokens = first.split(), second.split()
+    smaller, larger = (
+        (first_tokens, second_tokens)
+        if len(first_tokens) <= len(second_tokens)
+        else (second_tokens, first_tokens)
+    )
+    return len(smaller) >= MIN_SHARED_TOKENS and set(smaller) <= set(larger)
 
 
 @dataclass(frozen=True)

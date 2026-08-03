@@ -429,9 +429,23 @@ class TestPassageAgreement:
         )
         assert any("disagree" in note for note in field.notes)
 
-    def test_short_values_are_not_matched_by_containment(self):
-        """"no" is inside "notice"; only passages get this treatment."""
+    def test_one_extra_word_is_not_a_disagreement(self):
+        """The real case: "laws of Thailand" against "the laws of Thailand"."""
+        from docuflow.agents.merge import _values_agree
+
+        assert _values_agree("laws of Thailand", "the laws of Thailand") is True
+        assert _values_agree("Net 30", "Net 30 days") is True
+
+    def test_a_different_answer_still_disagrees(self):
+        from docuflow.agents.merge import _values_agree
+
+        assert _values_agree("laws of Thailand", "laws of Cambodia") is False
+        assert _values_agree(self.LONG, "the laws of the State of New York") is False
+
+    def test_single_tokens_are_never_matched_this_way(self):
+        """"INV-001" sits inside "INV-0012"; one token is not a phrase."""
         from docuflow.agents.merge import _values_agree
 
         assert _values_agree("no", "notice given") is False
         assert _values_agree("INV-001", "INV-0012") is False
+        assert _values_agree("Bangkok", "Bangkok Airways") is False
