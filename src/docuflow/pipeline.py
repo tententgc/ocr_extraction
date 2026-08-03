@@ -22,6 +22,7 @@ from docuflow.agents.llm_extractor import extract_with_llm
 from docuflow.agents.merge import merge_all
 from docuflow.agents.verify_extractor import verify_with_llm
 from docuflow.agents.reconciler import Reconciliation, reconcile
+from docuflow.agents.repair import repair_extraction
 from docuflow.agents.rule_extractor import (
     detect_currency_from_pages,
     extract_with_rules,
@@ -136,6 +137,14 @@ class Pipeline:
         run = self._stage_line_items(run, schema, pages, progress)
 
         run, vendor_match, duplicate = self._stage_validate(run, schema, pages, progress)
+
+        # A document held back because the extractor missed a value that was on
+        # the page costs a person the same as one held back for a real problem.
+        # Give the agent one chance to find it, then check everything again.
+        run, vendor_match, duplicate = self._stage_repair(
+            run, schema, pages, ocr_report.score, llm, vendor_match, duplicate, progress
+        )
+
         run = self._stage_route(run, schema, progress)
         reconciliation = self._stage_reconcile(run, llm, progress)
 
@@ -411,6 +420,89 @@ class Pipeline:
             ),
         )
         return tuple(replacement if item.name == "currency" else item for item in fields)
+
+    def _stage_repair(
+        self,
+        run: DocumentRun,
+        schema: DocumentSchema,
+        pages: list[tuple[int, str]],
+        ocr_quality: float,
+        llm: LlmProvider | None,
+        vendor_match: VendorMatch,
+        duplicate: dict[str, Any] | None,
+        progress: ProgressCallback,
+    ) -> tuple[DocumentRun, VendorMatch, dict[str, Any] | None]:
+        """Let the agent recover missed values, then re-validate from scratch.
+
+        Only runs when something is actually wrong: a document that already
+        passes is left alone, which keeps the cost on the documents that would
+        otherwise have gone to a person.
+
+        The repaired reading is re-validated rather than patched - a recovered
+        vendor name changes which vendor matches, which changes the PO check, so
+        replaying the whole rule set is the only way the result stays coherent.
+        """
+        if not run.failed_findings or self.settings.repair_disabled:
+            return run, vendor_match, duplicate
+
+        progress("repair", "Looking for values the extractor missed")
+        started = time.perf_counter()
+
+        outcome = repair_extraction(
+            llm=llm,
+            schema=schema,
+            fields=run.fields,
+            findings=run.findings,
+            ocr_pages=pages,
+            ocr_text=run.ocr.full_text,
+            ocr_quality=ocr_quality,
+            ocr_degraded=run.ocr.degraded,
+        )
+
+        if not outcome.ran or not outcome.changed:
+            return (
+                run.with_step(
+                    TraceStep(
+                        step="repair",
+                        summary=outcome.assessment
+                        or ("nothing recoverable on the page" if outcome.ran else outcome.note),
+                        duration_ms=int((time.perf_counter() - started) * 1000),
+                        detail=outcome.to_json(),
+                    )
+                ),
+                vendor_match,
+                duplicate,
+            )
+
+        blocking_before = len(run.blocking_findings)
+        repaired = run.with_fields(outcome.fields)
+        repaired, vendor_match, duplicate = self._stage_validate(
+            repaired, schema, pages, lambda *_: None
+        )
+        blocking_after = len(repaired.blocking_findings)
+
+        recovered = ", ".join(outcome.applied)
+        return (
+            repaired.with_step(
+                TraceStep(
+                    step="repair",
+                    summary=f"Recovered {len(outcome.applied)} field(s) from the page: {recovered}"
+                    + (
+                        f" - blocking issues {blocking_before} to {blocking_after}"
+                        if blocking_before != blocking_after
+                        else ""
+                    ),
+                    duration_ms=int((time.perf_counter() - started) * 1000),
+                    detail={
+                        **outcome.to_json(),
+                        "blocking_before": blocking_before,
+                        "blocking_after": blocking_after,
+                    },
+                )
+            ),
+            vendor_match,
+            duplicate,
+        )
 
     def _stage_line_items(
         self, run: DocumentRun, schema: DocumentSchema, pages: list[tuple[int, str]], progress: ProgressCallback

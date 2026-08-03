@@ -14,7 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field
 DocumentType = Literal["invoice", "receipt", "purchase_order", "contract", "form", "unknown"]
 Severity = Literal["blocking", "warning", "info"]
 Decision = Literal["auto_post", "needs_review", "rejected"]
-FieldSource = Literal["llm", "rule", "derived", "human", "master_data"]
+FieldSource = Literal["llm", "rule", "derived", "human", "master_data", "agent"]
 
 
 def _utc_now() -> datetime:
