@@ -409,3 +409,8 @@ tbody tr:hover { background: var(--surface-2); }
 .job-row.queued { opacity: .6; }
 .job-row.failed .icon { color: var(--danger); }
 @keyframes pulse { 0%, 100% { opacity: .35 } 50% { opacity: 1 } }
+.rule-row .sev {
+  background: var(--surface-2); border: 1px solid var(--border); color: var(--muted);
+  border-radius: 7px; padding: 3px 6px; font-size: 11.5px; font-family: var(--mono);
+}
+.rule-row .sev:disabled { opacity: .45; }

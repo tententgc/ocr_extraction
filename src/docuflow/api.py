@@ -213,6 +213,9 @@ class PolicyRequest(BaseModel):
         default=None, description="Rule ids to switch off; replaces the current set"
     )
     auto_post_min_confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    rule_severity: dict[str, str] | None = Field(
+        default=None, description="rule id -> blocking | warning | info"
+    )
 
 
 def _settings_payload() -> dict[str, Any]:
@@ -220,7 +223,7 @@ def _settings_payload() -> dict[str, Any]:
     current = active_settings()
     return {
         "policy": store.describe(selection.settings()),
-        "rules": describe_rules(current.skipped_rules),
+        "rules": describe_rules(current.skipped_rules, store.severity_overrides()),
         "tunable": {
             # Read-only here: these are declared in .env because changing them
             # mid-flight would silently reinterpret documents already posted.
@@ -247,6 +250,7 @@ def update_settings(request: PolicyRequest) -> dict[str, Any]:
             rules_free_mode=request.rules_free_mode,
             disabled_rules=request.disabled_rules,
             auto_post_min_confidence=request.auto_post_min_confidence,
+            rule_severity=request.rule_severity,
         )
     except PolicyError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

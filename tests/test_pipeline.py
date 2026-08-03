@@ -158,7 +158,9 @@ class TestPipelineEndToEnd:
         run = pipeline.process_file(sample_pdf("po-orient-paper")).run
         assert run.doc_type == "purchase_order"
         assert run.decision == "needs_review"
-        assert "required_fields_present" in {f.rule_id for f in run.blocking_findings}
+        # Completeness is a routing condition, not a business rule - the reason
+        # is on the decision rather than in the findings.
+        assert any("Required field" in reason for reason in run.decision_reasons)
         assert run.record_id is None
 
     def test_contract_fields_are_read_from_prose(self, pipeline, sample_pdf):

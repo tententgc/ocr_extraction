@@ -31,6 +31,15 @@ class FieldSpec(BaseModel):
     # hints in the extraction prompt. Thai + English.
     aliases: tuple[str, ...] = ()
     choices: tuple[str, ...] = ()
+    # What each choice actually looks like on a document. A receipt says
+    # "PAID BY VISA **** 4412", never "credit_card"; a fuel receipt says
+    # "Diesel B7", never "fuel". Without these the value is rejected as "not one
+    # of cash, credit_card, ..." - which is the schema failing to describe the
+    # documents, reported as if the reading were wrong.
+    #
+    # They live here so the vocabulary of a document type is one editable table
+    # rather than conditionals spread through the normalizer.
+    choice_aliases: dict[str, tuple[str, ...]] = Field(default_factory=dict)
 
     @property
     def prompt_line(self) -> str:
@@ -182,8 +191,33 @@ _RECEIPT = DocumentSchema(
                   aliases=("Total", "Grand Total", "รวมทั้งสิ้น")),
         FieldSpec(name="payment_method", label="Payment Method", type="enum",
                   choices=("cash", "credit_card", "bank_transfer", "qr_promptpay", "other"),
+                  choice_aliases={
+                      "cash": ("cash", "เงินสด", "ชำระเงินสด"),
+                      "credit_card": ("visa", "mastercard", "master card", "amex",
+                                      "american express", "jcb", "unionpay", "debit",
+                                      "credit", "card", "บัตรเครดิต", "บัตร"),
+                      "bank_transfer": ("transfer", "wire", "bank", "โอน", "โอนเงิน"),
+                      "qr_promptpay": ("promptpay", "prompt pay", "qr", "พร้อมเพย์"),
+                  },
                   aliases=("Payment", "Paid by", "ชำระโดย")),
-        FieldSpec(name="expense_category", label="Category",
+        FieldSpec(name="expense_category", label="Category", type="enum",
+                  choices=("fuel", "travel", "meals", "office_supplies", "utilities",
+                           "maintenance", "professional_services", "other"),
+                  choice_aliases={
+                      "fuel": ("diesel", "gasoline", "petrol", "gasohol", "benzine",
+                               "b7", "e20", "e85", "ngv", "lpg", "น้ำมัน", "ดีเซล", "เบนซิน"),
+                      "travel": ("taxi", "grab", "flight", "airfare", "hotel", "toll",
+                                 "parking", "เดินทาง", "แท็กซี่", "ที่พัก"),
+                      "meals": ("food", "restaurant", "catering", "coffee", "beverage",
+                                "อาหาร", "เครื่องดื่ม"),
+                      "office_supplies": ("stationery", "paper", "printer", "toner",
+                                          "เครื่องเขียน", "กระดาษ"),
+                      "utilities": ("electricity", "water", "internet", "telephone",
+                                    "mobile", "ค่าไฟ", "ค่าน้ำ", "อินเทอร์เน็ต"),
+                      "maintenance": ("repair", "service", "cleaning", "ซ่อม", "บำรุงรักษา"),
+                      "professional_services": ("consulting", "legal", "audit", "advisory",
+                                                "ที่ปรึกษา", "ตรวจสอบบัญชี"),
+                  },
                   description="Best-guess expense category for accounting"),
     ),
 )

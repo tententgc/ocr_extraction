@@ -412,7 +412,13 @@ class Pipeline:
         free_mode = self.settings.rules_free_mode
         skipped = self.settings.skipped_rules
         custom = self.custom_rules.active_for(run.doc_type)
-        findings = run_rules(context, free_mode=free_mode, skip=skipped, custom=custom)
+        findings = run_rules(
+            context,
+            free_mode=free_mode,
+            skip=skipped,
+            custom=custom,
+            severity=self.settings.rule_severity_overrides,
+        )
 
         failed = [finding for finding in findings if not finding.passed]
         blocking = [finding for finding in failed if finding.severity == "blocking"]

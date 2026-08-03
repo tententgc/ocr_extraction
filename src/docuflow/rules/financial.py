@@ -11,6 +11,7 @@ from datetime import date
 from docuflow.models import RuleFinding
 from docuflow.normalize.identifiers import reference_key
 from docuflow.rules.context import RuleContext
+from docuflow.rules.compare import same_value
 from docuflow.rules.engine import failed, passed, rule
 
 MONEY_DOCS = ("invoice", "receipt", "purchase_order")
@@ -25,7 +26,7 @@ def _tolerance(context: RuleContext, base: float) -> float:
     return max(abs(base) * context.amount_tolerance, ARITHMETIC_ABSOLUTE_SLACK)
 
 
-@rule(*MONEY_DOCS, emits=("invoice_totals_consistent",))
+@rule(*MONEY_DOCS, emits=("invoice_totals_consistent",), severity="blocking")
 def totals_consistent(context: RuleContext) -> RuleFinding | None:
     """Subtotal + tax must equal the stated total."""
     subtotal = context.value("subtotal")
@@ -51,7 +52,7 @@ def totals_consistent(context: RuleContext) -> RuleFinding | None:
     )
 
 
-@rule(*MONEY_DOCS)
+@rule(*MONEY_DOCS, severity="blocking")
 def tax_rate_consistent(context: RuleContext) -> RuleFinding | None:
     """The tax amount must match the stated rate applied to the subtotal."""
     subtotal = context.value("subtotal")
@@ -120,7 +121,7 @@ def line_items_sum_to_subtotal(context: RuleContext) -> RuleFinding | None:
     )
 
 
-@rule(*MONEY_DOCS, "form")
+@rule(*MONEY_DOCS, "form", severity="blocking")
 def vendor_known(context: RuleContext) -> RuleFinding | None:
     """The counterparty must exist in the vendor master file."""
     name = context.value("vendor_name") or context.value("merchant_name") or context.value("applicant_name")
@@ -158,7 +159,7 @@ def vendor_known(context: RuleContext) -> RuleFinding | None:
     )
 
 
-@rule(*MONEY_DOCS)
+@rule(*MONEY_DOCS, severity="blocking")
 def vendor_active(context: RuleContext) -> RuleFinding | None:
     """A vendor on hold or blocked must not be paid automatically."""
     vendor = context.vendor
@@ -176,7 +177,7 @@ def vendor_active(context: RuleContext) -> RuleFinding | None:
     )
 
 
-@rule("invoice")
+@rule("invoice", severity="blocking")
 def bank_account_matches_vendor(context: RuleContext) -> RuleFinding | None:
     """Payment details must match the vendor's registered account.
 
@@ -213,7 +214,7 @@ def bank_account_matches_vendor(context: RuleContext) -> RuleFinding | None:
     )
 
 
-@rule("invoice")
+@rule("invoice", severity="blocking")
 def purchase_order_required(context: RuleContext) -> RuleFinding | None:
     """Invoices above the threshold must quote a purchase order."""
     total = context.value("total_amount")
@@ -237,7 +238,7 @@ def purchase_order_required(context: RuleContext) -> RuleFinding | None:
     )
 
 
-@rule("invoice", emits=("po_exists", "po_vendor_matches"))
+@rule("invoice", emits=("po_exists", "po_vendor_matches"), severity="blocking")
 def po_exists_and_matches(context: RuleContext) -> RuleFinding | None:
     """Three-way match: the quoted PO must exist and belong to this vendor."""
     reference = context.value("purchase_order_ref")
@@ -267,7 +268,7 @@ def po_exists_and_matches(context: RuleContext) -> RuleFinding | None:
     return passed("po_exists", f"Purchase order {reference} exists and belongs to this vendor.")
 
 
-@rule("invoice")
+@rule("invoice", severity="blocking")
 def po_amount_within_tolerance(context: RuleContext) -> RuleFinding | None:
     """The invoiced amount must not overrun the purchase order."""
     reference = context.value("purchase_order_ref")
@@ -306,7 +307,7 @@ def po_amount_within_tolerance(context: RuleContext) -> RuleFinding | None:
     )
 
 
-@rule("invoice")
+@rule("invoice", severity="blocking")
 def po_currency_matches(context: RuleContext) -> RuleFinding | None:
     """Currency on the invoice must match the purchase order."""
     reference = context.value("purchase_order_ref")
@@ -316,7 +317,7 @@ def po_currency_matches(context: RuleContext) -> RuleFinding | None:
     order = context.master.get_purchase_order(reference)
     if order is None:
         return None
-    if order["currency"] == currency:
+    if same_value(order["currency"], currency):
         return passed("po_currency_matches", f"Currency {currency} matches the purchase order.")
     return failed(
         "po_currency_matches",
@@ -326,7 +327,7 @@ def po_currency_matches(context: RuleContext) -> RuleFinding | None:
     )
 
 
-@rule(*MONEY_DOCS, "contract", "form")
+@rule(*MONEY_DOCS, "contract", "form", severity="blocking")
 def duplicate_document(context: RuleContext) -> RuleFinding | None:
     """The same reference must not be posted twice."""
     if context.duplicate_of is None:
@@ -371,7 +372,7 @@ def currency_matches_vendor_default(context: RuleContext) -> RuleFinding | None:
     vendor = context.vendor
     if not currency or not vendor or not vendor.get("currency"):
         return None
-    if currency == vendor["currency"]:
+    if same_value(currency, vendor["currency"]):
         return passed("currency_matches_vendor_default", f"{currency} is this vendor's usual currency.")
     return failed(
         "currency_matches_vendor_default",

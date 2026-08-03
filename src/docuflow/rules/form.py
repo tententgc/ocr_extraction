@@ -61,7 +61,7 @@ def bank_details_complete(context: RuleContext) -> RuleFinding | None:
     )
 
 
-@rule("form")
+@rule("form", severity="blocking")
 def bank_account_not_reused(context: RuleContext) -> RuleFinding | None:
     """A bank account already registered to another vendor needs scrutiny."""
     account = context.value("bank_account")

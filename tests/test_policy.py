@@ -115,3 +115,96 @@ class TestPolicyWarnings:
 
     def test_the_configured_defaults_warn_about_nothing(self, settings):
         assert warnings_for(settings) == []
+
+
+class TestRuleSeverityOverrides:
+    """The setting that was missing between "on" and "off"."""
+
+    def test_a_blocking_rule_can_be_dropped_to_a_warning(self, store, master, make_run):
+        from tests.test_rules import GOOD_INVOICE, build_context, result_for
+
+        fields = {**GOOD_INVOICE, "vendor_name": "Nobody Ltd.", "vendor_tax_id": None}
+        context = build_context(master, fields, make_run=make_run)
+        assert result_for(run_rules(context), "vendor_known").severity == "blocking"
+
+        store.update(rule_severity={"vendor_known": "warning"})
+        finding = result_for(
+            run_rules(context, severity=store.severity_overrides()), "vendor_known"
+        )
+        assert finding.severity == "warning"
+        assert finding.passed is False, "the check still ran and still failed"
+
+    def test_the_original_grade_is_recorded(self, store, master, make_run):
+        """A reviewer has to be able to see that it was re-graded, not born mild."""
+        from tests.test_rules import GOOD_INVOICE, build_context, result_for
+
+        fields = {**GOOD_INVOICE, "vendor_name": "Nobody Ltd.", "vendor_tax_id": None}
+        store.update(rule_severity={"vendor_known": "info"})
+        finding = result_for(
+            run_rules(build_context(master, fields, make_run=make_run),
+                      severity=store.severity_overrides()),
+            "vendor_known",
+        )
+        assert finding.detail["original_severity"] == "blocking"
+
+    def test_a_passing_rule_is_left_alone(self, store, master, make_run):
+        from tests.test_rules import GOOD_INVOICE, build_context, result_for
+
+        store.update(rule_severity={"vendor_known": "info"})
+        finding = result_for(
+            run_rules(build_context(master, GOOD_INVOICE, make_run=make_run),
+                      severity=store.severity_overrides()),
+            "vendor_known",
+        )
+        assert finding.passed is True
+
+    def test_an_invalid_severity_is_refused(self, store):
+        with pytest.raises(PolicyError, match="not a severity"):
+            store.update(rule_severity={"vendor_known": "catastrophic"})
+
+    def test_an_unknown_rule_is_refused(self, store):
+        with pytest.raises(PolicyError, match="not a known rule"):
+            store.update(rule_severity={"no_such_rule": "warning"})
+
+    def test_overrides_survive_a_restart(self, store, settings):
+        store.update(rule_severity={"vendor_known": "warning"})
+        assert PolicyStore(settings).severity_overrides() == {"vendor_known": "warning"}
+
+
+class TestRemovedPseudoRules:
+    """Four checks were removed because they restated the pipeline's own state.
+
+    They read as business-rule failures when nothing was wrong with the
+    document - the pipeline was simply unsure - and routing enforces all four
+    anyway, with clearer wording.
+    """
+
+    @pytest.mark.parametrize("rule_id", [
+        "required_fields_present", "critical_fields_grounded",
+        "low_confidence_fields", "ocr_quality_acceptable",
+    ])
+    def test_they_are_gone(self, rule_id):
+        assert not any(info.matches(rule_id) for info in all_rules())
+
+    def test_routing_still_holds_an_incomplete_document(self, make_run):
+        from docuflow.routing import decide
+        from docuflow.schemas.registry import get_schema
+
+        run = make_run({"vendor_name": "Siam Tech Supply Co., Ltd."}).evolve(confidence=0.99)
+        outcome = decide(run, get_schema("invoice"), 0.90)
+        assert outcome.decision == "needs_review"
+        assert any("Required field" in reason for reason in outcome.reasons)
+
+    def test_routing_still_holds_an_ungrounded_critical_field(self, make_run):
+        from docuflow.routing import decide
+        from docuflow.schemas.registry import get_schema
+        from tests.test_rules import GOOD_INVOICE
+
+        run = make_run(GOOD_INVOICE).evolve(confidence=0.99)
+        run = run.with_fields(tuple(
+            field.evolve(grounded=False) if field.name == "total_amount" else field
+            for field in run.fields
+        ))
+        outcome = decide(run, get_schema("invoice"), 0.90)
+        assert outcome.decision == "needs_review"
+        assert any("Could not verify" in reason for reason in outcome.reasons)

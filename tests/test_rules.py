@@ -187,12 +187,6 @@ class TestGenericRules:
         assert finding.passed is False
         assert finding.severity == "blocking"
 
-    def test_missing_required_field_blocks(self, master, make_run):
-        fields = {key: value for key, value in GOOD_INVOICE.items() if key != "invoice_number"}
-        finding = result_for(run_rules(build_context(master, fields, make_run=make_run)), "required_fields_present")
-        assert finding.passed is False
-        assert finding.severity == "blocking"
-
     def test_future_dated_invoice_warns(self, master, make_run):
         fields = {**GOOD_INVOICE, "invoice_date": "2027-01-01"}
         finding = result_for(run_rules(build_context(master, fields, make_run=make_run)), "dates_not_in_future")

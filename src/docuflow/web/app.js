@@ -789,6 +789,11 @@ function renderRuleList() {
             ${rule.aliases.map((a) => `<span class="chip">also reports as ${esc(a)}</span>`).join('')}
           </span>
         </span>
+        <select class="sev" data-severity="${esc(rule.rule_id)}" ${frozen || !rule.enabled ? 'disabled' : ''}
+          title="How a failure of this rule is reported">
+          ${['blocking', 'warning', 'info'].map((level) => `
+            <option value="${level}" ${rule.severity === level ? 'selected' : ''}>${level}</option>`).join('')}
+        </select>
       </label>`).join('')
     : '<p class="muted">No rule matches that filter.</p>';
 }
@@ -816,6 +821,21 @@ $('#settings-reset').addEventListener('click', async () => {
   toast('Back to the configured defaults.');
 });
 $('#rule-list').addEventListener('change', (event) => {
+  // Re-grading keeps a check running while stopping it from blocking. Switching
+  // a rule off to get past it would lose the warning as well.
+  const picker = event.target.closest('select[data-severity]');
+  if (picker) {
+    const severity = Object.fromEntries(
+      state.settings.rules
+        .filter((rule) => (rule.rule_id === picker.dataset.severity
+          ? picker.value !== rule.default_severity
+          : rule.severity !== rule.default_severity))
+        .map((rule) => [rule.rule_id,
+          rule.rule_id === picker.dataset.severity ? picker.value : rule.severity]));
+    saveSettings({ rule_severity: severity });
+    return;
+  }
+
   const box = event.target.closest('input[data-rule]');
   if (!box) return;
   // The API replaces the whole set, so send every rule currently switched off.

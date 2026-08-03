@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 from typing import Any
 
 from docuflow.normalize.amounts import detect_currency, parse_money, parse_number, parse_percent
@@ -18,6 +20,18 @@ _REFERENCE_FIELDS = frozenset(
     }
 )
 _ACCOUNT_FIELDS = frozenset({"bank_account"})
+
+
+def _mentions(text: str, word: str) -> bool:
+    """Whether `text` uses `word`, respecting how the script separates words.
+
+    Latin needs boundaries - "card" must not match inside "cardiology". Thai
+    writes without spaces, so "ดีเซล" appears inside "น้ำมันดีเซล" with no
+    boundary to find, and requiring one would reject every Thai alias.
+    """
+    if any("a" <= ch <= "z" or ch.isdigit() for ch in word):
+        return re.search(rf"(?<![^\W_]){re.escape(word)}(?![^\W_])", text) is not None
+    return word in text
 
 
 def _normalize_enum(raw: str, spec: FieldSpec) -> str | None:
@@ -39,8 +53,22 @@ def _normalize_enum(raw: str, spec: FieldSpec) -> str | None:
         if detected in spec.choices:
             return detected
 
+    # A choice name written with spaces or hyphens instead of underscores.
+    spaced = lowered.replace("_", " ").replace("-", " ")
     for choice in spec.choices:
         if choice.casefold() in lowered or lowered in choice.casefold():
+            return choice
+        if choice.casefold().replace("_", " ") == spaced:
+            return choice
+
+    # What the choice looks like on an actual document. A receipt says
+    # "PAID BY VISA **** 4412" and a fuel receipt says "Diesel B7" - neither
+    # contains the choice name, and rejecting them says the reading was wrong
+    # when the schema was simply silent about the vocabulary.
+    for choice, words in spec.choice_aliases.items():
+        if choice not in spec.choices:
+            continue
+        if any(_mentions(spaced, word) for word in words):
             return choice
 
     # Yes/no style fields.

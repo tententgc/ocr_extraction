@@ -133,6 +133,21 @@ class Settings(BaseSettings):
     # "vendor_known,po_exists". Ids are the ones shown in the UI and the API.
     disabled_rules: str = ""
 
+    # rule_id -> severity, set from the settings screen. Serialised because
+    # Settings is the one object both entry points already receive.
+    rule_severity_json: str = ""
+
+    @property
+    def rule_severity_overrides(self) -> dict[str, str]:
+        """Parsed `rule_severity_json`; empty when nothing is re-graded."""
+        import json
+
+        try:
+            parsed = json.loads(self.rule_severity_json or "{}")
+        except ValueError:
+            return {}
+        return {str(k): str(v) for k, v in parsed.items()} if isinstance(parsed, dict) else {}
+
     @property
     def skipped_rules(self) -> frozenset[str]:
         """Parsed `disabled_rules`."""

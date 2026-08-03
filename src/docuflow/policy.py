@@ -32,6 +32,7 @@ SETTINGS_KEY = "business_policy"
 # Below this, straight-through posting is doing very little checking. Allowed -
 # it is the user's ledger - but never without saying so.
 LOW_THRESHOLD_WARNING = 0.60
+VALID_SEVERITIES = frozenset({"blocking", "warning", "info"})
 
 
 class PolicyError(ValueError):
@@ -45,12 +46,16 @@ class Policy:
     rules_free_mode: bool | None = None
     disabled_rules: tuple[str, ...] | None = None
     auto_post_min_confidence: float | None = None
+    # rule_id -> severity. Lets a check stay on while no longer stopping a
+    # document: switching a rule off to get past it loses the warning too.
+    rule_severity: dict[str, str] | None = None
 
     def to_json(self) -> dict[str, object]:
         return {
             "rules_free_mode": self.rules_free_mode,
             "disabled_rules": list(self.disabled_rules) if self.disabled_rules is not None else None,
             "auto_post_min_confidence": self.auto_post_min_confidence,
+            "rule_severity": dict(self.rule_severity) if self.rule_severity is not None else None,
         }
 
     @classmethod
@@ -62,6 +67,7 @@ class Policy:
             rules_free_mode=payload.get("rules_free_mode"),
             disabled_rules=tuple(disabled) if isinstance(disabled, list) else None,
             auto_post_min_confidence=payload.get("auto_post_min_confidence"),
+            rule_severity=payload.get("rule_severity") or None,
         )
 
 
@@ -120,7 +126,13 @@ class PolicyStore:
             updates["disabled_rules"] = ",".join(policy.disabled_rules)
         if policy.auto_post_min_confidence is not None:
             updates["auto_post_min_confidence"] = policy.auto_post_min_confidence
+        if policy.rule_severity:
+            updates["rule_severity_json"] = dump_json(policy.rule_severity)
         return settings.model_copy(update=updates) if updates else settings
+
+    def severity_overrides(self) -> dict[str, str]:
+        """rule_id -> severity, for the engine to apply as findings come back."""
+        return dict(self.current().rule_severity or {})
 
     def describe(self, base: Settings | None = None) -> dict[str, object]:
         """Effective policy plus what the configuration alone would have said."""
@@ -132,12 +144,14 @@ class PolicyStore:
             "disabled_rules": sorted(effective.skipped_rules),
             "auto_post_min_confidence": effective.auto_post_min_confidence,
             "field_review_confidence": effective.field_review_confidence,
+            "rule_severity": self.severity_overrides(),
             "overridden": [
                 name
                 for name, value in (
                     ("rules_free_mode", policy.rules_free_mode),
                     ("disabled_rules", policy.disabled_rules),
                     ("auto_post_min_confidence", policy.auto_post_min_confidence),
+                    ("rule_severity", policy.rule_severity or None),
                 )
                 if value is not None
             ],
@@ -156,6 +170,7 @@ class PolicyStore:
         rules_free_mode: bool | None = None,
         disabled_rules: list[str] | None = None,
         auto_post_min_confidence: float | None = None,
+        rule_severity: dict[str, str] | None = None,
     ) -> Policy:
         """Validate and store a change. Only the fields given are touched."""
         changes: dict[str, object] = {}
@@ -177,6 +192,17 @@ class PolicyStore:
                     f"The auto-post threshold must be between 0 and 1, not {threshold}."
                 )
             changes["auto_post_min_confidence"] = threshold
+
+        if rule_severity is not None:
+            resolved: dict[str, str] = {}
+            for name, severity in rule_severity.items():
+                if severity not in VALID_SEVERITIES:
+                    raise PolicyError(
+                        f"'{severity}' is not a severity. Use "
+                        f"{', '.join(sorted(VALID_SEVERITIES))}."
+                    )
+                resolved[resolve_rule_name(name)] = severity
+            changes["rule_severity"] = resolved
 
         if not changes:
             return self.current()

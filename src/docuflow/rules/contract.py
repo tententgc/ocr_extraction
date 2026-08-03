@@ -7,6 +7,7 @@ from datetime import date
 from docuflow.models import RuleFinding
 from docuflow.normalize.text import normalize_for_match
 from docuflow.rules.context import RuleContext
+from docuflow.rules.compare import describe_difference, same_value
 from docuflow.rules.engine import failed, passed, rule
 
 # The renewal warning window and maximum plausible term come from configuration.
@@ -21,7 +22,7 @@ def _iso(value: str | None) -> date | None:
         return None
 
 
-@rule("contract")
+@rule("contract", severity="blocking")
 def contract_dates_ordered(context: RuleContext) -> RuleFinding | None:
     """Expiry must come after the effective date, within a sane term."""
     start = _iso(context.value("effective_date"))
@@ -81,7 +82,7 @@ def contract_expiring_soon(context: RuleContext) -> RuleFinding | None:
     return passed("contract_expiring_soon", f"Expires in {days} days; no action needed yet.")
 
 
-@rule("contract")
+@rule("contract", severity="blocking")
 def contract_parties_distinct(context: RuleContext) -> RuleFinding | None:
     """The two parties must be different organisations."""
     party_a = context.value("party_a")
@@ -98,7 +99,7 @@ def contract_parties_distinct(context: RuleContext) -> RuleFinding | None:
     return passed("contract_parties_distinct", "The two contracting parties are distinct.")
 
 
-@rule("contract")
+@rule("contract", severity="blocking")
 def contract_matches_master(context: RuleContext) -> RuleFinding | None:
     """Compare against the contract register when the number is known."""
     number = context.value("contract_number")
@@ -124,11 +125,8 @@ def contract_matches_master(context: RuleContext) -> RuleFinding | None:
         recorded = existing.get(column)
         if extracted is None or recorded is None:
             continue
-        if isinstance(extracted, float) or isinstance(recorded, float):
-            if abs(float(extracted) - float(recorded)) > max(abs(float(recorded)) * context.amount_tolerance, 0.01):
-                differences.append(f"{field_name}: document {extracted}, register {recorded}")
-        elif str(extracted) != str(recorded):
-            differences.append(f"{field_name}: document {extracted}, register {recorded}")
+        if not same_value(extracted, recorded, context.amount_tolerance):
+            differences.append(describe_difference(field_name, extracted, recorded))
 
     if differences:
         return failed(

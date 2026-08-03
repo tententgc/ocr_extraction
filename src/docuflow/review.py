@@ -147,6 +147,7 @@ def apply_review(
         free_mode=settings.rules_free_mode,
         skip=settings.skipped_rules,
         custom=CustomRuleStore(settings.db_path).active_for(run.doc_type),
+        severity=settings.rule_severity_overrides,
     )
     run = run.evolve(findings=findings)
     run = run.evolve(

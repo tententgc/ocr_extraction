@@ -37,6 +37,8 @@ class RuleInfo:
     function: RuleFunction
     doc_types: tuple[str, ...]
     summary: str
+    # How this rule reports a failure when nothing overrides it.
+    severity: str = "warning"
     # Every id this rule can report under, including `rule_id`.
     emits: frozenset[str] = dataclass_field(default_factory=frozenset)
 
@@ -62,7 +64,9 @@ FREE_MODE_MESSAGE = (
 
 
 def rule(
-    *doc_types: str, emits: tuple[str, ...] | None = None
+    *doc_types: str,
+    emits: tuple[str, ...] | None = None,
+    severity: str = "warning",
 ) -> Callable[[RuleFunction], RuleFunction]:
     """Register a rule for the given document types (`"*"` means all).
 
@@ -79,6 +83,7 @@ def rule(
             doc_types=doc_types or ("*",),
             summary=docstring[0] if docstring else "",
             emits=frozenset(reported),
+            severity=severity,
         )
         for doc_type in info.doc_types:
             _REGISTRY.setdefault(doc_type, []).append(info)
@@ -101,9 +106,12 @@ def all_rules() -> list[RuleInfo]:
     return sorted(seen.values(), key=lambda info: info.rule_id)
 
 
-def describe_rules(disabled: Iterable[str] = ()) -> list[dict[str, object]]:
+def describe_rules(
+    disabled: Iterable[str] = (), severity: dict[str, str] | None = None
+) -> list[dict[str, object]]:
     """The rule catalogue the settings screen lists, with current state."""
     off = frozenset(disabled)
+    graded = severity or {}
     return [
         {
             "rule_id": info.rule_id,
@@ -113,6 +121,9 @@ def describe_rules(disabled: Iterable[str] = ()) -> list[dict[str, object]]:
             "summary": info.summary,
             "aliases": sorted(info.emits - {info.rule_id}),
             "enabled": not any(info.matches(name) for name in off),
+            "default_severity": info.severity,
+            "severity": graded.get(info.rule_id, info.severity),
+            "regraded": info.rule_id in graded and graded[info.rule_id] != info.severity,
         }
         for info in all_rules()
     ]
@@ -124,6 +135,7 @@ def run_rules(
     free_mode: bool = False,
     skip: Iterable[str] = (),
     custom: Iterable["CustomRule"] = (),
+    severity: dict[str, str] | None = None,
 ) -> tuple[RuleFinding, ...]:
     """Execute every applicable rule, isolating failures.
 
@@ -132,6 +144,11 @@ def run_rules(
     which is the safer knob: it turns off the checks that do not apply to the
     documents at hand and leaves the rest doing their job. `custom` carries the
     rules a user wrote, which run under the same isolation as the built-ins.
+
+    `severity` re-grades individual rules. It is the middle setting the screen
+    was missing: a check that is right to run but should not stop a document can
+    be dropped to a warning, instead of being switched off and losing the
+    warning with it.
     """
     if free_mode:
         return (
@@ -167,7 +184,20 @@ def run_rules(
             findings.append(finding)
 
     findings.extend(_run_custom(context, custom, skipped))
-    return tuple(findings)
+    return tuple(_regrade(finding, severity or {}) for finding in findings)
+
+
+def _regrade(finding: RuleFinding, overrides: dict[str, str]) -> RuleFinding:
+    """Apply a severity override, leaving a passing finding alone."""
+    wanted = overrides.get(finding.rule_id)
+    if wanted is None or finding.passed or wanted == finding.severity:
+        return finding
+    return finding.model_copy(
+        update={
+            "severity": wanted,
+            "detail": {**finding.detail, "original_severity": finding.severity},
+        }
+    )
 
 
 def _run_custom(
