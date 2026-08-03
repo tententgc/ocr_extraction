@@ -22,9 +22,13 @@ from docuflow.agents.llm_extractor import extract_with_llm
 from docuflow.agents.merge import merge_all
 from docuflow.agents.verify_extractor import verify_with_llm
 from docuflow.agents.reconciler import Reconciliation, reconcile
-from docuflow.agents.rule_extractor import detect_currency_from_text, extract_with_rules, find_line_items
+from docuflow.agents.rule_extractor import (
+    detect_currency_from_pages,
+    extract_with_rules,
+    find_line_items,
+)
 from docuflow.config import Settings
-from docuflow.confidence import document_confidence, score_derived
+from docuflow.confidence import document_confidence, score_field
 from docuflow.ingest.store import StoredBlob, store_bytes
 from docuflow.llm.base import LlmProvider
 from docuflow.llm.factory import resolve_llm, resolve_verify_llm
@@ -312,22 +316,36 @@ class Pipeline:
         if current is not None and not current.is_empty and current.grounded:
             return fields
 
-        detected = detect_currency_from_text(pages)
-        if not detected or detected not in spec.choices:
+        found = detect_currency_from_pages(pages)
+        if found is None:
+            return fields
+        detected, evidence, page = found
+        if detected not in spec.choices:
             return fields
 
+        # A page printing "$154.06" states its currency as plainly as one
+        # printing "USD" - it just says it with a symbol. That line is real page
+        # text, so the field is grounded on it like any other rather than being
+        # reported as an unverified guess. The symbol is the evidence.
         replacement = ExtractedField(
             name="currency",
             label=spec.label,
             value=detected,
             raw_value=detected,
-            evidence=None,
-            confidence=score_derived(
-                ocr_quality=ocr_quality, ocr_degraded=ocr_degraded, is_critical=spec.critical
+            evidence=evidence,
+            page=page,
+            confidence=score_field(
+                both_channels_agree=False,
+                has_primary=True,
+                has_secondary=False,
+                grounded=True,
+                is_critical=spec.critical,
+                ocr_quality=ocr_quality,
+                ocr_degraded=ocr_degraded,
             ),
-            grounded=False,
+            grounded=True,
             source="derived",
-            notes=("currency was not printed as a code; inferred from the amounts and language on the page",),
+            notes=(f"currency taken from the symbol or wording on the page: “{evidence}”",),
         )
         return tuple(replacement if item.name == "currency" else item for item in fields)
 

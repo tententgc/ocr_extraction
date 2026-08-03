@@ -373,10 +373,21 @@ def _looks_like_label(line: str, schema: DocumentSchema) -> bool:
 
 def detect_currency_from_text(ocr_pages: list[tuple[int, str]]) -> str | None:
     """Scan the whole document for a currency indicator."""
-    from docuflow.normalize.amounts import detect_currency
+    found = detect_currency_from_pages(ocr_pages)
+    return found[0] if found else None
 
-    joined = "\n".join(text for _, text in ocr_pages)
-    return detect_currency(joined)
+
+def detect_currency_from_pages(
+    ocr_pages: list[tuple[int, str]],
+) -> tuple[str, str, int] | None:
+    """Currency, the text that says so, and which page: `(code, evidence, page)`."""
+    from docuflow.normalize.amounts import detect_currency_with_evidence
+
+    for number, text in ocr_pages:
+        found = detect_currency_with_evidence(text)
+        if found:
+            return found[0], found[1], number
+    return None
 
 
 # A plain-text table row: a description, then 2-4 numeric columns.

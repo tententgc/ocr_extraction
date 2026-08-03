@@ -159,55 +159,56 @@ class TestMerge:
         assert field.confidence >= 0.9
 
 
-class TestDerivedConfidence:
-    """A value inferred from the document, not read off it.
+class TestCurrencyFromTheSymbol:
+    """A page printing "$154.06" states its currency as plainly as "USD".
 
-    The invoice currency is the live case: many Thai invoices never print a
-    code, so it is inferred from the amounts and the language on the page.
+    It used to be reported as an unverified guess at 69% - correct, and flagged
+    to a human anyway. The symbol is real page text, so it is evidence.
     """
 
-    def test_never_reaches_the_auto_post_threshold(self):
-        """An inference must not be able to post on its own, however clean the page."""
-        from docuflow.confidence import score_derived
-
-        assert score_derived(ocr_quality=1.0, ocr_degraded=False) < 0.90
-
-    def test_bad_recognition_drags_it_down(self):
-        """It used to be a flat constant, reporting the same confidence on a page
-        nobody could read as on a perfect one."""
-        from docuflow.confidence import score_derived
-
-        clean = score_derived(ocr_quality=0.95, ocr_degraded=False)
-        barely_legible = score_derived(ocr_quality=0.40, ocr_degraded=True)
-        assert barely_legible < clean
-
-    def test_a_critical_field_is_penalised_further(self):
-        from docuflow.confidence import score_derived
-
-        ordinary = score_derived(ocr_quality=0.95, ocr_degraded=False)
-        critical = score_derived(ocr_quality=0.95, ocr_degraded=False, is_critical=True)
-        assert critical < ordinary
-
-    def test_the_pipeline_scores_derived_currency_this_way(self, settings, master, tmp_path):
-        """The page states amounts in Baht but never prints "THB"."""
+    def _derive(self, settings, pages):
         from docuflow.agents.merge import merge_all
-        from docuflow.confidence import score_derived
         from docuflow.pipeline import Pipeline
         from docuflow.schemas.registry import get_schema
 
         schema = get_schema("invoice")
-        pages = [(1, "Invoice No.: INV-1\nรวมทั้งสิ้น 1,070.00 บาท\n")]
-        # Neither channel found a currency code, which is the situation the
-        # derivation exists for.
         merged = merge_all(schema, {}, {}, pages, 0.95, False)
         fields = Pipeline(settings)._derive_currency(
             merged, schema, pages, ocr_quality=0.95, ocr_degraded=False
         )
-        currency = next(item for item in fields if item.name == "currency")
+        return next(item for item in fields if item.name == "currency")
+
+    def test_a_dollar_sign_grounds_usd(self, settings, master):
+        currency = self._derive(settings, [(1, "INVOICE\nTOTAL $154.06\nThank you\n")])
+        assert currency.value == "USD"
+        assert currency.grounded is True
+        assert "$154.06" in currency.evidence
+        assert currency.confidence > 0.75
+
+    def test_the_thai_word_grounds_thb(self, settings, master):
+        currency = self._derive(settings, [(1, "Invoice No.: INV-1\nรวมทั้งสิ้น 1,070.00 บาท\n")])
         assert currency.value == "THB"
-        assert currency.source == "derived"
-        assert currency.grounded is False
-        assert currency.confidence == score_derived(ocr_quality=0.95, ocr_degraded=False)
+        assert currency.grounded is True
+        assert "บาท" in currency.evidence
+
+    def test_the_evidence_names_the_line_it_came_from(self, settings, master):
+        """A reviewer has to be able to see why, not just what."""
+        currency = self._derive(settings, [(1, "Header\nAmount Due €900.00\nFooter\n")])
+        assert currency.evidence == "Amount Due €900.00"
+        assert any("€900.00" in note for note in currency.notes)
+
+    def test_a_page_naming_no_currency_leaves_the_field_alone(self, settings, master):
+        from docuflow.agents.merge import merge_all
+        from docuflow.pipeline import Pipeline
+        from docuflow.schemas.registry import get_schema
+
+        schema = get_schema("invoice")
+        pages = [(1, "Invoice No.: INV-1\nTotal 1070.00\n")]
+        merged = merge_all(schema, {}, {}, pages, 0.95, False)
+        fields = Pipeline(settings)._derive_currency(
+            merged, schema, pages, ocr_quality=0.95, ocr_degraded=False
+        )
+        assert next(f for f in fields if f.name == "currency").is_empty
 
 
 class TestTypeAwareGrounding:
@@ -300,3 +301,137 @@ class TestCorroboration:
         )
         assert field.confidence < 0.6
         assert any("disagree" in note for note in field.notes)
+
+
+class TestAmbiguousDates:
+    """`11/02/2019` is two different days, and two models will pick differently.
+
+    On one real page the first pass returned 2019-11-02 and the second
+    2019-02-11 — reported as a disagreement at 44% confidence. Neither is a
+    reading of the document; both are guesses at a convention the page states.
+    """
+
+    PAGE = [(1, "INVOICE # US-001\nINVOICE DATE 11/02/2019\nDUE DATE 26/02/2019\n")]
+
+    def _candidate(self, value, channel):
+        from docuflow.agents.candidates import Candidate
+
+        return Candidate("invoice_date", value, "INVOICE DATE 11/02/2019", channel=channel)
+
+    def test_the_page_settles_which_way_round_dates_are_written(self):
+        from docuflow.normalize.dates import detect_day_first
+
+        # 26/02 can only be day-first, and it settles 11/02 on the same page.
+        assert detect_day_first(self.PAGE[0][1]) is True
+        assert detect_day_first("INVOICE DATE 02/11/2019\nDUE DATE 02/26/2019") is False
+        assert detect_day_first("DATE 01/02/2019") is None
+
+    def test_two_models_disagreeing_land_on_the_same_day(self):
+        field = merge_field(
+            spec("invoice_date"),
+            self._candidate("2019-11-02", "model"),     # read it month-first
+            self._candidate("2019-02-11", "verify"),    # read it day-first
+            self.PAGE, ocr_quality=0.95, ocr_degraded=False, day_first=True,
+        )
+        assert field.value == "2019-02-11"
+        assert field.confidence >= 0.9
+        assert not any("disagree" in note for note in field.notes)
+
+    def test_the_convention_decides_which_day_it_is(self):
+        """The same quote, read under each convention, is two different days."""
+        from docuflow.agents.candidates import Candidate
+
+        def read(day_first):
+            pages = [(1, "INVOICE DATE 02/11/2019\n")]
+            return merge_field(
+                spec("invoice_date"),
+                Candidate("invoice_date", "2019-01-01", "INVOICE DATE 02/11/2019", channel="model"),
+                None, pages, ocr_quality=0.95, ocr_degraded=False, day_first=day_first,
+            ).value
+
+        assert read(day_first=False) == "2019-02-11"   # 2 November -> no: February 11
+        assert read(day_first=True) == "2019-11-02"    # 2nd of November
+
+    def test_the_convention_is_read_once_for_the_whole_document(self):
+        from docuflow.agents.candidates import Candidate
+        from docuflow.agents.merge import merge_all
+
+        fields = merge_all(
+            INVOICE,
+            {"invoice_date": Candidate("invoice_date", "2019-11-02", "INVOICE DATE 11/02/2019", channel="model")},
+            {"invoice_date": Candidate("invoice_date", "2019-02-11", "INVOICE DATE 11/02/2019", channel="verify")},
+            self.PAGE, 0.95, False,
+        )
+        assert next(f for f in fields if f.name == "invoice_date").value == "2019-02-11"
+
+
+class TestEnumGrounding:
+    """An enum value is a classification, not a transcription."""
+
+    def test_a_contract_that_automatically_renews_supports_yes(self):
+        """The page will never contain the word "yes"; that is not evidence of
+        a hallucination, it is what choosing from a list looks like."""
+        assert value_supported_by_evidence(
+            "yes", "This Agreement shall automatically renew", "enum", "yes") is True
+
+    def test_the_quote_must_still_be_on_the_page(self):
+        """Relaxing the value test never relaxes the evidence test."""
+        from docuflow.agents.candidates import Candidate
+        from docuflow.schemas.registry import get_schema
+
+        pages = [(1, "This Agreement shall automatically renew for successive terms.\n")]
+        contract = get_schema("contract")
+        real = merge_field(
+            contract.field("auto_renew"),
+            Candidate("auto_renew", "yes", "shall automatically renew", channel="model"),
+            None, pages, ocr_quality=0.95, ocr_degraded=False,
+        )
+        invented = merge_field(
+            contract.field("auto_renew"),
+            Candidate("auto_renew", "yes", "the parties agree to perpetual renewal", channel="model"),
+            None, pages, ocr_quality=0.95, ocr_degraded=False,
+        )
+        assert real.grounded is True and real.confidence > 0.75
+        assert invented.grounded is False
+
+
+class TestPassageAgreement:
+    """Two readings of a passage differ by where they stopped."""
+
+    LONG = "the laws of the State of California, without regard to its conflict of law principles."
+    SHORT = "the laws of the State of California"
+
+    def test_a_shorter_reading_of_the_same_passage_is_not_a_disagreement(self):
+        from docuflow.agents.candidates import Candidate
+        from docuflow.schemas.registry import get_schema
+
+        page = [(1, "This Agreement shall be governed by and construed in accordance with "
+                    f"{self.LONG}\n")]
+        field = merge_field(
+            get_schema("contract").field("governing_law"),
+            Candidate("governing_law", self.LONG, self.LONG, channel="model"),
+            Candidate("governing_law", self.SHORT, self.SHORT, channel="verify"),
+            page, ocr_quality=0.95, ocr_degraded=False,
+        )
+        assert field.confidence >= 0.9
+        assert not any("disagree" in note for note in field.notes)
+
+    def test_a_genuinely_different_passage_still_disagrees(self):
+        from docuflow.agents.candidates import Candidate
+        from docuflow.schemas.registry import get_schema
+
+        page = [(1, f"governed by {self.LONG}\n")]
+        field = merge_field(
+            get_schema("contract").field("governing_law"),
+            Candidate("governing_law", self.LONG, self.LONG, channel="model"),
+            Candidate("governing_law", "the laws of the State of New York", self.LONG, channel="verify"),
+            page, ocr_quality=0.95, ocr_degraded=False,
+        )
+        assert any("disagree" in note for note in field.notes)
+
+    def test_short_values_are_not_matched_by_containment(self):
+        """"no" is inside "notice"; only passages get this treatment."""
+        from docuflow.agents.merge import _values_agree
+
+        assert _values_agree("no", "notice given") is False
+        assert _values_agree("INV-001", "INV-0012") is False

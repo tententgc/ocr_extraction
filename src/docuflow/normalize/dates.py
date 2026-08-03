@@ -98,6 +98,32 @@ def _parse_numeric(text: str, day_first: bool) -> str | None:
     return _build(third, second, first) if day_first else _build(third, first, second)
 
 
+def detect_day_first(text: str) -> bool | None:
+    """Which way round this document writes numeric dates, from its own evidence.
+
+    `11/02/2019` is genuinely ambiguous, and two models reading it will disagree
+    - one returned 2019-11-02 and the other 2019-02-11 for the same page. Asking
+    each model to guess produces a disagreement that is not about the document.
+
+    But a document that writes dates one way usually writes them all that way,
+    and any date with a component above 12 settles the question for the whole
+    page: "26/02/2019" can only be day-first. Returns None when the page never
+    says, which leaves the configured default to decide.
+    """
+    day_first_votes = month_first_votes = 0
+    for match in _NUMERIC_RE.finditer(text or ""):
+        first, second, _ = (int(part) for part in match.groups())
+        if len(match.group(1)) == 4:
+            continue  # already year-first, tells us nothing
+        if first > 12 >= second:
+            day_first_votes += 1
+        elif second > 12 >= first:
+            month_first_votes += 1
+    if day_first_votes == month_first_votes:
+        return None
+    return day_first_votes > month_first_votes
+
+
 def parse_date(text: str | date | datetime | None, day_first: bool = True) -> str | None:
     """Parse a date from noisy text into an ISO `YYYY-MM-DD` string.
 

@@ -90,9 +90,19 @@ def resolve_verify_llm(
     # turns a ~30s document into minutes. A deterministic cross-check now beats
     # a model cross-check that arrives after the demo is over.
     contended = "ollama" if settings.resolved_ocr_provider() == "ollama" else None
-    for key in auto_order():
-        if key == contended:
+
+    # Claude leads the order for the second reading. This pass is a judgement
+    # about whether a value really is what the page says, on text that is often
+    # Thai and often noisy, and Claude has been the steadiest at saying "I am
+    # not sure" instead of producing something plausible. If it is unreachable
+    # - no key, an outage, a rate limit - the loop simply carries on to the next
+    # backend, so the cross-check degrades rather than disappearing.
+    order = [key for key in ("claude", *auto_order()) if key in set(auto_order())]
+    seen: set[str] = set()
+    for key in order:
+        if key in seen or key == contended:
             continue
+        seen.add(key)
         try:
             provider = build_llm(key, settings)
         except ValueError:

@@ -411,3 +411,48 @@ class _FakeCloudLlm:
 
     def available(self) -> tuple[bool, str]:
         return True, ""
+
+
+class TestVerificationBackendPreference:
+    """Which model gets the second reading, and what happens when it is down."""
+
+    def _config(self, settings, **keys):
+        return settings.model_copy(update={"ocr_provider": "pdftext", **keys})
+
+    def test_claude_leads_when_it_is_reachable(self, settings):
+        from docuflow.llm.factory import resolve_verify_llm
+
+        config = self._config(settings, anthropic_api_key="x", openai_api_key="y")
+        verify, _ = resolve_verify_llm(config, _FakeCloudLlm())
+        assert "claude" in str(getattr(verify, "model", "")).lower()
+
+    def test_it_falls_through_when_claude_is_unreachable(self, settings):
+        """An outage or a missing key degrades the cross-check, never removes it."""
+        from docuflow.llm.factory import resolve_verify_llm
+
+        config = self._config(settings, anthropic_api_key="", openai_api_key="y")
+        verify, _ = resolve_verify_llm(config, _FakeCloudLlm())
+        assert verify is not None
+        assert "claude" not in str(getattr(verify, "model", "")).lower()
+
+    def test_no_cloud_key_falls_back_to_the_local_model(self, settings):
+        """Only when it is not the model running OCR - see the contention test."""
+        from docuflow.llm.factory import resolve_verify_llm
+
+        config = self._config(settings, anthropic_api_key="", openai_api_key="", typhoon_api_key="")
+        verify, _ = resolve_verify_llm(config, _FakeCloudLlm())
+        assert verify is not None
+
+    def test_falling_back_to_the_primary_says_independence_is_limited(self, settings):
+        """The pass still helps - it reads label-first - but agreement between a
+        model and itself is a much weaker signal, so it is never sold as more."""
+        from docuflow.llm.factory import resolve_verify_llm
+        from docuflow.llm.plugins import get_llm_plugin
+
+        config = self._config(settings, anthropic_api_key="", openai_api_key="",
+                              typhoon_api_key="", ocr_provider="ollama")
+        # The only backend left is the local one, and it is already the primary.
+        primary = get_llm_plugin("local").build(config, None)
+        verify, note = resolve_verify_llm(config, primary)
+        assert verify is primary
+        assert "independence is limited" in note

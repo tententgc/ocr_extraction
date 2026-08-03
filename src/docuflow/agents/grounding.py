@@ -131,6 +131,15 @@ def value_supported_by_evidence(
     if not evidence:
         return False
 
+    if field_type == "enum":
+        # An enum value is a classification, not a transcription. The model
+        # picks from a list the schema fixes, so it cannot invent one, and the
+        # page will not contain the label: a contract that "shall automatically
+        # renew" supports auto_renew=yes without the word "yes" appearing
+        # anywhere. Requiring the literal token here is a category error, and it
+        # was marking correct readings unverified at 30% confidence.
+        return True
+
     if field_type == "date":
         verdict = _date_supported(value if value is not None else raw_value, evidence)
         if verdict is not None:

@@ -20,6 +20,7 @@ from docuflow.agents.grounding import find_evidence, value_supported_by_evidence
 from docuflow.confidence import score_field
 from docuflow.models import ExtractedField
 from docuflow.normalize.apply import normalize_field_value
+from docuflow.normalize.dates import detect_day_first, parse_date
 from docuflow.normalize.text import normalize_for_match
 from docuflow.schemas.registry import DocumentSchema, FieldSpec
 
@@ -31,11 +32,29 @@ class _Normalized:
     raw: str
 
 
-def _normalize(candidate: Candidate | None, spec: FieldSpec) -> _Normalized | None:
+def _normalize(
+    candidate: Candidate | None, spec: FieldSpec, day_first: bool | None = None
+) -> _Normalized | None:
     if candidate is None or candidate.raw_value is None:
         return None
     value, note = normalize_field_value(candidate.raw_value, spec)
+
+    # A numeric date is ambiguous and each model resolves it on its own: for one
+    # page, the first pass returned 2019-11-02 and the second 2019-02-11 from
+    # the same "11/02/2019". Neither is a reading of the document - they are two
+    # guesses at a convention. The page states that convention, so re-read the
+    # quote with it and both channels land on the same day by construction.
+    if spec.type == "date" and candidate.evidence:
+        from_page = parse_date(candidate.evidence, day_first=day_first if day_first is not None else True)
+        if from_page is not None and from_page != value:
+            return _Normalized(value=from_page, note=note, raw=str(candidate.raw_value))
+
     return _Normalized(value=value, note=note, raw=str(candidate.raw_value))
+
+
+# Below this, one string containing another proves nothing: "no" is inside
+# "notice". Long passages are a different matter - see `_values_agree`.
+MIN_CONTAINMENT_CHARS = 24
 
 
 def _values_agree(left: Any, right: Any) -> bool:
@@ -44,7 +63,18 @@ def _values_agree(left: Any, right: Any) -> bool:
         return False
     if isinstance(left, (int, float)) and isinstance(right, (int, float)):
         return abs(float(left) - float(right)) < 0.005
-    return normalize_for_match(str(left)) == normalize_for_match(str(right))
+
+    first, second = normalize_for_match(str(left)), normalize_for_match(str(right))
+    if first == second:
+        return True
+
+    # A long free-text field is a passage, and two readings of a passage differ
+    # by where they stopped, not by what they say: one pass quoted "the laws of
+    # the State of California, without regard to its conflict of law principles"
+    # and the other "the laws of the State of California". Reporting that as a
+    # disagreement puts a correct answer in front of a human for no reason.
+    longer, shorter = (first, second) if len(first) >= len(second) else (second, first)
+    return len(shorter) >= MIN_CONTAINMENT_CHARS and shorter in longer
 
 
 @dataclass(frozen=True)
@@ -98,12 +128,13 @@ def merge_field(
     ocr_pages: list[tuple[int, str]],
     ocr_quality: float,
     ocr_degraded: bool,
+    day_first: bool | None = None,
 ) -> ExtractedField:
     """Combine both readings into one field with an honest confidence."""
     notes: list[str] = []
 
-    primary_norm = _normalize(primary, spec)
-    secondary_norm = _normalize(secondary, spec)
+    primary_norm = _normalize(primary, spec, day_first)
+    secondary_norm = _normalize(secondary, spec, day_first)
 
     primary_ground = _ground(primary, ocr_pages, spec, primary_norm.value if primary_norm else None)
     secondary_ground = _ground(
@@ -224,6 +255,9 @@ def merge_all(
     ocr_degraded: bool,
 ) -> tuple[ExtractedField, ...]:
     """Merge every field in the schema."""
+    # Read once for the whole document: a page that writes one date day-first
+    # writes them all that way, and one unambiguous date settles every other.
+    day_first = detect_day_first("\n".join(text for _, text in ocr_pages))
     return tuple(
         merge_field(
             spec,
@@ -232,6 +266,7 @@ def merge_all(
             ocr_pages,
             ocr_quality,
             ocr_degraded,
+            day_first,
         )
         for spec in schema.fields
     )

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import re
 
-from docuflow.normalize.text import thai_digits_to_arabic
+from docuflow.normalize.text import collapse_whitespace, thai_digits_to_arabic
 
 CURRENCY_SYMBOLS = {
     "฿": "THB",
@@ -127,18 +127,40 @@ def parse_percent(text: str | float | int | None) -> float | None:
     return round(value, 4)
 
 
-def detect_currency(text: str) -> str | None:
-    """Find an ISO currency code in free text."""
+def detect_currency_with_evidence(text: str) -> tuple[str, str] | None:
+    """Find a currency and the text that says so: `(code, evidence)`.
+
+    The evidence matters as much as the code. A page printing "$154.06" is
+    stating the currency as plainly as one printing "USD" - it just says it with
+    a symbol. Returning the line that carries the symbol lets the field be
+    grounded on the page like any other, instead of being reported as an
+    unverified guess.
+    """
     if not text:
         return None
+
+    def line_containing(needle: str) -> str:
+        for line in text.splitlines():
+            if needle in line:
+                return collapse_whitespace(line)[:200]
+        return collapse_whitespace(text)[:200]
+
     for symbol, code in CURRENCY_SYMBOLS.items():
         if symbol in text:
-            return code
+            return code, line_containing(symbol)
+
     lowered = text.casefold()
     for word, code in CURRENCY_WORDS.items():
         if re.search(rf"\b{re.escape(word)}\b", lowered) or word in lowered:
-            return code
+            index = lowered.find(word)
+            return code, line_containing(text[index : index + len(word)])
     return None
+
+
+def detect_currency(text: str) -> str | None:
+    """Find an ISO currency code in free text."""
+    found = detect_currency_with_evidence(text)
+    return found[0] if found else None
 
 
 def format_money(value: float | None, currency: str | None = None) -> str:
