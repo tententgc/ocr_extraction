@@ -25,7 +25,7 @@ def _tolerance(context: RuleContext, base: float) -> float:
     return max(abs(base) * context.amount_tolerance, ARITHMETIC_ABSOLUTE_SLACK)
 
 
-@rule(*MONEY_DOCS)
+@rule(*MONEY_DOCS, emits=("invoice_totals_consistent",))
 def totals_consistent(context: RuleContext) -> RuleFinding | None:
     """Subtotal + tax must equal the stated total."""
     subtotal = context.value("subtotal")
@@ -237,7 +237,7 @@ def purchase_order_required(context: RuleContext) -> RuleFinding | None:
     )
 
 
-@rule("invoice")
+@rule("invoice", emits=("po_exists", "po_vendor_matches"))
 def po_exists_and_matches(context: RuleContext) -> RuleFinding | None:
     """Three-way match: the quoted PO must exist and belong to this vendor."""
     reference = context.value("purchase_order_ref")

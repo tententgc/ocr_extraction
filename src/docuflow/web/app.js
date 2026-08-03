@@ -9,6 +9,7 @@ const state = {
   models: { ocr: [], llm: [] },
   samples: [],
   schemas: {},
+  settings: null,       // business policy and the rule catalogue
   currentDoc: null,     // document being reviewed
   edits: {},            // pending reviewer edits
   page: 1,
@@ -61,6 +62,7 @@ $$('.tab').forEach((tab) => tab.addEventListener('click', () => {
   if (tab.dataset.view === 'queue') loadQueue();
   if (tab.dataset.view === 'records') loadRecords();
   if (tab.dataset.view === 'insights') loadInsights();
+  if (tab.dataset.view === 'settings') loadSettings();
 }));
 
 /* ---------------------------------------------------------------- status */
@@ -656,6 +658,127 @@ async function loadInsights() {
 const metric = (label, value, sub) => `<div class="metric">
   <div class="label">${esc(label)}</div><div class="value">${esc(value)}</div>
   <div class="sub">${esc(sub)}</div></div>`;
+
+/* -------------------------------------------------------------- settings */
+
+async function loadSettings() {
+  try {
+    state.settings = await api('/api/settings');
+  } catch (error) {
+    toast(`Could not load settings: ${error.message}`, 'error');
+    return;
+  }
+  renderSettings();
+}
+
+/** Send only what changed; the server merges it over the stored policy. */
+async function saveSettings(patch) {
+  try {
+    state.settings = await api('/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch),
+    });
+  } catch (error) {
+    toast(error.message, 'error');
+    renderSettings();          // snap the controls back to the stored truth
+    return;
+  }
+  renderSettings();
+  loadStatus();                // the header threshold chip reads from status
+}
+
+function renderSettings() {
+  const { policy, rules } = state.settings;
+
+  $('#policy-warnings').innerHTML = (policy.warnings || [])
+    .map((text) => `<div class="notice"><span>⚠</span><div>${esc(text)}</div></div>`).join('');
+
+  const slider = $('#threshold-slider');
+  slider.value = Math.round(policy.auto_post_min_confidence * 100);
+  $('#threshold-out').textContent = pct(policy.auto_post_min_confidence);
+  $('#threshold-note').textContent =
+    `Fields below ${pct(policy.field_review_confidence)} are flagged for review individually.`;
+
+  $('#free-mode-toggle').checked = policy.rules_free_mode;
+  $('#settings-origin').textContent = policy.overridden.length
+    ? `${policy.overridden.length} setting(s) changed from .env`
+    : 'Matching the configured defaults';
+  $('#settings-reset').disabled = policy.overridden.length === 0;
+
+  const docTypes = [...new Set(rules.flatMap((r) => r.doc_types))].filter((t) => t !== '*').sort();
+  const filter = $('#rule-doc-filter');
+  if (filter.options.length <= 1) {
+    filter.innerHTML = '<option value="">All document types</option>' +
+      docTypes.map((t) => `<option value="${esc(t)}">${esc(t.replace('_', ' '))}</option>`).join('');
+  }
+  renderRuleList();
+}
+
+function renderRuleList() {
+  const { policy, rules } = state.settings;
+  const term = $('#rule-search').value.trim().toLowerCase();
+  const docType = $('#rule-doc-filter').value;
+
+  const visible = rules.filter((rule) => {
+    if (docType && !rule.applies_to_all && !rule.doc_types.includes(docType)) return false;
+    if (!term) return true;
+    return `${rule.rule_id} ${rule.summary}`.toLowerCase().includes(term);
+  });
+
+  // Free mode already turns everything off; leaving the boxes live would invite
+  // someone to toggle a rule that cannot run either way.
+  const frozen = policy.rules_free_mode;
+  $('#rule-list').innerHTML = visible.length
+    ? visible.map((rule) => `
+      <label class="rule-row ${rule.enabled && !frozen ? '' : 'off'}">
+        <input type="checkbox" data-rule="${esc(rule.rule_id)}"
+          ${rule.enabled ? 'checked' : ''} ${frozen ? 'disabled' : ''} />
+        <span class="grow">
+          <b class="rid">${esc(rule.rule_id)}</b>
+          <span class="desc">${esc(rule.summary || 'No description.')}</span>
+          <span class="types">
+            ${rule.applies_to_all
+              ? '<span class="chip">every document</span>'
+              : rule.doc_types.map((t) => `<span class="chip">${esc(t.replace('_', ' '))}</span>`).join('')}
+            ${rule.aliases.map((a) => `<span class="chip">also reports as ${esc(a)}</span>`).join('')}
+          </span>
+        </span>
+      </label>`).join('')
+    : '<p class="muted">No rule matches that filter.</p>';
+}
+
+$('#threshold-slider').addEventListener('input', (event) => {
+  $('#threshold-out').textContent = `${event.target.value}%`;
+});
+$('#threshold-slider').addEventListener('change', (event) => {
+  saveSettings({ auto_post_min_confidence: Number(event.target.value) / 100 });
+});
+$('#free-mode-toggle').addEventListener('change', (event) => {
+  saveSettings({ rules_free_mode: event.target.checked });
+});
+$('#rule-search').addEventListener('input', renderRuleList);
+$('#rule-doc-filter').addEventListener('change', renderRuleList);
+$('#settings-reset').addEventListener('click', async () => {
+  try {
+    state.settings = await api('/api/settings/reset', { method: 'POST' });
+  } catch (error) {
+    toast(error.message, 'error');
+    return;
+  }
+  renderSettings();
+  loadStatus();
+  toast('Back to the configured defaults.');
+});
+$('#rule-list').addEventListener('change', (event) => {
+  const box = event.target.closest('input[data-rule]');
+  if (!box) return;
+  // The API replaces the whole set, so send every rule currently switched off.
+  const disabled = state.settings.rules
+    .filter((rule) => (rule.rule_id === box.dataset.rule ? !box.checked : !rule.enabled))
+    .map((rule) => rule.rule_id);
+  saveSettings({ disabled_rules: disabled });
+});
 
 /* ------------------------------------------------------------------ init */
 

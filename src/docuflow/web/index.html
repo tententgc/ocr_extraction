@@ -34,6 +34,7 @@
   <button class="tab" data-view="queue">Review queue <span class="badge" id="queue-badge">0</span></button>
   <button class="tab" data-view="records">Records <span class="badge" id="records-badge">0</span></button>
   <button class="tab" data-view="insights">Insights</button>
+  <button class="tab" data-view="settings">Settings</button>
 </nav>
 
 <main>
@@ -145,6 +146,51 @@
       <h3>Correction hotspots</h3>
       <p class="muted">Fields reviewers change most often — where accuracy work pays off next.</p>
       <div id="hotspots"></div>
+    </div>
+  </section>
+
+  <!-- ================= SETTINGS ================= -->
+  <section class="view" id="view-settings">
+    <div id="policy-warnings"></div>
+
+    <div class="two-col">
+      <div class="card">
+        <h3>Straight-through posting</h3>
+        <p class="muted">A document posts on its own only above this confidence, with every
+          required field present and no blocking rule failure. Below it, a person looks.</p>
+        <div class="slider-row">
+          <input type="range" id="threshold-slider" min="0" max="100" step="1" />
+          <output id="threshold-out">—</output>
+        </div>
+        <p class="muted" id="threshold-note"></p>
+      </div>
+
+      <div class="card">
+        <h3>Business rules</h3>
+        <p class="muted">Free mode runs extraction only — nothing is checked against master
+          data, arithmetic or prior postings, and nothing can block.</p>
+        <label class="switch-row">
+          <input type="checkbox" id="free-mode-toggle" />
+          <span>Free mode — turn every rule off</span>
+        </label>
+        <div class="settings-actions">
+          <button class="btn" id="settings-reset">Reset to .env defaults</button>
+          <span class="muted" id="settings-origin"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <h3>Rule catalogue</h3>
+        <div class="filters">
+          <input type="search" id="rule-search" placeholder="Filter rules…" />
+          <select id="rule-doc-filter"><option value="">All document types</option></select>
+        </div>
+      </div>
+      <p class="muted">Switch off the checks that do not apply to the documents you are
+        handling and leave the rest doing their job.</p>
+      <div id="rule-list"></div>
     </div>
   </section>
 </main>

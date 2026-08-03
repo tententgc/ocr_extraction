@@ -113,6 +113,14 @@ CREATE TABLE IF NOT EXISTS corrections (
     created_at   TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_corrections_field ON corrections(doc_type, field_name);
+
+-- Settings a user changed from the UI. `.env` remains the declared default;
+-- this holds the deliberate departures from it, so they survive a restart.
+CREATE TABLE IF NOT EXISTS app_settings (
+    key         TEXT PRIMARY KEY,
+    value       TEXT NOT NULL,
+    updated_at  TEXT NOT NULL
+);
 """
 
 

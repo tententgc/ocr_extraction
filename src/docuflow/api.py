@@ -26,6 +26,8 @@ from docuflow.llm.factory import describe_llms
 from docuflow.masterdata.repository import MasterDataRepository
 from docuflow.ocr.factory import describe_providers
 from docuflow.pipeline import Pipeline, PipelineResult
+from docuflow.policy import PolicyError, PolicyStore
+from docuflow.rules import describe_rules
 from docuflow.review import ReviewError, apply_review
 from docuflow.samples.catalog import SAMPLE_DOCUMENTS
 from docuflow.schemas.registry import DOCUMENT_SCHEMAS
@@ -41,17 +43,29 @@ WEB_DIR = Path(__file__).parent / "web"
 settings = get_settings()
 # Runtime model selection; the UI can switch engines without a restart.
 selection = SelectionStore(settings)
+# Business policy the user changed from the settings screen. Created after the
+# database exists, because unlike the model picker it is persisted.
+policy: PolicyStore | None = None
 
 
 def active_settings() -> Settings:
-    """Base configuration with the current UI model selection applied."""
-    return selection.settings()
+    """Configuration with the current model selection and policy applied."""
+    chosen = selection.settings()
+    return policy.settings(chosen) if policy is not None else chosen
+
+
+def active_policy() -> PolicyStore:
+    if policy is None:  # pragma: no cover - only before startup completes
+        raise RuntimeError("the policy store is not ready yet")
+    return policy
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     """Create the database, seed master data and render the demo corpus."""
+    global policy
     bootstrap(settings, with_samples=True)
+    policy = PolicyStore(settings)
     # Loads the local models in the background so the first upload does not wait
     # on a cold vision model. Startup is not held up and a failure is harmless.
     warm_ollama_in_background(active_settings())
@@ -174,6 +188,61 @@ def status() -> dict[str, Any]:
         "max_document_bytes": current.max_document_bytes,
         "stats": DocumentStore(settings.db_path).stats(),
     }
+
+
+class PolicyRequest(BaseModel):
+    """Every field optional: the screen sends only what the user changed."""
+
+    rules_free_mode: bool | None = None
+    disabled_rules: list[str] | None = Field(
+        default=None, description="Rule ids to switch off; replaces the current set"
+    )
+    auto_post_min_confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+
+
+def _settings_payload() -> dict[str, Any]:
+    store = active_policy()
+    current = active_settings()
+    return {
+        "policy": store.describe(selection.settings()),
+        "rules": describe_rules(current.skipped_rules),
+        "tunable": {
+            # Read-only here: these are declared in .env because changing them
+            # mid-flight would silently reinterpret documents already posted.
+            "field_review_confidence": current.field_review_confidence,
+            "amount_tolerance": current.amount_tolerance,
+            "po_required_above": current.po_required_above,
+            "expected_vat_rates": list(current.vat_rates),
+            "unknown_vendor_blocks": sorted(current.vendor_blocking_types),
+        },
+    }
+
+
+@app.get("/api/settings")
+def get_settings_view() -> dict[str, Any]:
+    """Current business policy and the full rule catalogue."""
+    return _settings_payload()
+
+
+@app.post("/api/settings")
+def update_settings(request: PolicyRequest) -> dict[str, Any]:
+    """Change the policy. Unknown rule names are rejected, not ignored."""
+    try:
+        active_policy().update(
+            rules_free_mode=request.rules_free_mode,
+            disabled_rules=request.disabled_rules,
+            auto_post_min_confidence=request.auto_post_min_confidence,
+        )
+    except PolicyError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return _settings_payload()
+
+
+@app.post("/api/settings/reset")
+def reset_settings() -> dict[str, Any]:
+    """Return to the policy declared in configuration."""
+    active_policy().reset()
+    return _settings_payload()
 
 
 @app.get("/api/models")
