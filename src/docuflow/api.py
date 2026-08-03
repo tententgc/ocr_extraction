@@ -18,6 +18,7 @@ from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field
 
+from docuflow.archive import describe_archive, rebuild as rebuild_archive
 from docuflow.bootstrap import bootstrap
 from docuflow.config import Settings, get_settings
 from docuflow.models_registry import list_models
@@ -351,6 +352,18 @@ def delete_custom_rule(rule_id: str) -> dict[str, Any]:
     if not _rule_store().delete(rule_id):
         raise HTTPException(status_code=404, detail=f"There is no rule called '{rule_id}'.")
     return {"deleted": rule_id}
+
+
+@app.get("/api/archive")
+def archive() -> dict[str, Any]:
+    """Documents on disk, shelved by type and month."""
+    return describe_archive(settings)
+
+
+@app.post("/api/archive/rebuild")
+def archive_rebuild() -> dict[str, Any]:
+    """File every document already processed. Safe to run repeatedly."""
+    return {**rebuild_archive(settings), "archive": describe_archive(settings)}
 
 
 @app.get("/api/models")

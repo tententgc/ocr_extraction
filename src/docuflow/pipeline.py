@@ -15,6 +15,7 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
+from docuflow.archive import file_document
 from docuflow.agents.candidates import from_llm, from_rule
 from docuflow.agents.classifier import classify
 from docuflow.agents.llm_extractor import extract_with_llm
@@ -503,6 +504,25 @@ class Pipeline:
                             for correction in reconciliation.corrections
                         ],
                     },
+                )
+            )
+
+        # The type is only known now, so this is the first point at which the
+        # document can be filed under it.
+        filed = file_document(
+            self.settings,
+            Path(run.blob_path),
+            run.document_id,
+            run.doc_type,
+            run.source.filename,
+            run.created_at,
+        )
+        if filed is not None:
+            run = run.with_step(
+                TraceStep(
+                    step="archive",
+                    summary=f"Filed under {filed.doc_type}/{filed.period}",
+                    detail=filed.to_json(),
                 )
             )
 
