@@ -47,9 +47,10 @@
           <h3>Drop a document here</h3>
           <p>PDF, JPG, PNG, TIFF — invoices, contracts, forms, receipts</p>
           <label class="btn primary">
-            Choose file<input type="file" id="file-input" hidden
+            Choose files<input type="file" id="file-input" hidden multiple
               accept=".pdf,.jpg,.jpeg,.png,.webp,.tif,.tiff,.bmp,.gif" />
           </label>
+          <p class="muted dz-hint">Drop several at once — they queue and run in order.</p>
         </div>
       </div>
 
@@ -74,6 +75,17 @@
         <h3 id="progress-title">Processing…</h3>
         <p class="muted" id="progress-detail">Uploading document</p>
       </div>
+    </div>
+
+    <div class="card queue-card hidden" id="job-card">
+      <div class="card-head">
+        <h3>Processing queue <span class="badge" id="job-active">0</span></h3>
+        <div class="filters">
+          <span class="muted" id="job-workers"></span>
+          <button class="btn small" id="job-clear">Clear finished</button>
+        </div>
+      </div>
+      <div id="job-list"></div>
     </div>
 
     <div id="result-host"></div>

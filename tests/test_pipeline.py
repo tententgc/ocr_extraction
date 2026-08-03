@@ -18,16 +18,6 @@ from docuflow.store.records import RecordStore
 
 
 @pytest.fixture
-def sample_pdf(settings, tmp_path):
-    """Render one clean invoice from the demo corpus."""
-    def _render(doc_id: str):
-        doc = sample_by_id(doc_id)
-        assert doc is not None, f"unknown sample {doc_id}"
-        return render_pdf(doc, tmp_path / f"{doc_id}.pdf")
-    return _render
-
-
-@pytest.fixture
 def pipeline(settings, master):
     """Pipeline at production thresholds (conservative)."""
     return Pipeline(settings)

@@ -116,3 +116,17 @@ def make_run():
 @pytest.fixture
 def today() -> date:
     return date(2026, 8, 3)
+
+
+@pytest.fixture
+def sample_pdf(settings, tmp_path):
+    """Render one document from the demo corpus to a PDF."""
+    from docuflow.samples.catalog import sample_by_id
+    from docuflow.samples.generator import render_pdf
+
+    def _render(doc_id: str):
+        doc = sample_by_id(doc_id)
+        assert doc is not None, f"unknown sample {doc_id}"
+        return render_pdf(doc, tmp_path / f"{doc_id}.pdf")
+
+    return _render

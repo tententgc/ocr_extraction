@@ -8,6 +8,7 @@ not block the event loop.
 from __future__ import annotations
 
 import logging
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -22,9 +23,11 @@ from docuflow.config import Settings, get_settings
 from docuflow.models_registry import list_models
 from docuflow.runtime import SelectionError, SelectionStore
 from docuflow.ingest.fetch import FetchError, fetch_url
+from docuflow.jobs import MAX_BATCH_FILES, JobQueue
 from docuflow.llm.factory import describe_llms, resolve_llm
 from docuflow.masterdata.repository import MasterDataRepository
 from docuflow.ocr.factory import describe_providers
+from docuflow.ocr.render import is_supported
 from docuflow.pipeline import Pipeline, PipelineResult
 from docuflow.policy import PolicyError, PolicyStore
 from docuflow.rules import describe_rules
@@ -50,12 +53,18 @@ selection = SelectionStore(settings)
 # Business policy the user changed from the settings screen. Created after the
 # database exists, because unlike the model picker it is persisted.
 policy: PolicyStore | None = None
+# Batch processing. One pool for the process, sized to the configured engine.
+queue = JobQueue(lambda: active_settings())
 
 
 def active_settings() -> Settings:
     """Configuration with the current model selection and policy applied."""
     chosen = selection.settings()
     return policy.settings(chosen) if policy is not None else chosen
+
+
+def active_queue() -> JobQueue:
+    return queue
 
 
 def active_policy() -> PolicyStore:
@@ -74,6 +83,7 @@ async def lifespan(_: FastAPI):
     # on a cold vision model. Startup is not held up and a failure is harmless.
     warm_ollama_in_background(active_settings())
     yield
+    queue.shutdown()
 
 
 app = FastAPI(
@@ -458,6 +468,77 @@ def upload_document(file: UploadFile = File(...)) -> dict[str, Any]:
         content_type=file.content_type,
     )
     return _serialize_result(result)
+
+
+# ---------------------------------------------------------------------------
+# Batch upload
+# ---------------------------------------------------------------------------
+
+
+@app.post("/api/documents/batch")
+def upload_batch(files: list[UploadFile] = File(...)) -> dict[str, Any]:
+    """Accept many documents at once and queue them.
+
+    Returns as soon as the files are on disk. Twenty documents is ten minutes of
+    work, which is not something to hold a request open for - the browser polls
+    /api/jobs instead.
+    """
+    if not files:
+        raise HTTPException(status_code=400, detail="No files were uploaded.")
+    if len(files) > MAX_BATCH_FILES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"{len(files)} files at once; the limit is {MAX_BATCH_FILES}.",
+        )
+
+    queue = active_queue()
+    accepted: list[dict[str, Any]] = []
+    rejected: list[dict[str, str]] = []
+    inbox = settings.data_dir / "inbox"
+    inbox.mkdir(parents=True, exist_ok=True)
+
+    for upload in files:
+        name = upload.filename or "upload"
+        content = upload.file.read()
+        if not content:
+            rejected.append({"filename": name, "reason": "the file is empty"})
+            continue
+        if len(content) > settings.max_document_bytes:
+            rejected.append({
+                "filename": name,
+                "reason": f"{len(content) / 1e6:.1f} MB is above the "
+                          f"{settings.max_document_bytes / 1e6:.0f} MB limit",
+            })
+            continue
+        if not is_supported(Path(name)):
+            rejected.append({"filename": name, "reason": "unsupported file type"})
+            continue
+
+        # Written under a unique name: two files called "invoice.pdf" in one
+        # batch are two different documents.
+        staged = inbox / f"{uuid.uuid4().hex[:8]}-{Path(name).name}"
+        staged.write_bytes(content)
+        accepted.append(queue.submit(staged, name).to_json())
+
+    if not accepted and rejected:
+        raise HTTPException(status_code=400, detail=rejected[0]["reason"])
+    return {"queued": accepted, "rejected": rejected, "summary": queue.summary()}
+
+
+@app.get("/api/jobs")
+def list_jobs(limit: int = Query(default=100, ge=1, le=500)) -> dict[str, Any]:
+    """Queue state, polled by the browser while a batch runs."""
+    queue = active_queue()
+    return {
+        "jobs": [job.to_json() for job in queue.list_jobs(limit)],
+        "summary": queue.summary(),
+    }
+
+
+@app.post("/api/jobs/clear")
+def clear_jobs() -> dict[str, Any]:
+    """Remove finished jobs from the list. The documents themselves stay."""
+    return {"cleared": active_queue().clear_finished(), "summary": active_queue().summary()}
 
 
 @app.post("/api/documents/url")

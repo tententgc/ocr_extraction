@@ -8,6 +8,7 @@ against what the vision model reads.
 from __future__ import annotations
 
 import logging
+import threading
 from pathlib import Path
 
 from PIL import Image
@@ -15,6 +16,15 @@ from PIL import Image
 from docuflow.ocr.base import PageImage
 
 logger = logging.getLogger(__name__)
+
+# PDFium is not thread-safe, and pypdfium2 does not serialise for us: two
+# threads opening documents at once segfaults the interpreter, taking the whole
+# server with it. Found by running a batch through the queue with two workers.
+#
+# Serialising here rather than dropping to one worker, because rendering is
+# ~0.3s of a document that spends tens of seconds in OCR and the model calls.
+# The concurrency worth having is on those, and they are unaffected.
+_PDFIUM_LOCK = threading.Lock()
 
 IMAGE_SUFFIXES = frozenset({".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff", ".gif"})
 PDF_SUFFIXES = frozenset({".pdf"})
@@ -44,6 +54,11 @@ def _save_page(image: Image.Image, out_path: Path, target_dim: int) -> tuple[Pat
 
 
 def _render_pdf(path: Path, out_dir: Path, max_pages: int, target_dim: int) -> list[PageImage]:
+    with _PDFIUM_LOCK:
+        return _render_pdf_unlocked(path, out_dir, max_pages, target_dim)
+
+
+def _render_pdf_unlocked(path: Path, out_dir: Path, max_pages: int, target_dim: int) -> list[PageImage]:
     import pypdfium2 as pdfium
 
     pages: list[PageImage] = []

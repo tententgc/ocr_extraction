@@ -206,9 +206,33 @@ function uploadFile(file) {
   ingest('/api/documents/upload', { method: 'POST', body: form }, `Processing ${file.name}`);
 }
 
+/** One file runs inline so the result appears; several go through the queue. */
+function handleFiles(files) {
+  const list = [...(files || [])];
+  if (!list.length) return;
+  if (list.length === 1) { uploadFile(list[0]); return; }
+  uploadBatch(list);
+}
+
+async function uploadBatch(files) {
+  const form = new FormData();
+  files.forEach((file) => form.append('files', file));
+  let result;
+  try {
+    result = await api('/api/documents/batch', { method: 'POST', body: form });
+  } catch (error) {
+    toast(error.message, 'error');
+    return;
+  }
+  result.rejected.forEach((row) => toast(`${row.filename}: ${row.reason}`, 'error'));
+  if (result.queued.length) {
+    toast(`Queued ${result.queued.length} document(s).`);
+    startJobPolling();
+  }
+}
+
 $('#file-input').addEventListener('change', (event) => {
-  const file = event.target.files?.[0];
-  if (file) uploadFile(file);
+  handleFiles(event.target.files);
   event.target.value = '';
 });
 
@@ -219,10 +243,7 @@ const dropzone = $('#dropzone');
 ['dragleave', 'drop'].forEach((type) => dropzone.addEventListener(type, (event) => {
   event.preventDefault(); dropzone.classList.remove('drag');
 }));
-dropzone.addEventListener('drop', (event) => {
-  const file = event.dataTransfer?.files?.[0];
-  if (file) uploadFile(file);
-});
+dropzone.addEventListener('drop', (event) => handleFiles(event.dataTransfer?.files));
 
 $('#url-form').addEventListener('submit', (event) => {
   event.preventDefault();
@@ -780,6 +801,85 @@ $('#rule-list').addEventListener('change', (event) => {
     .filter((rule) => (rule.rule_id === box.dataset.rule ? !box.checked : !rule.enabled))
     .map((rule) => rule.rule_id);
   saveSettings({ disabled_rules: disabled });
+});
+
+/* ------------------------------------------------------------ job queue */
+
+const JOB_ICON = { queued: '○', running: '◐', done: '✓', failed: '✕' };
+let jobTimer = null;
+
+function startJobPolling() {
+  $('#job-card').classList.remove('hidden');
+  refreshJobs();
+  if (jobTimer) return;
+  jobTimer = setInterval(refreshJobs, 2000);
+}
+
+async function refreshJobs() {
+  let payload;
+  try {
+    payload = await api('/api/jobs');
+  } catch (error) {
+    clearInterval(jobTimer); jobTimer = null;
+    toast(`Lost track of the queue: ${error.message}`, 'error');
+    return;
+  }
+
+  const { jobs, summary } = payload;
+  $('#job-active').textContent = summary.active;
+  $('#job-workers').textContent =
+    `${summary.workers} worker${summary.workers === 1 ? '' : 's'} · ${summary.done} done`
+    + (summary.failed ? ` · ${summary.failed} failed` : '');
+
+  $('#job-list').innerHTML = jobs.length
+    ? jobs.map((job) => `
+      <div class="job-row ${job.status}">
+        <span class="icon">${JOB_ICON[job.status] || '·'}</span>
+        <span>
+          <span class="name">${esc(job.filename)}</span>
+          <span class="sub">${esc(jobDetail(job))}</span>
+        </span>
+        <span class="conf ${job.confidence != null ? confClass(job.confidence) : ''}">
+          ${job.confidence != null ? pct(job.confidence) : ''}</span>
+        ${job.document_id
+          ? `<button class="btn small" data-open-job="${esc(job.document_id)}">Open</button>`
+          : '<span></span>'}
+      </div>`).join('')
+    : '<p class="muted">Nothing queued.</p>';
+
+  // Stop polling once the queue drains; the list stays until it is cleared.
+  if (summary.active === 0 && jobTimer) {
+    clearInterval(jobTimer); jobTimer = null;
+    loadStatus();
+  }
+}
+
+function jobDetail(job) {
+  if (job.status === 'failed') return job.error || 'failed';
+  if (job.status === 'running') return job.detail || job.stage || 'processing';
+  if (job.status === 'done') {
+    const label = DECISION[job.decision]?.label || job.decision || 'processed';
+    return job.record_id ? `${label} · ${job.record_id}` : label;
+  }
+  return 'waiting';
+}
+
+$('#job-clear').addEventListener('click', async () => {
+  try { await api('/api/jobs/clear', { method: 'POST' }); }
+  catch (error) { toast(error.message, 'error'); return; }
+  refreshJobs();
+});
+
+$('#job-list').addEventListener('click', async (event) => {
+  const button = event.target.closest('button[data-open-job]');
+  if (!button) return;
+  try {
+    const data = await api(`/api/documents/${encodeURIComponent(button.dataset.openJob)}`);
+    renderResult(data, $('#result-host'), false);
+    $('#result-host').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (error) {
+    toast(error.message, 'error');
+  }
 });
 
 /* ------------------------------------------------------- authoring rules */
