@@ -13,6 +13,12 @@ _WHITESPACE_RE = re.compile(r"\s+")
 # Characters OCR commonly emits that carry no meaning for matching.
 _NOISE_RE = re.compile(r"[​‌‍﻿­]")
 _PUNCT_RE = re.compile(r"[^\w\s฀-๿]", re.UNICODE)
+# Typhoon OCR 1.5 returns tables as HTML. Left in place, the tag names survive
+# punctuation stripping as the words "table tr td" and wreck every comparison:
+# a model quoting "Invoice Number: AA888" would fail to match the page text
+# "<td>Invoice Number</td><td>: AA888</td>" and the field would be reported as
+# unverified even though it is plainly there.
+_HTML_TAG_RE = re.compile(r"<[^>]{1,200}>")
 
 
 def thai_digits_to_arabic(text: str) -> str:
@@ -54,7 +60,7 @@ def normalize_for_match(text: str) -> str:
     """
     if not text:
         return ""
-    folded = unicodedata.normalize("NFKC", unescape_entities(text)).casefold()
+    folded = unicodedata.normalize("NFKC", unescape_entities(_HTML_TAG_RE.sub(" ", text))).casefold()
     folded = thai_digits_to_arabic(folded)
     folded = _NOISE_RE.sub("", folded)
     folded = _PUNCT_RE.sub(" ", folded)

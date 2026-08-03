@@ -81,7 +81,10 @@ class TestMasterDataTools:
     def test_lookup_vendor_reports_close_matches_when_absent(self, toolbox):
         result = run_tool(toolbox, "lookup_vendor", {"name": "Completely Unknown Trading"})
         assert result["found"] is False
-        assert "closest" in result
+        # Suggestions must be labelled as name-similarity only: given a bare
+        # list, the agent reported the nearest name as "the actual vendor".
+        assert "similar_names_only" in result
+        assert "NOT" in result["warning"]
 
     def test_lookup_purchase_order(self, toolbox):
         result = run_tool(toolbox, "lookup_purchase_order", {"po_number": "PO-2026-0455"})

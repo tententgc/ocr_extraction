@@ -97,10 +97,20 @@ def _lookup_vendor(master: MasterDataRepository) -> Callable[[dict[str, Any]], d
             return {"error": "supply name or tax_id"}
         match = master.find_vendor(str(name) if name else None, str(tax_id) if tax_id else None)
         if not match.matched:
+            # Name-similarity suggestions only. Spelled out because an agent
+            # given a bare list of names will otherwise report the nearest one
+            # as "the actual vendor" - a confident, invented identification.
             return {
                 "found": False,
+                "note": (
+                    f"No vendor matches '{name or tax_id}'. This vendor is not registered."
+                ),
                 "best_score": match.score,
-                "closest": [candidate["legal_name"] for candidate in match.candidates[:3]],
+                "similar_names_only": [candidate["legal_name"] for candidate in match.candidates[:3]],
+                "warning": (
+                    "similar_names_only lists names that merely look alike. They are NOT "
+                    "this vendor and their identifiers do not belong to this document."
+                ),
             }
         vendor = match.vendor
         return {
