@@ -10,8 +10,10 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import shutil
 import time
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -25,13 +27,18 @@ from docuflow.schemas.registry import get_schema
 logger = logging.getLogger(__name__)
 
 
-def _isolated_settings(settings: Settings) -> Settings:
+def _isolated_settings(settings: Settings, label: str = "run") -> Settings:
     """A settings copy pointing at a throwaway data directory.
 
     Evaluation must not post into the demo ledger, and must start with an empty
     records table so duplicate detection does not fire on its own output.
+
+    The directory name is unique per call: a benchmark evaluates several engines
+    in sequence, and a shared path would let one run delete another's workspace
+    (and two concurrent evaluations would corrupt each other outright).
     """
-    eval_dir = settings.data_dir.parent / "eval" / "out"
+    slug = re.sub(r"[^A-Za-z0-9._-]+", "-", label).strip("-")[:40] or "run"
+    eval_dir = settings.data_dir.parent / "eval" / "out" / f"{slug}-{uuid.uuid4().hex[:8]}"
     if eval_dir.exists():
         shutil.rmtree(eval_dir)
     eval_dir.mkdir(parents=True, exist_ok=True)

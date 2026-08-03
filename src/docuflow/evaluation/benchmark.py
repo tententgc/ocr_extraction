@@ -82,7 +82,7 @@ def parse_combination(spec: str) -> Combination:
 
 def run_one(settings: Settings, combination: Combination, limit: int = 0) -> dict[str, Any]:
     """Evaluate a single combination and return its report."""
-    eval_settings = _isolated_settings(settings)
+    eval_settings = _isolated_settings(settings, label=combination.label)
     eval_settings = combination.apply(eval_settings)
     bootstrap(eval_settings, with_samples=False)
     pipeline = Pipeline(eval_settings)
