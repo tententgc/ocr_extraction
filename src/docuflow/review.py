@@ -141,7 +141,9 @@ def apply_review(
         duplicate_of=duplicate,
         **RuleContext.policy_from(settings),
     )
-    findings = run_rules(context)
+    findings = run_rules(
+        context, free_mode=settings.rules_free_mode, skip=settings.skipped_rules
+    )
     run = run.evolve(findings=findings)
     run = run.evolve(
         confidence=document_confidence(
@@ -174,7 +176,12 @@ def apply_review(
         return ReviewOutcome(run, None, tuple(applied), tuple(rejected_edits), "Document rejected.")
 
     if action == "save":
-        outcome = decide(run, schema, settings.auto_post_min_confidence)
+        outcome = decide(
+            run,
+            schema,
+            settings.auto_post_min_confidence,
+            rules_evaluated=not settings.rules_free_mode,
+        )
         run = run.evolve(decision=outcome.decision, decision_reasons=outcome.reasons).with_step(
             TraceStep(step="review", summary=f"{len(applied)} correction(s) saved by {reviewer}")
         )

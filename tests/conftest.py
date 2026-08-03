@@ -19,9 +19,11 @@ from docuflow.schemas.registry import get_schema
 def settings(tmp_path: Path) -> Settings:
     """Isolated settings backed by a temporary data directory.
 
-    Every credential is blanked explicitly. `Settings` reads the developer's
-    `.env`, so without this the suite would pass or fail depending on which keys
-    happen to be configured on the machine running it.
+    `Settings` reads the developer's `.env`, so anything the suite asserts on
+    has to be pinned here or the result depends on how one machine happens to be
+    configured. That covers credentials, and equally the rule-execution switches:
+    a developer exploring with RULES_FREE_MODE=true would otherwise see every
+    validation test "pass" while nothing was being validated at all.
     """
     config = Settings(
         data_dir=tmp_path,
@@ -32,6 +34,8 @@ def settings(tmp_path: Path) -> Settings:
         anthropic_api_key="",
         auto_post_min_confidence=0.90,
         amount_tolerance=0.02,
+        rules_free_mode=False,
+        disabled_rules="",
     )
     config.ensure_directories()
     init_db(config.db_path)

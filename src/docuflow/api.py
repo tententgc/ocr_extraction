@@ -162,6 +162,10 @@ def status() -> dict[str, Any]:
             "expected_vat_rates": list(current.vat_rates),
             "contract_expiry_warning_days": current.contract_expiry_warning_days,
         },
+        "rules": {
+            "free_mode": current.rules_free_mode,
+            "disabled": sorted(current.skipped_rules),
+        },
         "url_fetch_enabled": current.allow_url_fetch,
         "max_document_bytes": current.max_document_bytes,
         "stats": DocumentStore(settings.db_path).stats(),

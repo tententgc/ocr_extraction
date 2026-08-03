@@ -24,8 +24,20 @@ class RoutingOutcome:
         return self.decision == "auto_post"
 
 
-def decide(run: DocumentRun, schema: DocumentSchema, min_confidence: float) -> RoutingOutcome:
-    """Choose what happens to this document."""
+def decide(
+    run: DocumentRun,
+    schema: DocumentSchema,
+    min_confidence: float,
+    *,
+    rules_evaluated: bool = True,
+) -> RoutingOutcome:
+    """Choose what happens to this document.
+
+    `rules_evaluated=False` still routes on extraction quality - completeness,
+    grounding and confidence are properties of the reading, not of the business
+    checks - but says so in the reason, because "no blocking issues" would
+    otherwise claim a validation that never ran.
+    """
     reasons: list[str] = []
 
     # --- unprocessable ----------------------------------------------------
@@ -68,6 +80,16 @@ def decide(run: DocumentRun, schema: DocumentSchema, min_confidence: float) -> R
 
     if reasons:
         return RoutingOutcome("needs_review", tuple(reasons))
+
+    if not rules_evaluated:
+        return RoutingOutcome(
+            "auto_post",
+            (
+                f"Confidence {run.confidence:.0%}; all required and critical fields are "
+                f"present and verified against the page. Business rules were disabled, "
+                f"so nothing was checked against master data or business policy.",
+            ),
+        )
 
     return RoutingOutcome(
         "auto_post",

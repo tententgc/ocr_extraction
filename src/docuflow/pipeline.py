@@ -384,15 +384,21 @@ class Pipeline:
             duplicate_of=duplicate,
             **RuleContext.policy_from(self.settings),
         )
-        findings = run_rules(context)
+        free_mode = self.settings.rules_free_mode
+        skipped = self.settings.skipped_rules
+        findings = run_rules(context, free_mode=free_mode, skip=skipped)
 
         failed = [finding for finding in findings if not finding.passed]
         blocking = [finding for finding in failed if finding.severity == "blocking"]
         status = "error" if blocking else ("warning" if failed else "ok")
-        summary = (
-            f"{len(findings) - len(failed)}/{len(findings)} checks passed"
-            + (f", {len(blocking)} blocking" if blocking else "")
-        )
+        if free_mode:
+            summary = "Free mode: no business rule was evaluated"
+        else:
+            summary = (
+                f"{len(findings) - len(failed)}/{len(findings)} checks passed"
+                + (f", {len(blocking)} blocking" if blocking else "")
+                + (f", {len(skipped)} disabled" if skipped else "")
+            )
 
         return (
             run.evolve(findings=findings).with_step(
@@ -406,6 +412,8 @@ class Pipeline:
                         "vendor_match_method": vendor_match.method,
                         "failed": [finding.rule_id for finding in failed],
                         "blocking": [finding.rule_id for finding in blocking],
+                        "free_mode": free_mode,
+                        "disabled_rules": sorted(skipped),
                     },
                 )
             ),
@@ -422,7 +430,12 @@ class Pipeline:
             frozenset(spec.name for spec in schema.critical_fields),
         )
         run = run.evolve(confidence=confidence)
-        outcome = decide(run, schema, self.settings.auto_post_min_confidence)
+        outcome = decide(
+            run,
+            schema,
+            self.settings.auto_post_min_confidence,
+            rules_evaluated=not self.settings.rules_free_mode,
+        )
         status = {"auto_post": "ok", "needs_review": "warning", "rejected": "error"}[outcome.decision]
         return run.evolve(decision=outcome.decision, decision_reasons=outcome.reasons).with_step(
             TraceStep(

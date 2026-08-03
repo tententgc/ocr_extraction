@@ -201,3 +201,55 @@ class TestPipelineEndToEnd:
         for field in populated:
             if field.source in {"llm", "rule"}:
                 assert field.evidence, f"{field.name} was extracted without evidence"
+
+
+class TestFreeModeEndToEnd:
+    """RULES_FREE_MODE=true: extract and post, check nothing."""
+
+    @pytest.fixture
+    def free_pipeline(self, settings, master):
+        return Pipeline(
+            settings.model_copy(
+                update={"rules_free_mode": True, "auto_post_min_confidence": 0.55}
+            )
+        )
+
+    def test_a_document_that_normally_blocks_now_posts(self, free_pipeline, sample_pdf):
+        """The duplicate is the clean case: it reads perfectly, so the rule was
+        the only thing standing between it and the ledger. Compare with
+        `test_second_copy_of_an_invoice_is_caught_as_a_duplicate` above."""
+        assert free_pipeline.process_file(sample_pdf("inv-clean-classic")).run.decision == "auto_post"
+
+        second = free_pipeline.process_file(sample_pdf("inv-duplicate")).run
+        assert second.blocking_findings == ()
+        assert second.decision == "auto_post"
+        assert second.record_id is not None
+
+    def test_the_record_says_it_was_not_validated(self, free_pipeline, sample_pdf):
+        """Silence here would be the dangerous outcome, not the blocked document."""
+        run = free_pipeline.process_file(sample_pdf("inv-clean-classic")).run
+        assert [finding.rule_id for finding in run.findings] == ["business_rules_disabled"]
+        assert "disabled" in run.decision_reasons[0]
+
+    def test_a_badly_read_document_is_still_held_back(self, free_pipeline, sample_pdf):
+        """Free mode drops the business checks, not the reading checks. Routing
+        still requires the required fields to be present and grounded, so an
+        unreadable document does not post just because nothing was validated."""
+        run = free_pipeline.process_file(sample_pdf("inv-unknown-vendor")).run
+        assert run.decision == "needs_review"
+        assert run.record_id is None
+
+    def test_arithmetic_errors_ride_through(self, free_pipeline, sample_pdf):
+        """The cost of the mode, stated as a test so nobody discovers it live."""
+        run = free_pipeline.process_file(sample_pdf("inv-bad-math")).run
+        assert run.blocking_findings == ()
+
+    def test_disabling_one_rule_leaves_the_others_working(self, settings, master, sample_pdf):
+        selective = Pipeline(
+            settings.model_copy(
+                update={"disabled_rules": "vendor_known", "auto_post_min_confidence": 0.55}
+            )
+        )
+        run = selective.process_file(sample_pdf("inv-bad-math")).run
+        assert "vendor_known" not in {finding.rule_id for finding in run.findings}
+        assert "invoice_totals_consistent" in {f.rule_id for f in run.blocking_findings}

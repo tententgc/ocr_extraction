@@ -105,6 +105,23 @@ class Settings(BaseSettings):
     # Take the issuing party from the letterhead when no label names it.
     use_letterhead_heuristic: bool = True
 
+    # --- Rule execution ----------------------------------------------------
+    # Free mode runs extraction only: no rule is evaluated, nothing is checked
+    # against master data, and nothing can block. Meant for exploring arbitrary
+    # documents that were never going to match a master file - not for a run
+    # whose output anyone intends to trust.
+    rules_free_mode: bool = False
+    # Comma-separated rule ids to skip while leaving the rest in force, e.g.
+    # "vendor_known,po_exists". Ids are the ones shown in the UI and the API.
+    disabled_rules: str = ""
+
+    @property
+    def skipped_rules(self) -> frozenset[str]:
+        """Parsed `disabled_rules`."""
+        return frozenset(
+            part.strip() for part in str(self.disabled_rules).split(",") if part.strip()
+        )
+
     @property
     def vat_rates(self) -> tuple[float, ...]:
         """Parsed `expected_vat_rates`, e.g. "0,7" -> (0.0, 7.0)."""

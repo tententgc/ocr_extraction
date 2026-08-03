@@ -438,14 +438,21 @@ function renderLineItems(doc) {
 
 function renderFindings(findings = []) {
   if (!findings.length) return '<p class="muted">No rules were evaluated.</p>';
-  const failed = findings.filter((f) => !f.passed);
-  const passed = findings.filter((f) => f.passed);
+  // Free mode passes by definition, so it would hide inside the collapsed
+  // "checks passed" list - exactly where nobody looks. It is a mode, not a
+  // result, so it is pulled out and shown as a standing warning instead.
+  const freeMode = findings.find((f) => f.rule_id === 'business_rules_disabled');
+  const rest = findings.filter((f) => f !== freeMode);
+  const failed = rest.filter((f) => !f.passed);
+  const passed = rest.filter((f) => f.passed);
   const render = (finding) => `
     <div class="finding ${finding.passed ? 'passed' : finding.severity}">
       <span>${finding.passed ? '✓' : finding.severity === 'blocking' ? '✕' : '⚠'}</span>
       <div>${esc(finding.message)}<span class="rid">${esc(finding.rule_id)}</span></div>
     </div>`;
-  return `${failed.map(render).join('')}
+  return `${freeMode ? `<div class="finding warning"><span>⚠</span>
+      <div>${esc(freeMode.message)}<span class="rid">${esc(freeMode.rule_id)}</span></div></div>` : ''}
+    ${failed.map(render).join('')}
     ${passed.length ? `<details style="margin-top:8px"><summary class="muted" style="cursor:pointer;font-size:12.5px">
       ${passed.length} check${passed.length === 1 ? '' : 's'} passed</summary>
       <div style="margin-top:8px">${passed.map(render).join('')}</div></details>` : ''}`;

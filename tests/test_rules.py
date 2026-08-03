@@ -10,7 +10,7 @@ import pytest
 from docuflow.masterdata.repository import MasterDataRepository
 from docuflow.models import RuleFinding
 from docuflow.routing import decide
-from docuflow.rules import RuleContext, run_rules
+from docuflow.rules import FREE_MODE_RULE_ID, RuleContext, run_rules
 from docuflow.schemas.registry import get_schema
 
 GOOD_INVOICE = {
@@ -359,3 +359,57 @@ class TestPolicyIsConfigurable:
 
         relaxed = replace(base, unknown_vendor_blocks=frozenset())
         assert result_for(run_rules(relaxed), "vendor_known").severity == "warning"
+
+
+class TestFreeMode:
+    """Extraction-only mode: nothing is checked, and that has to be visible."""
+
+    UNKNOWN = {**GOOD_INVOICE, "vendor_name": "Nobody Ltd.", "vendor_tax_id": None}
+
+    def test_no_rule_is_evaluated(self, master, make_run):
+        findings = run_rules(build_context(master, GOOD_INVOICE, make_run=make_run), free_mode=True)
+        assert [finding.rule_id for finding in findings] == [FREE_MODE_RULE_ID]
+
+    def test_nothing_can_block(self, master, make_run):
+        context = build_context(master, self.UNKNOWN, make_run=make_run)
+        assert result_for(run_rules(context), "vendor_known").severity == "blocking"
+
+        findings = run_rules(context, free_mode=True)
+        assert not [finding for finding in findings if finding.severity == "blocking"]
+
+    def test_the_notice_does_not_cost_confidence(self, master, make_run):
+        """It reports a fact about the run, so it must not read as a failure."""
+        finding = run_rules(build_context(master, GOOD_INVOICE, make_run=make_run), free_mode=True)[0]
+        assert finding.passed is True
+        assert "not checked" in finding.message
+
+    def test_routing_says_the_rules_were_skipped(self, master, make_run):
+        run = make_run(GOOD_INVOICE).evolve(confidence=0.95)
+        outcome = decide(run, get_schema("invoice"), 0.90, rules_evaluated=False)
+        assert outcome.decision == "auto_post"
+        assert "disabled" in outcome.reasons[0]
+
+
+class TestDisabledRules:
+    """The selective knob: silence one check, keep the others working."""
+
+    UNKNOWN = {**GOOD_INVOICE, "vendor_name": "Nobody Ltd.", "vendor_tax_id": None}
+
+    def test_skip_by_rule_id(self, master, make_run):
+        context = build_context(master, self.UNKNOWN, make_run=make_run)
+        findings = run_rules(context, skip={"vendor_known"})
+        assert result_for(findings, "vendor_known") is None
+        assert result_for(findings, "invoice_totals_consistent").passed is True
+
+    def test_skip_by_function_name_when_the_id_differs(self, master, make_run):
+        """`po_exists_and_matches` reports as `po_exists`; both should work."""
+        fields = {**GOOD_INVOICE, "purchase_order_ref": "PO-NOT-REAL"}
+        context = build_context(master, fields, make_run=make_run)
+
+        assert result_for(run_rules(context), "po_exists").passed is False
+        assert result_for(run_rules(context, skip={"po_exists"}), "po_exists") is None
+        assert result_for(run_rules(context, skip={"po_exists_and_matches"}), "po_exists") is None
+
+    def test_unknown_names_are_harmless(self, master, make_run):
+        context = build_context(master, GOOD_INVOICE, make_run=make_run)
+        assert run_rules(context, skip={"no_such_rule"}) == run_rules(context)
