@@ -60,11 +60,31 @@ def _date_fields(context: RuleContext) -> list[tuple[str, str]]:
     ]
 
 
-@rule("*")
+# Past this far ahead a date is not a document that arrived early, it is a
+# misread year. Roughly a quarter: an invoice dated next week is a clerical
+# oddity worth a glance, one dated in two years cannot be a real issue date.
+IMPOSSIBLE_FUTURE_DAYS = 120
+
+
+@rule("*", severity="blocking")
 def dates_not_in_future(context: RuleContext) -> RuleFinding | None:
-    """Issue dates in the future usually mean a misread year."""
+    """Issue dates in the future usually mean a misread year.
+
+    Graded rather than flat, and the grading is what makes the rule useful. A
+    date a few days ahead is a clock, a timezone or a supplier billing in
+    advance - worth mentioning, not worth stopping. A date two years ahead is
+    not a date at all: it is a digit that was misread, and the rest of the page
+    was read by the same engine under the same conditions.
+
+    Found by an actual silent error. A faded photocopy read `2026-07-17` as
+    `2028-07-17` and `PRF-SG-20416` as `PRF.SG20496`, and posted automatically
+    at 85% confidence with both values wrong. This rule was the only one that
+    fired and it fired as a warning, so nothing stopped. Grounding could not
+    help: it confirms a quote exists in the OCR text, and the OCR text was what
+    was wrong.
+    """
     issue_fields = {"invoice_date", "receipt_date", "po_date", "submitted_date", "document_date"}
-    offenders: list[tuple[str, str]] = []
+    offenders: list[tuple[str, str, int]] = []
     for name, value in _date_fields(context):
         if name not in issue_fields:
             continue
@@ -72,15 +92,29 @@ def dates_not_in_future(context: RuleContext) -> RuleFinding | None:
             parsed = date.fromisoformat(value)
         except (TypeError, ValueError):
             continue
-        if (parsed - context.today).days > context.future_date_tolerance_days:
-            offenders.append((name, value))
+        ahead = (parsed - context.today).days
+        if ahead > context.future_date_tolerance_days:
+            offenders.append((name, value, ahead))
 
     if not offenders:
         return passed("dates_not_in_future", "Document dates are not in the future.")
-    detail = ", ".join(f"{name}={value}" for name, value in offenders)
+
+    worst = max(ahead for _, _, ahead in offenders)
+    detail = ", ".join(f"{name}={value}" for name, value, _ in offenders)
+    if worst > IMPOSSIBLE_FUTURE_DAYS:
+        return failed(
+            "dates_not_in_future",
+            f"Date is {worst // 30} months in the future ({detail}). That is not a document "
+            f"issued early, it is a misread year - and the rest of this page was read by the "
+            f"same engine.",
+            severity="blocking",
+            fields=[name for name, _, _ in offenders],
+            days_ahead=worst,
+        )
     return failed(
         "dates_not_in_future",
-        f"Date is in the future ({detail}); the year may have been mis-read.",
+        f"Date is {worst} day(s) in the future ({detail}); the year may have been mis-read.",
         severity="warning",
-        fields=[name for name, _ in offenders],
+        fields=[name for name, _, _ in offenders],
+        days_ahead=worst,
     )

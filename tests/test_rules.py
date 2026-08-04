@@ -187,11 +187,32 @@ class TestGenericRules:
         assert finding.passed is False
         assert finding.severity == "blocking"
 
-    def test_future_dated_invoice_warns(self, master, make_run):
-        fields = {**GOOD_INVOICE, "invoice_date": "2027-01-01"}
-        finding = result_for(run_rules(build_context(master, fields, make_run=make_run)), "dates_not_in_future")
+    def test_a_slightly_future_date_warns(self, master, make_run):
+        """Days ahead is a clock, a timezone, or a supplier billing early."""
+        fields = {**GOOD_INVOICE, "invoice_date": "2026-08-20"}   # today is 2026-08-03
+        finding = result_for(run_rules(build_context(master, fields, make_run=make_run)),
+                             "dates_not_in_future")
         assert finding.passed is False
         assert finding.severity == "warning"
+
+    def test_a_date_years_ahead_blocks(self, master, make_run):
+        """Found by an actual silent error, which is why this is graded now.
+
+        A faded photocopy read 2026 as 2028 and its invoice number as
+        `PRF.SG20496` where the page said `PRF-SG-20416`. Both values were
+        grounded - grounding proves a quote is in the OCR text, and the OCR text
+        was what was wrong - and the document posted automatically at 85%.
+
+        This rule was the only one that fired, and as a warning it stopped
+        nothing. A date two years out is not a document issued early; it is a
+        digit misread by the same engine that read the rest of the page.
+        """
+        fields = {**GOOD_INVOICE, "invoice_date": "2028-07-17"}
+        finding = result_for(run_rules(build_context(master, fields, make_run=make_run)),
+                             "dates_not_in_future")
+        assert finding.passed is False
+        assert finding.severity == "blocking"
+        assert "misread year" in finding.message
 
 
 class TestContractRules:

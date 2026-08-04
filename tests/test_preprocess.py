@@ -305,6 +305,43 @@ class TestNeverMakingItWorse:
         assert report.pages[0].notes and "could not be prepared" in report.pages[0].notes[0]
 
 
+class TestReportingHowLegibleThePageWas:
+    """Separate from what was corrected, and the difference carries weight.
+
+    A page straightened by a degree and a half was perfectly readable to begin
+    with. A page whose ink had to be rescued from the paper was not, and the OCR
+    engine's own quality score cannot tell you that - it scores the text that
+    came back, and text that came back confidently wrong scores as well as text
+    that came back right.
+    """
+
+    def test_a_faded_page_is_reported_as_barely_legible(self):
+        _, prep = prepare_image(faded(page()))
+        from docuflow.ocr.preprocess import PrepReport
+
+        assert PrepReport(pages=(prep,)).rescued_pages
+
+    def test_a_soft_page_is_too(self):
+        _, prep = prepare_image(blurred(page()))
+        from docuflow.ocr.preprocess import PrepReport
+
+        assert PrepReport(pages=(prep,)).rescued_pages
+
+    def test_a_merely_crooked_page_is_not(self):
+        """Straightening says nothing about whether the characters were clear."""
+        _, prep = prepare_image(tilted(page(), 6.0))
+        from docuflow.ocr.preprocess import PrepReport
+
+        assert prep.actions, "it was corrected"
+        assert PrepReport(pages=(prep,)).rescued_pages == (), "but it was always legible"
+
+    def test_a_clean_page_is_not_either(self):
+        _, prep = prepare_image(page())
+        from docuflow.ocr.preprocess import PrepReport
+
+        assert PrepReport(pages=(prep,)).rescued_pages == ()
+
+
 class TestTheReport:
     def test_it_says_what_it_did_to_how_many_pages(self):
         clean = PageQuality(skew_degrees=0.0, sharpness=1.0, contrast=1.0)

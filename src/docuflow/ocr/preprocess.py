@@ -182,6 +182,23 @@ class PrepReport:
         return tuple(page for page in self.pages if page.changed)
 
     @property
+    def rescued_pages(self) -> tuple[PagePrep, ...]:
+        """Pages that arrived below a floor, whether or not the fix worked.
+
+        Distinct from `changed_pages`, and the distinction carries weight
+        downstream. Straightening a page tilted by a degree and a half says
+        nothing about how legible it was. Having to rescue its ink from the
+        paper, or sharpen glyphs that had smeared together, says the characters
+        were marginal - and characters that were marginal to measure were
+        marginal to read, whatever the OCR engine reports about itself
+        afterwards.
+        """
+        return tuple(
+            page for page in self.pages
+            if page.before.is_flat or page.before.is_blurred
+        )
+
+    @property
     def actions(self) -> tuple[str, ...]:
         """Every distinct correction applied, in a stable order."""
         seen: dict[str, None] = {}

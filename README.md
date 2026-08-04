@@ -71,9 +71,12 @@ a wrong number wearing a suggestion's confidence is worse than no suggestion.
 
 Nothing to install: [`notebooks/docuflow_walkthrough.ipynb`](notebooks/docuflow_walkthrough.ipynb)
 runs the whole pipeline in Colab against Typhoon Cloud and Claude, one stage at a
-time, printing what each one produced — the page image, the OCR markdown, both
-independent readings, which fields they agreed on, what the rules made of it, and
-why it was posted or held. It needs two API keys and no GPU.
+time, printing what each one produced — the page as it arrived and as
+preprocessing handed it on, the OCR markdown, both independent readings, which
+fields they agreed on, what the rules made of it, which value the arithmetic
+blames when something fails, and why it was posted or held. It needs two API keys
+and no GPU. It defaults to a phone photograph rather than a clean PDF, because a
+clean PDF asks nothing of the system.
 
 To run it locally instead:
 
@@ -102,8 +105,17 @@ Then start the platform:
 .venv/bin/docuflow serve
 ```
 
-Open **http://127.0.0.1:8000**. The database, master data and a corpus of ten
-demo documents are created on first run.
+Open **http://127.0.0.1:8000**. The database, master data and the demo corpus are
+created on first run.
+
+To work against the committed corpus and its master data instead:
+
+```bash
+.venv/bin/docuflow reset --confirm
+.venv/bin/docuflow master load real_samples/master
+.venv/bin/docuflow rules load real_samples/rules.json
+.venv/bin/docuflow process real_samples/3_invoice_photo_on_a_desk.jpg
+```
 
 ---
 

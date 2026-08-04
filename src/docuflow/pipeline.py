@@ -144,8 +144,8 @@ class Pipeline:
                 run, get_schema("unknown"), VendorMatch(None, 0.0, "not evaluated"), None, Reconciliation()
             )
 
-        run, images = self._stage_preprocess(run, images, progress)
-        run = self._stage_ocr(run, images, progress)
+        run, images, rescued = self._stage_preprocess(run, images, progress)
+        run = self._stage_ocr(run, images, progress, rescued=rescued)
         ocr_report = score_document_text([page.text for page in run.ocr.pages])
         pages = [(page.page_number, page.text) for page in run.ocr.pages]
 
@@ -204,7 +204,7 @@ class Pipeline:
 
     def _stage_preprocess(
         self, run: DocumentRun, images: list, progress: ProgressCallback
-    ) -> tuple[DocumentRun, list]:
+    ) -> tuple[DocumentRun, list, bool]:
         """Straighten and clean the pages the model is about to read.
 
         `run.page_images` deliberately keeps pointing at the *rendered* pages, not
@@ -214,29 +214,62 @@ class Pipeline:
         against it quietly removes the thing they were meant to be checking.
         """
         if not images:
-            return run, images
+            return run, images, False
         progress("preprocess", "Straightening and cleaning the pages")
         prepared, report = prepare_pages(images, enabled=self.settings.ocr_preprocess)
         if not report.enabled:
-            return run, images
+            return run, images, False
 
         corrected = report.changed_pages
+        rescued = report.rescued_pages
+        summary = report.summary
+        if rescued:
+            summary += (
+                f"; {len(rescued)} page(s) arrived barely legible, so what was read "
+                f"from them is treated as degraded"
+            )
+
         return (
             run.with_step(
                 TraceStep(
                     step="preprocess",
                     status="warning" if corrected else "ok",
-                    summary=report.summary,
+                    summary=summary,
                     duration_ms=report.duration_ms,
-                    detail=report.to_json(),
+                    detail={**report.to_json(), "rescued": len(rescued)},
                 )
             ),
             prepared,
+            bool(rescued),
         )
 
-    def _stage_ocr(self, run: DocumentRun, images: list, progress: ProgressCallback) -> DocumentRun:
+    def _stage_ocr(
+        self, run: DocumentRun, images: list, progress: ProgressCallback, rescued: bool = False
+    ) -> DocumentRun:
+        """Read the pages, and remember how legible they were to begin with.
+
+        `rescued` says the page arrived below a readability floor. It is carried
+        into `OcrResult.degraded` because the OCR engine's own quality score
+        cannot see it: the score reads the *text* that came back, and text that
+        came back confidently wrong scores as well as text that came back right.
+
+        A faded photocopy in the corpus scored 95% on quality, was read as
+        `PRF.SG20496` where the page said `PRF-SG-20416` and `2028` where it
+        said `2026`, and posted automatically. Both values were grounded -
+        grounding confirms a quote exists in the OCR text, and the OCR text was
+        what was wrong. The one signal available was that the page had needed
+        its ink rescued from the paper before anything could read it at all.
+        """
         progress("ocr", "Reading the document with Typhoon OCR 1.5")
         result: OcrResult = run_ocr(images, self.settings)
+        if rescued and not result.degraded:
+            result = result.evolve(
+                degraded=True,
+                notes=result.notes + (
+                    "the page arrived below the legibility floor and had to be recovered before "
+                    "it could be read; values from it are worth confirming against the image",
+                ),
+            )
         report = score_document_text([page.text for page in result.pages])
         status = "warning" if result.degraded else "ok"
         return run.evolve(ocr=result).with_step(
