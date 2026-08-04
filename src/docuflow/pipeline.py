@@ -474,11 +474,13 @@ class Pipeline:
             **RuleContext.policy_from(self.settings),
         )
         free_mode = self.settings.rules_free_mode
+        builtins_disabled = self.settings.builtin_rules_disabled
         skipped = self.settings.skipped_rules
         custom = self.custom_rules.active_for(run.doc_type)
         findings = run_rules(
             context,
             free_mode=free_mode,
+            builtins_disabled=builtins_disabled,
             skip=skipped,
             custom=custom,
             severity=self.settings.rule_severity_overrides,
@@ -489,6 +491,11 @@ class Pipeline:
         status = "error" if blocking else ("warning" if failed else "ok")
         if free_mode:
             summary = "Free mode: no business rule was evaluated"
+        elif builtins_disabled:
+            summary = (
+                f"Built-in rules off: {len(custom)} rule(s) written here were evaluated"
+                + (f", {len(failed)} failed" if failed else "")
+            )
         else:
             summary = (
                 f"{len(findings) - len(failed)}/{len(findings)} checks passed"
@@ -510,6 +517,7 @@ class Pipeline:
                         "failed": [finding.rule_id for finding in failed],
                         "blocking": [finding.rule_id for finding in blocking],
                         "free_mode": free_mode,
+                        "builtins_disabled": builtins_disabled,
                         "disabled_rules": sorted(skipped),
                         "custom_rules": [rule.rule_id for rule in custom],
                     },

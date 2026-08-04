@@ -44,6 +44,7 @@ class Policy:
     """Overrides on top of the configured settings. `None` means "unchanged"."""
 
     rules_free_mode: bool | None = None
+    builtin_rules_disabled: bool | None = None
     disabled_rules: tuple[str, ...] | None = None
     auto_post_min_confidence: float | None = None
     # rule_id -> severity. Lets a check stay on while no longer stopping a
@@ -53,6 +54,7 @@ class Policy:
     def to_json(self) -> dict[str, object]:
         return {
             "rules_free_mode": self.rules_free_mode,
+            "builtin_rules_disabled": self.builtin_rules_disabled,
             "disabled_rules": list(self.disabled_rules) if self.disabled_rules is not None else None,
             "auto_post_min_confidence": self.auto_post_min_confidence,
             "rule_severity": dict(self.rule_severity) if self.rule_severity is not None else None,
@@ -65,6 +67,7 @@ class Policy:
         disabled = payload.get("disabled_rules")
         return cls(
             rules_free_mode=payload.get("rules_free_mode"),
+            builtin_rules_disabled=payload.get("builtin_rules_disabled"),
             disabled_rules=tuple(disabled) if isinstance(disabled, list) else None,
             auto_post_min_confidence=payload.get("auto_post_min_confidence"),
             rule_severity=payload.get("rule_severity") or None,
@@ -122,6 +125,8 @@ class PolicyStore:
         updates: dict[str, object] = {}
         if policy.rules_free_mode is not None:
             updates["rules_free_mode"] = policy.rules_free_mode
+        if policy.builtin_rules_disabled is not None:
+            updates["builtin_rules_disabled"] = policy.builtin_rules_disabled
         if policy.disabled_rules is not None:
             updates["disabled_rules"] = ",".join(policy.disabled_rules)
         if policy.auto_post_min_confidence is not None:
@@ -141,6 +146,7 @@ class PolicyStore:
         policy = self.current()
         return {
             "rules_free_mode": effective.rules_free_mode,
+            "builtin_rules_disabled": effective.builtin_rules_disabled,
             "disabled_rules": sorted(effective.skipped_rules),
             "auto_post_min_confidence": effective.auto_post_min_confidence,
             "field_review_confidence": effective.field_review_confidence,
@@ -149,6 +155,7 @@ class PolicyStore:
                 name
                 for name, value in (
                     ("rules_free_mode", policy.rules_free_mode),
+                    ("builtin_rules_disabled", policy.builtin_rules_disabled),
                     ("disabled_rules", policy.disabled_rules),
                     ("auto_post_min_confidence", policy.auto_post_min_confidence),
                     ("rule_severity", policy.rule_severity or None),
@@ -157,6 +164,7 @@ class PolicyStore:
             ],
             "configured": {
                 "rules_free_mode": configured.rules_free_mode,
+                "builtin_rules_disabled": configured.builtin_rules_disabled,
                 "disabled_rules": sorted(configured.skipped_rules),
                 "auto_post_min_confidence": configured.auto_post_min_confidence,
             },
@@ -168,6 +176,7 @@ class PolicyStore:
         self,
         *,
         rules_free_mode: bool | None = None,
+        builtin_rules_disabled: bool | None = None,
         disabled_rules: list[str] | None = None,
         auto_post_min_confidence: float | None = None,
         rule_severity: dict[str, str] | None = None,
@@ -177,6 +186,9 @@ class PolicyStore:
 
         if rules_free_mode is not None:
             changes["rules_free_mode"] = bool(rules_free_mode)
+
+        if builtin_rules_disabled is not None:
+            changes["builtin_rules_disabled"] = bool(builtin_rules_disabled)
 
         if disabled_rules is not None:
             # Resolving each name both validates it and collapses aliases, so
@@ -228,8 +240,14 @@ def warnings_for(settings: Settings) -> list[str]:
             "Free mode is on: no business rule runs, so nothing is checked against "
             "master data, arithmetic or prior postings."
         )
+    if settings.builtin_rules_disabled and not settings.rules_free_mode:
+        notes.append(
+            "Built-in rules are switched off. Only the rules written here are "
+            "evaluated — nothing is checked against master data, arithmetic or "
+            "prior postings unless one of your own rules does it."
+        )
     disabled = settings.skipped_rules
-    if disabled and not settings.rules_free_mode:
+    if disabled and not (settings.rules_free_mode or settings.builtin_rules_disabled):
         notes.append(
             f"{len(disabled)} rule(s) switched off: {', '.join(sorted(disabled))}."
         )

@@ -97,6 +97,7 @@ def revalidate(settings: Settings, run: DocumentRun) -> Revalidated:
     findings = run_rules(
         context,
         free_mode=settings.rules_free_mode,
+        builtins_disabled=settings.builtin_rules_disabled,
         skip=settings.skipped_rules,
         custom=CustomRuleStore(settings.db_path).active_for(run.doc_type),
         severity=settings.rule_severity_overrides,

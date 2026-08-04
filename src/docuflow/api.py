@@ -217,6 +217,7 @@ class PolicyRequest(BaseModel):
     """Every field optional: the screen sends only what the user changed."""
 
     rules_free_mode: bool | None = None
+    builtin_rules_disabled: bool | None = None
     disabled_rules: list[str] | None = Field(
         default=None, description="Rule ids to switch off; replaces the current set"
     )
@@ -256,6 +257,7 @@ def update_settings(request: PolicyRequest) -> dict[str, Any]:
     try:
         active_policy().update(
             rules_free_mode=request.rules_free_mode,
+            builtin_rules_disabled=request.builtin_rules_disabled,
             disabled_rules=request.disabled_rules,
             auto_post_min_confidence=request.auto_post_min_confidence,
             rule_severity=request.rule_severity,

@@ -176,6 +176,12 @@ class Settings(BaseSettings):
             part.strip() for part in str(self.unknown_vendor_blocks).split(",") if part.strip()
         )
 
+    # Switch off the checks that ship with the system while keeping the ones
+    # written here. Our rules encode a generic finance policy; a company whose
+    # own policy differs should be able to keep their checks without also being
+    # told what we think about VAT rates.
+    builtin_rules_disabled: bool = False
+
     # --- Master data -------------------------------------------------------
     # The bundled demo register - five vendors, four purchase orders, two
     # contracts - so a fresh install has something for documents to match

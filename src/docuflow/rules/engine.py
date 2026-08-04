@@ -62,6 +62,13 @@ FREE_MODE_MESSAGE = (
     "against master data, business policy or prior postings."
 )
 
+# The same honesty one level down: the user's own rules ran, ours did not.
+BUILTINS_OFF_RULE_ID = "builtin_rules_disabled"
+BUILTINS_OFF_MESSAGE = (
+    "Built-in business rules are switched off. This document was checked only "
+    "against the rules written here, not against the standard finance policy."
+)
+
 
 def rule(
     *doc_types: str,
@@ -133,17 +140,27 @@ def run_rules(
     context: RuleContext,
     *,
     free_mode: bool = False,
+    builtins_disabled: bool = False,
     skip: Iterable[str] = (),
     custom: Iterable["CustomRule"] = (),
     severity: dict[str, str] | None = None,
 ) -> tuple[RuleFinding, ...]:
     """Execute every applicable rule, isolating failures.
 
-    `free_mode` evaluates nothing at all and reports that it did so. `skip`
-    silences individual rules by id (as shown in the UI) or by function name,
-    which is the safer knob: it turns off the checks that do not apply to the
-    documents at hand and leaves the rest doing their job. `custom` carries the
-    rules a user wrote, which run under the same isolation as the built-ins.
+    Three settings, from blunt to precise:
+
+    `free_mode` evaluates nothing at all and reports that it did so.
+
+    `builtins_disabled` switches off the twenty-six checks that ship with the
+    system while still running the ones this user wrote. Our rules encode a
+    generic finance policy; a company whose own policy is different should be
+    able to keep their checks without also being told what we think about VAT
+    rates. Unlike listing every rule id in `skip`, this keeps meaning the same
+    thing after a release adds a rule nobody has heard of yet.
+
+    `skip` silences individual rules by id (as shown in the UI) or by function
+    name, which is the safest knob: it turns off the checks that do not apply to
+    the documents at hand and leaves the rest doing their job.
 
     `severity` re-grades individual rules. It is the middle setting the screen
     was missing: a check that is right to run but should not stop a document can
@@ -162,7 +179,19 @@ def run_rules(
 
     skipped = frozenset(skip)
     findings: list[RuleFinding] = []
-    for info in rules_for(context.doc_type):
+    if builtins_disabled:
+        # Said out loud, on every document, for the same reason free mode is:
+        # a record that was not checked against the built-in policy must not
+        # look like one that was.
+        findings.append(
+            RuleFinding(
+                rule_id=BUILTINS_OFF_RULE_ID,
+                passed=True,
+                severity="info",
+                message=BUILTINS_OFF_MESSAGE,
+            )
+        )
+    for info in () if builtins_disabled else rules_for(context.doc_type):
         if any(info.matches(name) for name in skipped):
             continue
         try:

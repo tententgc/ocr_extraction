@@ -208,3 +208,95 @@ class TestRemovedPseudoRules:
         outcome = decide(run, get_schema("invoice"), 0.90)
         assert outcome.decision == "needs_review"
         assert any("Could not verify" in reason for reason in outcome.reasons)
+
+
+class TestBuiltinRulesDisabled:
+    """"All rules off" and "your rules only" are different requests.
+
+    Free mode evaluates nothing. This one switches off the twenty-six checks
+    that ship with the system while still running the ones the user compiled
+    from a prompt, for a company whose own policy is not ours.
+    """
+
+    def _context(self, settings, master, make_run, fields):
+        from datetime import date
+
+        from docuflow.rules import RuleContext
+        from docuflow.schemas.registry import get_schema
+
+        run = make_run(fields)
+        return RuleContext(
+            document_id=run.document_id,
+            doc_type="invoice",
+            schema=get_schema("invoice"),
+            fields=run.fields,
+            line_items=(),
+            master=master,
+            vendor_match=master.find_vendor(fields.get("vendor_name")),
+            ocr_text=run.ocr.full_text,
+            ocr_degraded=False,
+            today=date(2026, 8, 4),
+            **RuleContext.policy_from(settings),
+        )
+
+    @pytest.fixture
+    def custom_rule(self):
+        from docuflow.rules.custom import build_rule
+
+        return build_rule({
+            "rule_id": "total_must_be_small",
+            "message": "This invoice is over the limit set here.",
+            "doc_types": ["invoice"],
+            "severity": "blocking",
+            "assert": {"field": "total_amount", "op": "lte", "value": 1_000},
+        })
+
+    def test_built_in_rules_do_not_run(self, settings, master, make_run):
+        from docuflow.rules import run_rules
+
+        context = self._context(settings, master, make_run, {"vendor_name": "Nobody Ltd"})
+        findings = run_rules(context, builtins_disabled=True)
+
+        assert [f.rule_id for f in findings] == ["builtin_rules_disabled"]
+
+    def test_the_user_s_own_rules_still_run(self, settings, master, make_run, custom_rule):
+        from docuflow.rules import run_rules
+
+        context = self._context(
+            settings, master, make_run, {"vendor_name": "Nobody Ltd", "total_amount": 5_000.0}
+        )
+        findings = run_rules(context, builtins_disabled=True, custom=[custom_rule])
+
+        failed = [f for f in findings if not f.passed]
+        assert [f.rule_id for f in failed] == ["total_must_be_small"]
+        assert failed[0].severity == "blocking"
+
+    def test_it_says_out_loud_that_our_rules_did_not_run(self, settings, master, make_run):
+        """A record checked against nothing of ours must not look like one that was."""
+        from docuflow.rules import run_rules
+
+        context = self._context(settings, master, make_run, {"vendor_name": "Nobody Ltd"})
+        marker = next(f for f in run_rules(context, builtins_disabled=True)
+                      if f.rule_id == "builtin_rules_disabled")
+        assert marker.passed and marker.severity == "info"
+        assert "not against the standard finance policy" in marker.message
+
+    def test_free_mode_still_wins(self, settings, master, make_run, custom_rule):
+        """Free mode means nothing runs — including the user's own rules."""
+        from docuflow.rules import run_rules
+
+        context = self._context(
+            settings, master, make_run, {"vendor_name": "Nobody Ltd", "total_amount": 5_000.0}
+        )
+        findings = run_rules(context, free_mode=True, builtins_disabled=True, custom=[custom_rule])
+        assert [f.rule_id for f in findings] == ["business_rules_disabled"]
+
+    def test_the_setting_survives_a_restart(self, settings):
+        PolicyStore(settings).update(builtin_rules_disabled=True)
+        assert PolicyStore(settings).settings().builtin_rules_disabled is True
+
+    def test_the_screen_is_told_what_it_costs(self, settings):
+        store = PolicyStore(settings)
+        store.update(builtin_rules_disabled=True)
+        warnings = store.describe()["warnings"]
+        assert any("Only the rules written here" in text for text in warnings)

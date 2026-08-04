@@ -1416,6 +1416,12 @@ function describePending() {
   if (draft.rules_free_mode !== undefined && draft.rules_free_mode !== stored.rules_free_mode) {
     changes.push(draft.rules_free_mode ? 'free mode on — no rule will run' : 'free mode off');
   }
+  if (draft.builtin_rules_disabled !== undefined
+      && draft.builtin_rules_disabled !== stored.builtin_rules_disabled) {
+    changes.push(draft.builtin_rules_disabled
+      ? 'built-in rules off — only your own rules will run'
+      : 'built-in rules back on');
+  }
   if (draft.disabled_rules) {
     const before = new Set(state.settings.rules.filter((rule) => !rule.enabled).map((rule) => rule.rule_id));
     const after = new Set(draft.disabled_rules);
@@ -1487,6 +1493,10 @@ function renderSettings() {
     `Fields below ${pct(policy.field_review_confidence)} are flagged for review individually.`;
 
   $('#free-mode-toggle').checked = policy.rules_free_mode;
+  $('#builtin-off-toggle').checked = policy.builtin_rules_disabled;
+  // Free mode already covers this one; leaving it live would invite someone to
+  // toggle a setting that changes nothing.
+  $('#builtin-off-toggle').disabled = policy.rules_free_mode;
   // `overridden` describes what is stored, so it is read from the saved policy
   // rather than the draft: a change nobody has saved has not overridden anything.
   const overridden = state.settings.policy.overridden || [];
@@ -1518,7 +1528,7 @@ function renderRuleList() {
 
   // Free mode already turns everything off; leaving the boxes live would invite
   // someone to toggle a rule that cannot run either way.
-  const frozen = policy.rules_free_mode;
+  const frozen = policy.rules_free_mode || policy.builtin_rules_disabled;
   $('#rule-list').innerHTML = visible.length
     ? visible.map((rule) => `
       <label class="rule-row ${rule.enabled && !frozen ? '' : 'off'}">
@@ -1551,6 +1561,9 @@ $('#threshold-slider').addEventListener('change', (event) => {
 });
 $('#free-mode-toggle').addEventListener('change', (event) => {
   stage({ rules_free_mode: event.target.checked });
+});
+$('#builtin-off-toggle').addEventListener('change', (event) => {
+  stage({ builtin_rules_disabled: event.target.checked });
 });
 $('#rule-search').addEventListener('input', renderRuleList);
 $('#rule-doc-filter').addEventListener('change', renderRuleList);
