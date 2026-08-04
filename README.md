@@ -503,13 +503,20 @@ on-device, Typhoon Cloud reading it, GPT-5.1 reading it again:
 | **Silent error rate** | **0%** — nothing wrong reached the ledger |
 | Planted defects caught | **12/13** (92%) |
 | Document type accuracy | **18/18** (100%) |
-| Field accuracy (exact) | **193/216** (89.4%) |
-| Straight-through rate | 3/18 — the other 15 were held, each for a stated reason |
-| Time saved (modelled) | 112 of 135 manual minutes (83%) |
+| Field accuracy (exact) | **191/216** (88.4%) |
+| Straight-through rate | 4/18 — the other 14 were held, each for a stated reason |
+| Time saved (modelled) | 114 of 135 manual minutes (84%) |
 
-Seventeen per cent straight-through looks low until you read the corpus: thirteen
-of the eighteen documents have a defect planted in them on purpose, and the three
-that posted are the three that should have.
+Twenty-two per cent straight-through looks low until you read the corpus:
+thirteen of the eighteen documents have a defect planted in them on purpose, and
+the four that posted are four that should have.
+
+Read the confidence beside the decision, not instead of it. Six held documents
+sit at 94–95%: every one was read correctly and stopped by a closed purchase
+order, a changed bank account, a duplicate or a currency mismatch. The two at
+60–62% are the two the system genuinely could not read. Those need different
+things from a reviewer, and a single number that conflated them told them
+neither.
 
 The silent error rate is the number that matters. Field accuracy in the low
 nineties with a 0% silent error rate is deployable; 99% accuracy with silent
@@ -529,7 +536,7 @@ a system that validates nothing.
 .venv/bin/python -m pytest tests/ --cov=docuflow --cov-report=term-missing
 ```
 
-721 tests. The suite runs with no API key and no model download: it uses the PDF
+745 tests, 82% coverage. The suite runs with no API key and no model download: it uses the PDF
 text layer for OCR and the deterministic extractor for fields, so the full
 pipeline — ingest, render, preprocess, OCR, classify, extract, validate,
 diagnose, route, post, review — is exercised in about a minute.

@@ -76,43 +76,75 @@ and can only be detected once document 1 has posted.
 
 | Metric | Result |
 |---|---|
-| **Silent error rate** | **0%** — 0 of 3 auto-posted documents carried a wrong critical value |
+| **Silent error rate** | **0%** — 0 of 4 auto-posted documents carried a wrong critical value |
 | Planted defects caught | **12 / 13** (92%) |
 | Document type accuracy | **18 / 18** (100%) |
-| Field accuracy (exact) | **193 / 216** (89.4%) |
-| Straight-through rate | 3 / 18 (17%) — the other 15 were held, each for a stated reason |
-| Wall clock | 530s for 18 documents (29s each) |
-| Time saved (modelled) | 112 of 135 manual minutes (83%) |
+| Field accuracy (exact) | **191 / 216** (88.4%) |
+| Straight-through rate | 4 / 18 (22%) — the other 14 were held, each for a stated reason |
+| Wall clock | 523s for 18 documents (29s each) |
+| Time saved (modelled) | 114 of 135 manual minutes (84%) |
 
-Seventeen per cent straight-through looks low until you read the corpus: thirteen
-of the eighteen documents have a defect planted in them on purpose. The three
-that posted are the three that should have. A corpus built to be caught is not a
+Twenty-two per cent straight-through looks low until you read the corpus:
+thirteen of the eighteen documents have a defect planted in them on purpose. The
+four that posted are four that should have. A corpus built to be caught is not a
 corpus that measures throughput.
 
 ### Per document
 
 `S` marks a silent error — auto-posted with a wrong critical value.
 
-| # | Document | Arrives as | Decision | Conf. | Fields | S | Defect |
-|---|---|---|---|---|---|---|---|
-| 1 | `invoice_clean_matches_po` | PDF | **auto-post** | 95% | 14/14 | | — |
-| 2 | `invoice_total_transposed` | PDF | held | 45% | 14/14 | | 1/1 |
-| 3 | `invoice_photo_on_a_desk` | photo | held | 45% | 14/14 | | — |
-| 4 | `invoice_vat_miscalculated` | PDF | held | 32% | 12/14 | | 2/2 |
-| 5 | `invoice_bank_account_changed` | PDF | held | 38% | 13/13 | | 1/1 |
-| 6 | `invoice_unknown_vendor` | scan | held | 45% | 10/12 | | 1/1 |
-| 7 | `invoice_from_a_blocked_vendor` | PDF | held | 45% | 12/13 | | 1/1 |
-| 8 | `invoice_over_the_purchase_order` | PDF | held | 38% | 13/14 | | 1/1 |
-| 9 | `invoice_thai_buddhist_dates` | scan | **auto-post** | 93% | 13/13 | | — |
-| 10 | `invoice_no_po_above_threshold` | PDF | held | 45% | 10/13 | | see below |
-| 11 | `receipt_photographed` | photo | held | 80% | 7/9 | | — |
-| 12 | `contract_expiring_soon` | PDF | held | 76% | 8/8 | | 1/1 |
-| 13 | `contract_already_expired` | photocopy | held | 64% | 5/8 | | 1/1 |
-| 14 | `form_vendor_onboarding` | scan | **auto-post** | 89% | 7/7 | | — |
-| 15 | `invoice_duplicate_submission` | PDF | held | 45% | 14/14 | | 1/1 |
-| 16 | `invoice_line_items_do_not_sum` | photocopy | held | 38% | 7/13 | | 1/1 |
-| 17 | `invoice_currency_disagrees_with_po` | PDF | held | 38% | 12/13 | | 1/1 |
-| 18 | `invoice_unlabelled_amounts` | photo | held | 59% | 8/10 | | — |
+Read the confidence column against the decision column. That pairing is the
+useful one, and it only became useful once confidence stopped answering two
+questions at once: it now says *how well we read the page*, and the decision says
+*whether it may post*. A document at 95% that is held was read perfectly and
+stopped by a fact about the world. A document at 60% that is held is one we could
+not read. Those need different things from a reviewer, and a single number that
+conflated them told them neither.
+
+| # | Document | Arrives as | Decision | Conf. | Fields | S | Defect | Held by |
+|---|---|---|---|---|---|---|---|---|
+| 1 | `invoice_clean_matches_po` | PDF | **auto-post** | 95% | 14/14 | | — | — |
+| 2 | `invoice_total_transposed` | PDF | held | 76% | 14/14 | | 1/1 | the arithmetic |
+| 3 | `invoice_photo_on_a_desk` | photo | held | 95% | 14/14 | | — | the PO is closed |
+| 4 | `invoice_vat_miscalculated` | PDF | held | 75% | 11/14 | | 2/2 | VAT ≠ stated rate; vendor on hold |
+| 5 | `invoice_bank_account_changed` | PDF | held | 95% | 13/13 | | 1/1 | not the vendor's account |
+| 6 | `invoice_unknown_vendor` | scan | held | 83% | 10/12 | | 1/1 | vendor not registered |
+| 7 | `invoice_from_a_blocked_vendor` | PDF | held | 94% | 11/13 | | 1/1 | vendor blocked |
+| 8 | `invoice_over_the_purchase_order` | PDF | held | 95% | 13/14 | | 1/1 | 22% over the order |
+| 9 | `invoice_thai_buddhist_dates` | scan | **auto-post** | 84% | 13/13 | | — | — |
+| 10 | `invoice_no_po_above_threshold` | PDF | held | 88% | 10/13 | | see below | PO does not exist |
+| 11 | `receipt_photographed` | photo | **auto-post** | 88% | 7/9 | | — | — |
+| 12 | `contract_expiring_soon` | PDF | held | 82% | 8/8 | | 1/1 | expires in 56 days |
+| 13 | `contract_already_expired` | photocopy | held | 68% | 5/8 | | 1/1 | expired |
+| 14 | `form_vendor_onboarding` | scan | **auto-post** | 96% | 7/7 | | — | — |
+| 15 | `invoice_duplicate_submission` | PDF | held | 95% | 14/14 | | 1/1 | already posted |
+| 16 | `invoice_line_items_do_not_sum` | photocopy | held | 62% | 7/13 | | 1/1 | date misread; lines short |
+| 17 | `invoice_currency_disagrees_with_po` | PDF | held | 95% | 12/13 | | 1/1 | USD against an SGD order |
+| 18 | `invoice_unlabelled_amounts` | photo | held | 60% | 8/10 | | — | required fields missing |
+
+Six documents sit at 94–95% and are still held. Every one of them was read
+correctly and stopped by something that has nothing to do with reading: a closed
+purchase order, a changed bank account, a duplicate, a currency mismatch. The two
+at 60–62% are the two the system genuinely struggled to read — a faded photocopy
+and an invoice with no field labels at all — and both are held for that.
+
+### What posted, audited field by field
+
+The straight-through set is where a silent error would live, so it is worth
+listing in full rather than summarising:
+
+| Document | Wrong | Missing | Critical wrong |
+|---|---|---|---|
+| `1_invoice_clean_matches_po` | — | — | none |
+| `9_invoice_thai_buddhist_dates` | — | — | none |
+| `11_receipt_photographed` | `payment_method` | `tax_rate` | **none** |
+| `14_form_vendor_onboarding` | — | — | none |
+
+Three of the four are perfect. The fourth is a thermal receipt photographed on a
+desk: every amount, the merchant and the receipt number are right, and what it
+got wrong is how the fuel was paid for. That is a real cost of letting warnings
+pass — and the right trade, because the alternative was holding all four and
+having a person confirm three documents that had nothing wrong with them.
 
 ### The one defect not caught as expected
 
@@ -209,7 +241,42 @@ Two things should have stopped it and neither did:
   ink from its paper before anything could read it. A page arriving below the
   contrast or sharpness floor now marks the read as degraded.
 
-Document 16 now holds at 38%. Document 1 still posts at 95%.
+Document 16 now holds at 62% — the low score is the point, because that page
+really was hard to read. Document 1 still posts at 95%.
+
+### The warning tier that was a blocking tier
+
+Running this corpus also exposed something the accuracy numbers could not:
+fifteen of eighteen documents were being held, and several of them had nothing
+wrong.
+
+Confidence was answering two questions at once. It scored how well the values
+were read *and* absorbed every rule failure — a warning cut it by 8% each, so
+three advisory findings took a perfectly-read document from 95% to 72%, under an
+84% threshold, and sent it to someone with nothing to correct. A warning that
+holds documents is a blocking rule that has not admitted it, and it is how a
+human-in-the-loop system ends up with a human in every loop.
+
+Confidence now answers one question — did we read this correctly — and routing
+answers the other. A blocked vendor, a duplicate, an expired purchase order and
+an unusual VAT rate no longer move the score: they were all read perfectly. Only
+a failure saying a *character* was misread does, weighted by the rule's own
+severity — a fifth for a blocking one, a twentieth for a warning.
+
+The effect on this corpus:
+
+| | Before | After |
+|---|---|---|
+| Silent errors | 0 | **0** |
+| Defects caught | 12/13 | **12/13** |
+| Auto-posted | 3/18 | **4/18** |
+| Documents held at ≥94% confidence | 0 | 6 |
+| Time saved | 83% | **84%** |
+
+The last two rows are the interesting ones. Six documents now sit at 94–95% and
+are still held, which is the honest description of what they are: read
+correctly, stopped by a fact about the world. Before, they were reported at
+38–45%, which told the reviewer the reading was doubtful when it was not.
 
 ---
 
@@ -226,10 +293,9 @@ can find afterwards. So the model is stated rather than buried:
 | Reviewing one the system held, with the values and failing checks on screen | 1.5 |
 | Cleaning up one silently posted error | 45.0 |
 
-On this corpus: 135 minutes by hand, 22.5 minutes through here, **112.5 saved
-(83%)**. Scaled up, that is 16.7 working days per thousand documents by hand
-against 2.8. The eight minutes of machine time sit beside those numbers rather
-than inside them.
+On this corpus: 135 minutes by hand, 21 minutes through here, **114 saved (84%)**.
+Scaled up, that is 16.7 working days per thousand documents by hand against 2.6.
+The nine minutes of machine time sit beside those numbers rather than inside them.
 
 Three properties keep it honest.
 
