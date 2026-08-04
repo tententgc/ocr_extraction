@@ -9,21 +9,17 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import date
 from typing import Any
 
 from docuflow.config import Settings
-from docuflow.confidence import document_confidence
-from docuflow.masterdata.repository import MasterDataRepository
 from docuflow.models import DocumentRun, ExtractedField, TraceStep
 from docuflow.normalize.apply import normalize_field_value
+from docuflow.revalidate import revalidate
 from docuflow.routing import decide
-from docuflow.rules import RuleContext, run_rules
-from docuflow.store.custom_rules import CustomRuleStore
 from docuflow.schemas.registry import get_schema
 from docuflow.store.corrections import CorrectionStore
 from docuflow.store.documents import DocumentStore
-from docuflow.store.records import RecordPostingError, RecordStore, reference_field_for
+from docuflow.store.records import RecordPostingError, RecordStore
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +102,6 @@ def apply_review(
     documents = DocumentStore(settings.db_path)
     records = RecordStore(settings.db_path)
     corrections = CorrectionStore(settings.db_path)
-    master = MasterDataRepository(settings.db_path)
 
     run = documents.get(document_id)
     if run is None:
@@ -118,46 +113,11 @@ def apply_review(
     run, applied, rejected_edits, history = _apply_edits(run, edits or {}, schema)
 
     # --- re-validate with the corrected values ----------------------------
-    vendor_name = run.value("vendor_name") or run.value("merchant_name") or run.value("applicant_name")
-    tax_id = run.value("vendor_tax_id") or run.value("merchant_tax_id") or run.value("tax_id")
-    vendor_match = master.find_vendor(
-        str(vendor_name) if vendor_name else None, str(tax_id) if tax_id else None
-    )
-    reference = run.value(reference_field_for(run.doc_type))
-    duplicate = records.find_duplicate(
-        run.doc_type, str(reference) if reference else None, vendor_match.vendor_id, exclude_document_id=document_id
-    )
-
-    context = RuleContext(
-        document_id=document_id,
-        doc_type=run.doc_type,
-        schema=schema,
-        fields=run.fields,
-        line_items=run.line_items,
-        master=master,
-        vendor_match=vendor_match,
-        ocr_text=run.ocr.full_text,
-        ocr_degraded=run.ocr.degraded,
-        today=date.today(),
-        duplicate_of=duplicate,
-        **RuleContext.policy_from(settings),
-    )
-    findings = run_rules(
-        context,
-        free_mode=settings.rules_free_mode,
-        skip=settings.skipped_rules,
-        custom=CustomRuleStore(settings.db_path).active_for(run.doc_type),
-        severity=settings.rule_severity_overrides,
-    )
-    run = run.evolve(findings=findings)
-    run = run.evolve(
-        confidence=document_confidence(
-            run.fields,
-            findings,
-            frozenset(spec.name for spec in schema.required_fields),
-            frozenset(spec.name for spec in schema.critical_fields),
-        )
-    )
+    # The same code path a policy re-check uses, so a document corrected by a
+    # person and one re-judged by a policy change are never assessed by two
+    # subtly different rule runs.
+    revalidated = revalidate(settings, run)
+    run, vendor_match, findings = revalidated.run, revalidated.vendor_match, revalidated.run.findings
 
     for name, previous, value in history:
         corrections.record(

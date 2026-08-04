@@ -4,13 +4,18 @@ from __future__ import annotations
 
 from datetime import date
 from pathlib import Path
+from typing import Iterator
 
 import pytest
+from fastapi.testclient import TestClient
 
+import docuflow.api as api
 from docuflow.config import Settings
 from docuflow.db import init_db
 from docuflow.masterdata.repository import MasterDataRepository
 from docuflow.models import DocumentRun, ExtractedField, OcrPage, OcrResult, SourceInfo
+from docuflow.policy import PolicyStore
+from docuflow.runtime import SelectionStore
 from docuflow.samples.catalog import master_data_rows
 from docuflow.schemas.registry import get_schema
 
@@ -40,6 +45,32 @@ def settings(tmp_path: Path) -> Settings:
     config.ensure_directories()
     init_db(config.db_path)
     return config
+
+
+@pytest.fixture(autouse=True)
+def api_uses_the_test_database(settings: Settings, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Point every global in `docuflow.api` at this test's own database.
+
+    The API module builds `settings`, a `SelectionStore` and a `PolicyStore` at
+    import time from the developer's `.env`, and `active_settings()` composes the
+    first two. Patching only `api.settings` therefore leaves the *selection*
+    holding the real data directory, and any endpoint that reads
+    `active_settings()` - review, re-evaluation, deletion - writes to the
+    developer's own demo database.
+
+    That is not a hypothetical: a failing test run posted seven records to it
+    before this fixture existed. Autouse, so no future test has to remember.
+    """
+    monkeypatch.setattr(api, "settings", settings)
+    monkeypatch.setattr(api, "selection", SelectionStore(settings))
+    monkeypatch.setattr(api, "policy", PolicyStore(settings))
+
+
+@pytest.fixture
+def client(settings: Settings) -> Iterator[TestClient]:
+    """A test client wired to the test database, startup handlers included."""
+    with TestClient(api.app) as test_client:
+        yield test_client
 
 
 @pytest.fixture

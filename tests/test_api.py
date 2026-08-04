@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-from fastapi.testclient import TestClient
 
 from docuflow.ingest.fetch import FetchError, fetch_url
 from docuflow.ingest.store import sniff_suffix, store_bytes
@@ -176,14 +175,6 @@ class TestRecordStore:
 
 
 class TestApiEndpoints:
-    @pytest.fixture
-    def client(self, settings, monkeypatch):
-        import docuflow.api as api_module
-
-        monkeypatch.setattr(api_module, "settings", settings)
-        with TestClient(api_module.app) as test_client:
-            yield test_client
-
     def test_status_reports_providers_and_thresholds(self, client):
         payload = client.get("/api/status").json()
         assert {"ocr_providers", "llm_providers", "thresholds", "stats"} <= payload.keys()
@@ -222,14 +213,6 @@ class TestApiEndpoints:
 
 class TestRecordsByKind:
     """The ledger split by what each record actually is."""
-
-    @pytest.fixture
-    def client(self, settings, monkeypatch):
-        import docuflow.api as api_module
-
-        monkeypatch.setattr(api_module, "settings", settings)
-        with TestClient(api_module.app) as test_client:
-            yield test_client
 
     @pytest.fixture
     def posted_records(self, settings, master, make_run):

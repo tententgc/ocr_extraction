@@ -493,6 +493,7 @@ function renderFindings(findings = []) {
 function renderReviewActions(doc) {
   return `<div class="review-actions">
     <span class="grow muted" id="edit-summary">No changes yet.</span>
+    <button class="btn" id="btn-recheck" title="Apply the current rules and threshold to this document without reading it again">Re-check</button>
     <button class="btn" id="btn-save">Save corrections</button>
     <button class="btn danger" id="btn-reject">Reject</button>
     <button class="btn primary" id="btn-approve">Approve &amp; post</button>
@@ -553,6 +554,26 @@ function wireReview(doc, schema, host) {
   $('#btn-approve', host).addEventListener('click', () => submit('approve'));
   $('#btn-save', host).addEventListener('click', () => submit('save'));
   $('#btn-reject', host).addEventListener('click', () => submit('reject'));
+
+  /* Unsaved edits are not part of a re-check: this asks what the *current*
+     policy makes of the document as it stands, so a pending edit would quietly
+     change the answer. */
+  $('#btn-recheck', host).addEventListener('click', async () => {
+    if (Object.keys(state.edits).length
+        && !confirm('Re-check ignores unsaved edits. Save them first if they should count.')) return;
+    $$('.review-actions .btn', host).forEach((button) => (button.disabled = true));
+    try {
+      const result = await api(
+        `/api/documents/${encodeURIComponent(doc.document_id)}/reevaluate`, { method: 'POST' });
+      toast(result.message, result.changed ? 'success' : '');
+      await loadQueue();
+      await openDocument(doc.document_id);
+      loadStatus();
+    } catch (error) {
+      toast(error.message, 'error');
+      $$('.review-actions .btn', host).forEach((button) => (button.disabled = false));
+    }
+  });
 }
 
 /* ----------------------------------------------------------------- queue */
@@ -576,12 +597,63 @@ async function loadQueue() {
     <td>${pct(row.confidence)}</td>
     <td><span class="chip ${DECISION[row.decision]?.chip || ''}">${DECISION[row.decision]?.label || row.decision}</span></td>
     <td>${row.record_id ? esc(row.record_id) : '—'}</td>
-    <td><button class="btn small" data-open="${esc(row.document_id)}">Open</button></td>
+    <td class="row-actions">
+      <button class="btn small" data-open="${esc(row.document_id)}">Open</button>
+      ${row.record_id ? '' : `<button class="btn small danger" data-delete="${esc(row.document_id)}"
+        data-name="${esc(row.filename)}" title="Remove this document and its files">Delete</button>`}
+    </td>
   </tr>`).join('');
 
   $$('[data-open]').forEach((button) => button.addEventListener('click',
     () => openDocument(button.dataset.open)));
 }
+
+/* A posted document has no Delete button at all: the ledger refers to it, and
+   offering an action the server will refuse is worse than not offering it. */
+$('#queue-table').addEventListener('click', async (event) => {
+  const button = event.target.closest('button[data-delete]');
+  if (!button) return;
+  const { delete: documentId, name } = button.dataset;
+  if (!confirm(`Delete ${name}?\n\nThe document, its rendered pages and its stored file are removed. This cannot be undone.`)) return;
+
+  button.disabled = true;
+  try {
+    const result = await api(`/api/documents/${encodeURIComponent(documentId)}`, { method: 'DELETE' });
+    toast(result.message, 'success');
+    if (state.currentDoc?.document_id === documentId) $('#review-host').innerHTML = '';
+    await loadQueue();
+    loadStatus();
+  } catch (error) {
+    toast(error.message, 'error');
+    button.disabled = false;
+  }
+});
+
+/* Re-judging the queue after a policy change. No page is read again - only the
+   rules, the threshold and the master data are applied afresh. */
+$('#queue-recheck').addEventListener('click', async () => {
+  const scope = $('#queue-filter').value || 'needs_review';
+  if (!confirm(`Re-check every document with the decision "${scope.replace('_', ' ')}" against the policy in force now?\n\nDocuments that now clear every check will post themselves, exactly as they would have on upload.`)) return;
+
+  const button = $('#queue-recheck');
+  button.disabled = true;
+  button.textContent = 'Re-checking…';
+  try {
+    const result = await api('/api/documents/reevaluate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ decision: scope }),
+    });
+    toast(result.summary, result.changed ? 'success' : '');
+    await loadQueue();
+    loadStatus();
+  } catch (error) {
+    toast(error.message, 'error');
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Re-check under current policy';
+  }
+});
 
 async function openDocument(documentId) {
   try {

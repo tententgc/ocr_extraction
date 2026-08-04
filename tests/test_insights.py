@@ -9,7 +9,6 @@ matters - are what these tests pin down.
 from __future__ import annotations
 
 import pytest
-from fastapi.testclient import TestClient
 
 from docuflow.models import RuleFinding
 from docuflow.store.documents import DocumentStore
@@ -149,14 +148,6 @@ class TestFieldGaps:
 
 
 class TestInsightsEndpoint:
-    @pytest.fixture
-    def client(self, settings, monkeypatch):
-        import docuflow.api as api_module
-
-        monkeypatch.setattr(api_module, "settings", settings)
-        with TestClient(api_module.app) as test_client:
-            yield test_client
-
     def test_types_come_back_with_their_breakdowns(self, client, documents, make_run):
         documents.save(
             make_run({**GOOD_INVOICE, "purchase_order_ref": None}).evolve(

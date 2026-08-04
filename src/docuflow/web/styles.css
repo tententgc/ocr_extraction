@@ -180,6 +180,7 @@ main { max-width: 1240px; margin: 0 auto; padding: 22px 24px 80px; }
 .btn.danger { color: var(--danger); border-color: var(--danger); background: transparent; }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
 .btn.small { padding: 5px 10px; font-size: 12px; }
+.row-actions { display: flex; gap: 6px; justify-content: flex-end; white-space: nowrap; }
 
 /* ---------- progress ---------- */
 .progress-card { display: flex; align-items: center; gap: 14px; }

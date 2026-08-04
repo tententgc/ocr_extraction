@@ -36,6 +36,8 @@ from docuflow.rules.authoring import available_fields, compile_rule
 from docuflow.rules.custom import CustomRuleError, build_rule
 from docuflow.rules.preview import preview_rule
 from docuflow.store.custom_rules import CustomRuleStore
+from docuflow.deletion import DeletionError, delete_document
+from docuflow.revalidate import DEFAULT_SCOPE, RevalidationError, reevaluate, reevaluate_many
 from docuflow.review import ReviewError, apply_review
 from docuflow.samples.catalog import SAMPLE_DOCUMENTS
 from docuflow.schemas.registry import DOCUMENT_SCHEMAS
@@ -668,6 +670,43 @@ def review_document(document_id: str, request: ReviewRequest) -> dict[str, Any]:
         "rejected_edits": list(outcome.rejected_edits),
         "message": outcome.message,
     }
+
+
+class ReevaluateRequest(BaseModel):
+    """Which documents to re-judge. Defaults to the review queue."""
+
+    decision: str | None = Field(default=DEFAULT_SCOPE)
+    reviewer: str = "reviewer"
+
+
+@app.post("/api/documents/reevaluate")
+def reevaluate_documents(request: ReevaluateRequest) -> dict[str, Any]:
+    """Re-judge a whole set of documents under the policy in force right now.
+
+    This is what a policy change is for: the queue was filled by rules and a
+    threshold that may no longer be the ones in effect, and nothing about the
+    documents themselves needs re-reading to find out.
+    """
+    return reevaluate_many(
+        active_settings(), decision=request.decision, actor=request.reviewer
+    ).to_json()
+
+
+@app.post("/api/documents/{document_id}/reevaluate")
+def reevaluate_document(document_id: str, reviewer: str = Query(default="reviewer")) -> dict[str, Any]:
+    try:
+        return reevaluate(active_settings(), document_id, actor=reviewer).to_json()
+    except RevalidationError as exc:
+        return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+@app.delete("/api/documents/{document_id}")
+def delete_document_endpoint(document_id: str, reviewer: str = Query(default="reviewer")) -> dict[str, Any]:
+    """Remove a document, its files and its corrections. Posted ones are refused."""
+    try:
+        return delete_document(active_settings(), document_id, actor=reviewer).to_json()
+    except DeletionError as exc:
+        return JSONResponse(status_code=409, content={"detail": str(exc)})
 
 
 # ---------------------------------------------------------------------------
