@@ -236,6 +236,37 @@ Roughly twenty rules run against every document. The blocking ones:
 Warnings (VAT rate unusual, contract expiring, low-confidence fields, degraded
 OCR) inform the reviewer without blocking.
 
+### Rules you write yourself
+
+Describe a check in plain language and it is compiled once, in front of you, into
+one of two things.
+
+**A condition** — the default, and the right answer whenever it fits. `total_amount
+gt 100000`, `purchase_order_ref present`. Evaluated after that by plain code: free,
+repeatable, and it cannot be talked into a different answer by a document.
+
+**An agent** — for the checks a comparison cannot express, because they need a
+lookup and then a judgement about what came back. The rule carries a plan, written
+and approved when the rule is saved, and an agent works through it with tools
+(`lookup_purchase_order`, `check_arithmetic`, `read_document`, …) on each document
+the rule's guard admits.
+
+What keeps the second one from being "ask a model whether the invoice is fine":
+
+- the plan is fixed at authoring time, so every document is checked the same way;
+- the guard stays deterministic, so a model only ever sees the documents the rule
+  is about — and that is also the cost control;
+- a verdict it cannot reach **holds** the document. Unreachable model, unparseable
+  reply, a lookup that found nothing: all of them queue it for a person, and none
+  of them ever block, because a bad afternoon for a backend should not turn into a
+  refused invoice;
+- severity, id and message come from the stored rule. The reply contributes a
+  verdict and prose, and nothing else.
+
+The whole trace — the plan, which step found what, which tools were called — is on
+the finding, so a reviewer can see how the answer was reached rather than being
+handed a confident sentence.
+
 ---
 
 ## The demo corpus

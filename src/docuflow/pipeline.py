@@ -22,6 +22,7 @@ from docuflow.agents.llm_extractor import extract_with_llm
 from docuflow.agents.merge import merge_all
 from docuflow.agents.verify_extractor import verify_with_llm
 from docuflow.agents.reconciler import Reconciliation, reconcile
+from docuflow.agents.rule_agent import AgentRuleRunner
 from docuflow.agents.rule_extractor import (
     detect_currency_from_pages,
     extract_with_rules,
@@ -135,7 +136,7 @@ class Pipeline:
         run = self._stage_extract(run, schema, pages, ocr_report.score, llm, progress)
         run = self._stage_line_items(run, schema, pages, progress)
 
-        run, vendor_match, duplicate = self._stage_validate(run, schema, pages, progress)
+        run, vendor_match, duplicate = self._stage_validate(run, schema, pages, llm, progress)
 
         run = self._stage_route(run, schema, progress)
         reconciliation = self._stage_reconcile(run, llm, progress)
@@ -440,7 +441,12 @@ class Pipeline:
         )
 
     def _stage_validate(
-        self, run: DocumentRun, schema: DocumentSchema, pages: list[tuple[int, str]], progress: ProgressCallback
+        self,
+        run: DocumentRun,
+        schema: DocumentSchema,
+        pages: list[tuple[int, str]],
+        llm: LlmProvider | None,
+        progress: ProgressCallback,
     ) -> tuple[DocumentRun, VendorMatch, dict[str, Any] | None]:
         progress("validate", "Cross-checking against business rules and master data")
         started = time.perf_counter()
@@ -477,6 +483,7 @@ class Pipeline:
         builtins_disabled = self.settings.builtin_rules_disabled
         skipped = self.settings.skipped_rules
         custom = self.custom_rules.active_for(run.doc_type)
+        agent_rules = [rule for rule in custom if rule.is_agent]
         findings = run_rules(
             context,
             free_mode=free_mode,
@@ -484,6 +491,11 @@ class Pipeline:
             skip=skipped,
             custom=custom,
             severity=self.settings.rule_severity_overrides,
+            # Built only when one of this user's rules actually needs a model;
+            # the toolbox inside it is per document, so it cannot be cached.
+            agent_runner=(
+                AgentRuleRunner(llm=llm, records=self.records) if agent_rules else None
+            ),
         )
 
         failed = [finding for finding in findings if not finding.passed]
@@ -520,6 +532,7 @@ class Pipeline:
                         "builtins_disabled": builtins_disabled,
                         "disabled_rules": sorted(skipped),
                         "custom_rules": [rule.rule_id for rule in custom],
+                        "agent_rules": [rule.rule_id for rule in agent_rules],
                     },
                 )
             ),

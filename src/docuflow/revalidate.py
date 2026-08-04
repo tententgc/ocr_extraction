@@ -27,6 +27,7 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
+from docuflow.agents.rule_agent import runner_for
 from docuflow.config import Settings
 from docuflow.confidence import document_confidence
 from docuflow.masterdata.repository import MasterDataRepository, VendorMatch
@@ -94,13 +95,16 @@ def revalidate(settings: Settings, run: DocumentRun) -> Revalidated:
         duplicate_of=duplicate,
         **RuleContext.policy_from(settings),
     )
+    custom = CustomRuleStore(settings.db_path).active_for(run.doc_type)
     findings = run_rules(
         context,
         free_mode=settings.rules_free_mode,
         builtins_disabled=settings.builtin_rules_disabled,
         skip=settings.skipped_rules,
-        custom=CustomRuleStore(settings.db_path).active_for(run.doc_type),
+        custom=custom,
         severity=settings.rule_severity_overrides,
+        # Resolved only when one of this user's rules actually needs a model.
+        agent_runner=runner_for(settings) if any(rule.is_agent for rule in custom) else None,
     )
     run = run.evolve(findings=findings)
     run = run.evolve(

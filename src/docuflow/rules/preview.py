@@ -26,6 +26,10 @@ from docuflow.store.records import RecordStore, reference_field_for
 
 MAX_DOCUMENTS = 40
 MAX_EXAMPLES = 6
+# An agent rule costs a model call per document, so its trial run is short. Four
+# is enough to catch a plan that fails everything or decides nothing, which is
+# what a preview is for.
+MAX_AGENT_DOCUMENTS = 4
 
 
 @dataclass(frozen=True)
@@ -38,13 +42,19 @@ class PreviewOutcome:
     not_applicable: int
     examples: tuple[dict[str, Any], ...]
     note: str = ""
+    # Held because the agent could not decide, which is neither a pass nor a
+    # failure of the document and must not be reported as either.
+    unsure: int = 0
+    agent: bool = False
 
     def to_json(self) -> dict[str, Any]:
         return {
             "considered": self.considered,
             "passed": self.passed,
             "failed": self.failed,
+            "unsure": self.unsure,
             "not_applicable": self.not_applicable,
+            "agent": self.agent,
             "examples": list(self.examples),
             "note": self.note or self._verdict(),
         }
@@ -53,20 +63,38 @@ class PreviewOutcome:
         """A plain reading of the numbers, including the suspicious ones."""
         if self.considered == 0:
             return "No documents of this type have been processed yet, so there is nothing to try it on."
-        evaluated = self.passed + self.failed
+        evaluated = self.passed + self.failed + self.unsure
         if evaluated == 0:
             return (
                 f"The rule did not apply to any of the {self.considered} document(s) checked - "
                 "its 'when' condition never matched."
             )
+        return self._reading(evaluated) + self._cap_note()
+
+    def _reading(self, evaluated: int) -> str:
+        if self.unsure == evaluated:
+            return (
+                f"The agent could not decide on any of the {evaluated} document(s) it looked at, "
+                "so all of them would be held for a person. Check the plan can be carried out "
+                "with the tools it was given."
+            )
+        undecided = f" {self.unsure} could not be decided." if self.unsure else ""
         if self.failed == 0:
-            return f"All {evaluated} document(s) it applied to would pass."
+            return f"All {self.passed} document(s) it applied to would pass.{undecided}"
         if self.passed == 0:
             return (
                 f"Every one of the {evaluated} document(s) it applied to would FAIL. "
-                "Worth checking the condition is the right way round."
+                f"Worth checking the condition is the right way round.{undecided}"
             )
-        return f"{self.failed} of {evaluated} document(s) it applied to would fail."
+        return f"{self.failed} of {evaluated} document(s) it applied to would fail.{undecided}"
+
+    def _cap_note(self) -> str:
+        if not self.agent or self.considered < MAX_AGENT_DOCUMENTS:
+            return ""
+        return (
+            f" (An agent rule costs a model call per document, so the trial stops at "
+            f"{MAX_AGENT_DOCUMENTS}.)"
+        )
 
 
 def _context_for(run: DocumentRun, settings: Settings) -> RuleContext:
@@ -102,7 +130,12 @@ def _context_for(run: DocumentRun, settings: Settings) -> RuleContext:
     )
 
 
-def preview_rule(rule: CustomRule, settings: Settings, limit: int = MAX_DOCUMENTS) -> PreviewOutcome:
+def preview_rule(
+    rule: CustomRule,
+    settings: Settings,
+    limit: int = MAX_DOCUMENTS,
+    runner: Any = None,
+) -> PreviewOutcome:
     """Replay `rule` over recent documents of the types it covers."""
     documents = DocumentStore(settings.db_path)
     # Listing gives summaries; the rule needs the extracted fields, so the runs
@@ -115,13 +148,15 @@ def preview_rule(rule: CustomRule, settings: Settings, limit: int = MAX_DOCUMENT
         for run in (documents.get(row["document_id"]) for row in summaries)
         if run is not None and run.fields
     ]
+    if rule.is_agent:
+        runs = runs[:MAX_AGENT_DOCUMENTS]
 
-    passed = failed = not_applicable = 0
+    passed = failed = unsure = not_applicable = 0
     examples: list[dict[str, Any]] = []
 
     for run in runs:
         try:
-            finding = run_custom_rule(rule, _context_for(run, settings))
+            finding = run_custom_rule(rule, _context_for(run, settings), runner)
         except Exception as exc:  # noqa: BLE001 - a draft rule is allowed to be wrong
             failed += 1
             examples.append(
@@ -140,17 +175,26 @@ def preview_rule(rule: CustomRule, settings: Settings, limit: int = MAX_DOCUMENT
 
         if finding.passed:
             passed += 1
+        elif finding.detail.get("verdict") == "unsure":
+            unsure += 1
         else:
             failed += 1
 
         if len(examples) < MAX_EXAMPLES:
+            verdict = finding.detail.get("verdict")
             examples.append(
                 {
                     "document_id": run.document_id,
                     "filename": run.source.filename,
                     "doc_type": run.doc_type,
-                    "outcome": "pass" if finding.passed else "fail",
+                    # An agent's "unsure" is a fail in the tally - the document is
+                    # held - but showing it as one would hide the difference
+                    # between a plan that finds problems and a plan that cannot
+                    # reach an answer, which is the thing a preview must reveal.
+                    "outcome": verdict or ("pass" if finding.passed else "fail"),
                     "observed": finding.detail.get("observed", {}),
+                    "reason": finding.detail.get("reason", ""),
+                    "tools_used": finding.detail.get("tools_used", []),
                 }
             )
 
@@ -158,6 +202,8 @@ def preview_rule(rule: CustomRule, settings: Settings, limit: int = MAX_DOCUMENT
         considered=len(runs),
         passed=passed,
         failed=failed,
+        unsure=unsure,
         not_applicable=not_applicable,
+        agent=rule.is_agent,
         examples=tuple(examples),
     )

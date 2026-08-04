@@ -278,17 +278,27 @@
 
     <div class="card">
       <h3>Write a rule</h3>
-      <p class="muted">Describe a check in your own words. The model turns it into a
-        condition <em>once</em>, here — you read it back and try it on documents already
-        processed before it is saved. After that it is evaluated by plain code, never by
-        a model, so it always answers to what you approved.</p>
+      <p class="muted">Describe a check in your own words. It is compiled <em>once</em>, here —
+        you read it back and try it on documents already processed before it is saved.
+        Most checks become a condition, evaluated after that by plain code and never by a
+        model. A check that needs a lookup and a judgement becomes an agent instead: it
+        keeps a model at validation time, but only to work through the plan you approved,
+        on the documents you scoped it to.</p>
       <form class="rule-form" id="rule-form">
         <textarea id="rule-prompt" rows="2" required
           placeholder="Invoices over 100,000 baht must quote a purchase order"></textarea>
         <div class="rule-form-row">
           <select id="rule-types" multiple size="4" title="Document types this applies to"></select>
+          <select id="rule-mode" title="How the check is carried out">
+            <option value="auto" selected>Pick for me</option>
+            <option value="expression">Condition — checked without a model</option>
+            <option value="agent">Agent — plans, looks things up, decides</option>
+          </select>
           <button class="btn primary" type="submit" id="rule-compile">Compile</button>
         </div>
+        <p class="muted" id="rule-mode-help">A condition compares fields and runs free on every
+          document. An agent works through a plan with tools — use it when the check needs a
+          lookup and a judgement about what comes back.</p>
       </form>
       <div id="rule-draft"></div>
     </div>

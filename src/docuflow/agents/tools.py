@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any, Callable, Iterable
 
 from docuflow.masterdata.repository import MasterDataRepository
 from docuflow.normalize.identifiers import thai_tax_id_checksum_ok
@@ -24,6 +24,22 @@ logger = logging.getLogger(__name__)
 MAX_SEARCH_HITS = 8
 SEARCH_CONTEXT_CHARS = 160
 THAI_TAX_ID_LENGTH = 13
+
+# One line per tool, for the screen where someone writes a rule and for the
+# authoring prompt. The toolbox itself is built per document, so this is the
+# only way to name the tools before a document exists; a test pins the two
+# lists together so a tool cannot be added here and forgotten there.
+TOOL_HELP: dict[str, str] = {
+    "read_document": "search the recognised page text for a word or number",
+    "lookup_vendor": "find a vendor in the master file by name or tax id",
+    "lookup_purchase_order": "fetch a purchase order: vendor, amount, currency, status",
+    "lookup_contract": "fetch a contract from the register: parties, dates, value",
+    "find_posted_records": "check whether a reference was already posted downstream",
+    "check_arithmetic": "recompute subtotal + tax and compare with the stated total",
+    "validate_tax_id": "run the Thai 13-digit tax id check-digit test",
+}
+
+TOOL_NAMES: frozenset[str] = frozenset(TOOL_HELP)
 
 
 @dataclass(frozen=True)
@@ -343,6 +359,19 @@ def build_toolbox(
             run=_validate_tax_id,
         ),
     ]
+
+
+def select_tools(tools: list[Tool], wanted: Iterable[str]) -> list[Tool]:
+    """Narrow a toolbox to the named tools; an empty selection means all of them.
+
+    A rule that only ever needs the purchase-order register should not be handed
+    the duplicate checker: fewer tools is a shorter prompt, a cheaper turn and
+    one less thing an agent can wander into.
+    """
+    names = frozenset(wanted)
+    if not names:
+        return tools
+    return [tool for tool in tools if tool.name in names]
 
 
 def to_schemas(tools: list[Tool]) -> list[dict[str, Any]]:

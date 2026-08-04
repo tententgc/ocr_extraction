@@ -608,6 +608,36 @@ function renderLineItems(doc) {
     </table></div></div>`;
 }
 
+const VERDICT = {
+  pass: { icon: '✓', label: 'satisfied' },
+  fail: { icon: '✕', label: 'not satisfied' },
+  unsure: { icon: '?', label: 'could not be decided' },
+};
+const STEP_MARK = { ok: '✓', problem: '✕', unknown: '?' };
+
+// An agent rule reached its answer somehow, and a reviewer who cannot see how
+// has no way to tell a good verdict from a confident one. The plan is what the
+// author approved; the steps and tools are what actually happened.
+function renderAgentWork(detail) {
+  if (!detail || detail.kind !== 'agent') return '';
+  const verdict = VERDICT[detail.verdict] || VERDICT.unsure;
+  const steps = detail.checked?.length
+    ? detail.checked
+    : (detail.plan || []).map((step) => ({ step, result: 'unknown' }));
+  return `<details class="agent-work">
+    <summary>${verdict.icon} agent · ${esc(verdict.label)}${detail.model ? ` · ${esc(detail.model)}` : ''}</summary>
+    <div class="agent-body">
+      <p class="asked">Asked to decide: ${esc(detail.instruction || '')}</p>
+      <ol>${steps.map((row) => `<li class="${esc(row.result || 'unknown')}">
+        <span>${STEP_MARK[row.result] || '·'}</span> ${esc(row.step)}</li>`).join('')}</ol>
+      ${detail.evidence?.length ? `<p class="lbl">What it saw</p>
+        <ul>${detail.evidence.map((item) => `<li>${esc(item)}</li>`).join('')}</ul>` : ''}
+      ${detail.tools_used?.length ? `<p class="lbl">Tools used</p>
+        <p>${detail.tools_used.map((name) => `<span class="chip">${esc(name)}</span>`).join(' ')}</p>` : ''}
+      ${detail.note ? `<p class="muted">${esc(detail.note)}</p>` : ''}
+    </div></details>`;
+}
+
 function renderFindings(findings = []) {
   if (!findings.length) return '<p class="muted">No rules were evaluated.</p>';
   // Free mode passes by definition, so it would hide inside the collapsed
@@ -620,7 +650,8 @@ function renderFindings(findings = []) {
   const render = (finding) => `
     <div class="finding ${finding.passed ? 'passed' : finding.severity}">
       <span>${finding.passed ? '✓' : finding.severity === 'blocking' ? '✕' : '⚠'}</span>
-      <div>${esc(finding.message)}<span class="rid">${esc(finding.rule_id)}</span></div>
+      <div>${esc(finding.message)}<span class="rid">${esc(finding.rule_id)}</span>
+        ${renderAgentWork(finding.detail)}</div>
     </div>`;
   return `${freeMode ? `<div class="finding warning"><span>⚠</span>
       <div>${esc(freeMode.message)}<span class="rid">${esc(freeMode.rule_id)}</span></div></div>` : ''}
@@ -1759,6 +1790,7 @@ function renderCustomRules() {
         <span class="grow">
           <b class="rid">${esc(rule.rule_id)}</b>
           <span class="chip ${rule.severity === 'blocking' ? 'bad' : 'warn'}">${esc(rule.severity)}</span>
+          ${rule.kind === 'agent' ? '<span class="chip agent">agent</span>' : ''}
           <span class="desc">${esc(rule.explanation)}</span>
           ${rule.prompt ? `<span class="said">you wrote: “${esc(rule.prompt)}”</span>` : ''}
           <span class="types">${rule.doc_types.map((t) => `<span class="chip">${esc(t.replace('_', ' '))}</span>`).join('')}</span>
@@ -1770,32 +1802,55 @@ function renderCustomRules() {
 
 const selectedDocTypes = () => [...$('#rule-types').selectedOptions].map((o) => o.value);
 
+// How the draft describes itself: an expression shows the condition it compiled
+// to, an agent shows the plan it will follow. Both are the thing to check before
+// saving, and neither is readable as the other.
+function renderDraftMachinery(rule) {
+  if (rule.kind !== 'agent') {
+    return `<details><summary class="muted" style="cursor:pointer;font-size:12.5px">Show the compiled condition</summary>
+      <pre>${esc(JSON.stringify({ when: rule.when, assert: rule['assert'] }, null, 2))}</pre></details>`;
+  }
+  return `<div class="agent-plan">
+    <p class="lbl">The agent will work through</p>
+    <ol>${(rule.plan || []).map((step) => `<li>${esc(step)}</li>`).join('')}</ol>
+    <p class="lbl">Using</p>
+    <p>${(rule.tools || []).length
+      ? rule.tools.map((name) => `<span class="chip">${esc(name)}</span>`).join(' ')
+      : '<span class="muted">every tool available</span>'}</p>
+    <p class="muted">It runs a model on each document this rule applies to. If it cannot
+      reach an answer the document is held for a person — never passed.</p>
+  </div>`;
+}
+
 function renderDraft(draft) {
   state.draft = draft;
   if (!draft) { $('#rule-draft').innerHTML = ''; return; }
 
   const { rule, preview } = draft;
-  const evaluated = preview.passed + preview.failed;
+  const unsure = preview.unsure || 0;
+  const evaluated = preview.passed + preview.failed + unsure;
   // A rule nothing passes, or nothing fails, is the shape of an inverted
-  // condition — worth showing loudly rather than burying in the counts.
-  const suspect = evaluated > 0 && (preview.passed === 0 || preview.failed === 0);
+  // condition — worth showing loudly rather than burying in the counts. For an
+  // agent, deciding nothing at all is the equivalent shape.
+  const suspect = evaluated > 0 && (preview.passed === 0 || preview.failed + unsure === 0);
 
   $('#rule-draft').innerHTML = `
     <div class="draft">
-      <h4>${esc(rule.title)} <span class="chip ${rule.severity === 'blocking' ? 'bad' : 'warn'}">${esc(rule.severity)}</span></h4>
+      <h4>${esc(rule.title)} <span class="chip ${rule.severity === 'blocking' ? 'bad' : 'warn'}">${esc(rule.severity)}</span>
+        ${rule.kind === 'agent' ? '<span class="chip agent">agent</span>' : ''}</h4>
       <div class="reads">${esc(rule.explanation)}</div>
       <p class="muted">Reviewers will see: “${esc(rule.message)}”</p>
       <div class="tally">
         <span>Tried on <b>${preview.considered}</b> document(s)</span>
         <span>would pass <b class="hi">${preview.passed}</b></span>
         <span>would fail <b class="lo">${preview.failed}</b></span>
+        ${unsure ? `<span>undecided <b class="lo">${unsure}</b></span>` : ''}
         <span>not applicable <b>${preview.not_applicable}</b></span>
       </div>
       <p class="${suspect ? '' : 'muted'}" style="font-size:13px">${suspect ? '⚠ ' : ''}${esc(preview.note)}</p>
       ${preview.examples.length ? `<pre>${esc(preview.examples.map((e) =>
-        `${e.outcome.toUpperCase().padEnd(5)} ${e.filename}  ${JSON.stringify(e.observed || {})}`).join('\n'))}</pre>` : ''}
-      <details><summary class="muted" style="cursor:pointer;font-size:12.5px">Show the compiled condition</summary>
-        <pre>${esc(JSON.stringify({ when: rule.when, assert: rule['assert'] }, null, 2))}</pre></details>
+        `${e.outcome.toUpperCase().padEnd(7)} ${e.filename}  ${e.reason || JSON.stringify(e.observed || {})}`).join('\n'))}</pre>` : ''}
+      ${renderDraftMachinery(rule)}
       <div class="actions">
         <button class="btn primary" id="draft-save">Save this rule</button>
         <button class="btn" id="draft-discard">Discard</button>
@@ -1838,7 +1893,11 @@ $('#rule-form').addEventListener('submit', async (event) => {
     const draft = await api('/api/rules/draft', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: $('#rule-prompt').value, doc_types: docTypes }),
+      body: JSON.stringify({
+        prompt: $('#rule-prompt').value,
+        doc_types: docTypes,
+        mode: $('#rule-mode').value,
+      }),
     });
     renderDraft(draft);
   } catch (error) {

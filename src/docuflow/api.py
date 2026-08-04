@@ -34,6 +34,7 @@ from docuflow.ocr.render import is_supported
 from docuflow.pipeline import Pipeline, PipelineResult
 from docuflow.policy import PolicyError, PolicyStore
 from docuflow.rules import describe_rules
+from docuflow.agents.rule_agent import runner_for
 from docuflow.rules.authoring import available_fields, compile_rule
 from docuflow.rules.custom import CustomRuleError, build_rule
 from docuflow.rules.preview import preview_rule
@@ -282,6 +283,11 @@ def reset_settings() -> dict[str, Any]:
 class RuleDraftRequest(BaseModel):
     prompt: str = Field(..., description="The check, in plain language")
     doc_types: list[str] = Field(default_factory=lambda: ["invoice"])
+    mode: str = Field(
+        default="auto",
+        description='"expression" for a deterministic condition, "agent" for a plan '
+        'run with tools, "auto" to use a condition wherever one fits',
+    )
 
 
 class RuleSaveRequest(BaseModel):
@@ -305,21 +311,32 @@ def list_custom_rules() -> dict[str, Any]:
 @app.get("/api/rules/fields")
 def rule_fields(doc_types: str = Query(default="invoice")) -> dict[str, Any]:
     """Variables a rule for these document types may reference."""
+    from docuflow.agents.tools import TOOL_HELP
+
     wanted = tuple(part.strip() for part in doc_types.split(",") if part.strip())
-    return {"doc_types": list(wanted), "fields": available_fields(wanted or ("invoice",))}
+    return {
+        "doc_types": list(wanted),
+        "fields": available_fields(wanted or ("invoice",)),
+        # What an agent rule can reach for, as opposed to what an expression can
+        # compare. The screen shows both so the difference is visible.
+        "tools": [{"name": name, "description": text} for name, text in TOOL_HELP.items()],
+    }
 
 
 @app.post("/api/rules/draft")
 def draft_rule(request: RuleDraftRequest) -> dict[str, Any]:
     """Compile a description into a rule. Nothing is saved until confirmed.
 
-    The model runs here and only here. What it returns is data, shown back to
-    the author in words before they accept it, and evaluated afterwards by the
-    expression interpreter rather than by a model.
+    For an expression rule the model runs here and only here: what it returns is
+    data, shown back to the author in words before they accept it, and evaluated
+    afterwards by the expression interpreter rather than by a model. An agent
+    rule keeps a model in the loop at validation time, but what it may do there -
+    the plan, the tools, the documents it sees - is fixed by what is approved
+    here.
     """
     current = active_settings()
     llm, note = resolve_llm(current)
-    result = compile_rule(request.prompt, tuple(request.doc_types), llm)
+    result = compile_rule(request.prompt, tuple(request.doc_types), llm, mode=request.mode)
     if not result.ok:
         raise HTTPException(status_code=422, detail=result.error or note or "Could not compile the rule.")
     return {
@@ -327,8 +344,13 @@ def draft_rule(request: RuleDraftRequest) -> dict[str, Any]:
         "explanation": result.rule.explanation,
         # Reading it back catches most mistakes; trying it on real documents
         # catches an inverted condition, which reads perfectly well.
-        "preview": preview_rule(result.rule, current).to_json(),
+        "preview": preview_rule(result.rule, current, runner=_agent_runner(result.rule, current, llm)).to_json(),
     }
+
+
+def _agent_runner(rule, current, llm=None):
+    """The runner a preview needs, or None when the rule does not use one."""
+    return runner_for(current, llm) if rule.is_agent else None
 
 
 @app.post("/api/rules/preview")
@@ -338,7 +360,11 @@ def preview_custom_rule(request: RuleSaveRequest) -> dict[str, Any]:
         rule = build_rule(request.rule, prompt=request.prompt)
     except CustomRuleError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return {"rule": rule.to_json(), "preview": preview_rule(rule, active_settings()).to_json()}
+    current = active_settings()
+    return {
+        "rule": rule.to_json(),
+        "preview": preview_rule(rule, current, runner=_agent_runner(rule, current)).to_json(),
+    }
 
 
 @app.post("/api/rules/custom")

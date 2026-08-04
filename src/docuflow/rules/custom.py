@@ -1,12 +1,21 @@
 """User-authored rules: the model, its variables, and how it is evaluated.
 
-A custom rule is data, not code. It names the document types it applies to, an
-optional `when` guard deciding whether it is relevant to the document in front
-of it, and an `assert_` condition that has to hold for the document to pass.
+A custom rule is data, not code. It names the document types it applies to and an
+optional `when` guard deciding whether it is relevant to the document in front of
+it. What it does with the documents that pass the guard depends on its kind:
+
+  * `expression` - an `assert_` condition that has to hold for the document to
+    pass, evaluated here, deterministically, with no model involved;
+  * `agent` - a plan an agent works through with tools before returning a
+    verdict, for the checks a comparison cannot express (see `rules.agentic`);
+  * neither - a guard on its own, which flags every document it matches for a
+    person to look at.
 
 `when` matters more than it looks. "Invoices over 50,000 need a PO" is not a
 check on every invoice - it is a check that applies *only* to invoices over
 50,000, and reporting a pass on a 900-baht invoice would bury the real result.
+For an agent rule it does more than that: it is the deterministic fence around
+how often a model runs at all.
 """
 
 from __future__ import annotations
@@ -16,6 +25,13 @@ from datetime import datetime, timezone
 from typing import Any
 
 from docuflow.models import RuleFinding, Severity
+from docuflow.rules.agentic import (
+    RULE_KINDS,
+    AgentRuleError,
+    agent_explanation,
+    clean_plan,
+    validate_agent_payload,
+)
 from docuflow.rules.context import RuleContext
 from docuflow.rules.expressions import ExpressionError, describe, evaluate, validate
 from docuflow.schemas.registry import DOCUMENT_SCHEMAS, get_schema
@@ -89,10 +105,23 @@ class CustomRule:
     prompt: str = ""
     created_at: str = ""
     fields: tuple[str, ...] = dataclass_field(default_factory=tuple)
+    # --- agent rules --------------------------------------------------------
+    kind: str = "expression"
+    instruction: str = ""
+    plan: tuple[str, ...] = dataclass_field(default_factory=tuple)
+    tools: tuple[str, ...] = dataclass_field(default_factory=tuple)
+
+    @property
+    def is_agent(self) -> bool:
+        return self.kind == "agent"
 
     @property
     def explanation(self) -> str:
         """The compiled logic in words, for the user to check before saving."""
+        if self.is_agent:
+            return agent_explanation(
+                self.instruction, self.plan, describe(self.when) if self.when else ""
+            )
         if self.assert_ is None:
             return f"Flag every document where {describe(self.when)}."
         condition = describe(self.assert_)
@@ -116,23 +145,36 @@ class CustomRule:
             "prompt": self.prompt,
             "created_at": self.created_at,
             "fields": list(self.fields),
+            "kind": self.kind,
+            "instruction": self.instruction,
+            "plan": list(self.plan),
+            "tools": list(self.tools),
             "explanation": self.explanation,
         }
 
     @classmethod
     def from_json(cls, payload: dict[str, Any]) -> "CustomRule":
+        # `assert` stays None when it is absent. A flag-only rule is defined by
+        # having no assertion, so defaulting it to {} here would turn every one
+        # of them, on the first read back out of the database, into a rule that
+        # evaluates an empty condition and reports itself broken.
+        assertion = payload.get("assert") or payload.get("assert_")
         return cls(
             rule_id=payload["rule_id"],
             title=payload.get("title", payload["rule_id"]),
             message=payload.get("message", ""),
             doc_types=tuple(payload.get("doc_types") or ("*",)),
-            assert_=payload.get("assert") or payload.get("assert_") or {},
+            assert_=assertion or None,
             severity=payload.get("severity", "warning"),
             when=payload.get("when"),
             enabled=bool(payload.get("enabled", True)),
             prompt=payload.get("prompt", ""),
             created_at=payload.get("created_at", ""),
             fields=tuple(payload.get("fields") or ()),
+            kind=payload.get("kind") or "expression",
+            instruction=payload.get("instruction") or "",
+            plan=clean_plan(payload.get("plan")),
+            tools=tuple(payload.get("tools") or ()),
         )
 
 
@@ -210,8 +252,46 @@ def build_rule(payload: dict[str, Any], *, prompt: str = "") -> CustomRule:
     if not message:
         raise CustomRuleError("The rule needs a message explaining a failure to a reviewer.")
 
+    kind = str(payload.get("kind") or "expression").strip().lower()
+    if kind not in RULE_KINDS:
+        raise CustomRuleError(
+            f"'{kind}' is not a kind of rule. Use {' or '.join(sorted(RULE_KINDS))}."
+        )
+
     assertion = payload.get("assert") or payload.get("assert_")
     when = payload.get("when")
+
+    # A rule spanning several types may only use variables all of them have.
+    covered = set(DOCUMENT_SCHEMAS) if "*" in doc_types else set(doc_types)
+    shared = frozenset.intersection(*(fields_for(name) for name in covered))
+
+    if kind == "agent":
+        from docuflow.agents.tools import TOOL_NAMES
+
+        try:
+            agent = validate_agent_payload(payload, TOOL_NAMES)
+            if when:
+                # The guard stays deterministic even here: it decides how often a
+                # model runs, so it may not itself depend on one.
+                validate(when, shared)
+        except (AgentRuleError, ExpressionError) as exc:
+            raise CustomRuleError(str(exc)) from exc
+
+        return CustomRule(
+            rule_id=rule_id,
+            title=str(payload.get("title") or rule_id).strip()[:120],
+            message=message[:MAX_MESSAGE],
+            doc_types=doc_types,
+            severity=severity,
+            when=when or None,
+            enabled=bool(payload.get("enabled", True)),
+            prompt=prompt or str(payload.get("prompt") or ""),
+            created_at=payload.get("created_at") or datetime.now(timezone.utc).isoformat(),
+            fields=tuple(payload.get("fields") or ()),
+            kind="agent",
+            **agent,
+        )
+
     # "Invoices over 100,000 need a human to look" asks for no comparison at all
     # - the condition *is* the guard, and matching it is the whole finding. With
     # no way to say that, a model has to invent something to assert, and what it
@@ -222,10 +302,6 @@ def build_rule(payload: dict[str, Any], *, prompt: str = "") -> CustomRule:
             "The rule needs either a condition to check, or a `when` describing "
             "which documents to flag."
         )
-
-    # A rule spanning several types may only use variables all of them have.
-    covered = set(DOCUMENT_SCHEMAS) if "*" in doc_types else set(doc_types)
-    shared = frozenset.intersection(*(fields_for(name) for name in covered))
 
     try:
         if assertion:
@@ -253,12 +329,27 @@ def build_rule(payload: dict[str, Any], *, prompt: str = "") -> CustomRule:
     )
 
 
-def run_custom_rule(rule: CustomRule, context: RuleContext) -> RuleFinding | None:
-    """Evaluate one user rule. Returns None when it does not apply."""
+def run_custom_rule(
+    rule: CustomRule, context: RuleContext, runner: Any = None
+) -> RuleFinding | None:
+    """Evaluate one user rule. Returns None when it does not apply.
+
+    `runner` is an `AgentRuleRunner` and is only consulted by agent rules; the
+    guard above it is deterministic for every kind, so a rule that needs a model
+    still only reaches one on the documents it was written about.
+    """
     values = values_for(context)
 
-    if rule.when is not None and not evaluate(rule.when, values).holds:
+    guard = evaluate(rule.when, values) if rule.when is not None else None
+    if guard is not None and not guard.holds:
         return None
+    matched = {name: value for name, value in guard.observed.items() if value is not None} \
+        if guard else {}
+
+    if rule.is_agent:
+        from docuflow.agents.rule_agent import run_agent_rule
+
+        return run_agent_rule(rule, context, runner, matched=matched)
 
     # No assertion: matching the guard is the whole finding. "Invoices over
     # 100,000 need a human" has nothing to compare - the document qualifying is
@@ -270,9 +361,7 @@ def run_custom_rule(rule: CustomRule, context: RuleContext) -> RuleFinding | Non
             severity=rule.severity,
             message=rule.message,
             fields=rule.fields,
-            detail={"custom": True, "flag_only": True,
-                    "observed": {k: v for k, v in evaluate(rule.when, values).observed.items()
-                                 if v is not None} if rule.when else {},
+            detail={"custom": True, "flag_only": True, "observed": matched,
                     "explanation": rule.explanation},
         )
 

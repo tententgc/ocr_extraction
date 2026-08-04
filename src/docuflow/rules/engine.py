@@ -144,6 +144,7 @@ def run_rules(
     skip: Iterable[str] = (),
     custom: Iterable["CustomRule"] = (),
     severity: dict[str, str] | None = None,
+    agent_runner: object | None = None,
 ) -> tuple[RuleFinding, ...]:
     """Execute every applicable rule, isolating failures.
 
@@ -166,6 +167,10 @@ def run_rules(
     was missing: a check that is right to run but should not stop a document can
     be dropped to a warning, instead of being switched off and losing the
     warning with it.
+
+    `agent_runner` carries the model and record store the user's agent rules need.
+    Without one they still run, and still report - by holding the document for a
+    person rather than by passing it.
     """
     if free_mode:
         return (
@@ -212,7 +217,7 @@ def run_rules(
         if finding is not None and finding.rule_id not in skipped:
             findings.append(finding)
 
-    findings.extend(_run_custom(context, custom, skipped))
+    findings.extend(_run_custom(context, custom, skipped, agent_runner))
     return tuple(_regrade(finding, severity or {}) for finding in findings)
 
 
@@ -230,7 +235,10 @@ def _regrade(finding: RuleFinding, overrides: dict[str, str]) -> RuleFinding:
 
 
 def _run_custom(
-    context: RuleContext, custom: Iterable["CustomRule"], skipped: frozenset[str]
+    context: RuleContext,
+    custom: Iterable["CustomRule"],
+    skipped: frozenset[str],
+    agent_runner: object | None = None,
 ) -> list[RuleFinding]:
     """Evaluate user-authored rules with the same isolation as the built-ins."""
     from docuflow.rules.custom import run_custom_rule
@@ -244,7 +252,7 @@ def _run_custom(
             # decide whether it applies must not take the rest of them down.
             if not rule.applies_to(context.doc_type):
                 continue
-            finding = run_custom_rule(rule, context)
+            finding = run_custom_rule(rule, context, agent_runner)
         except Exception as exc:  # noqa: BLE001 - one bad rule must not stop the rest
             logger.exception("custom rule %s raised", rule.rule_id)
             findings.append(
