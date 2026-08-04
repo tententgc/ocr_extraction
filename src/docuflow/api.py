@@ -26,6 +26,7 @@ from docuflow.runtime import SelectionError, SelectionStore
 from docuflow.ingest.fetch import FetchError, fetch_url
 from docuflow.jobs import MAX_BATCH_FILES, JobQueue
 from docuflow.llm.factory import describe_llms, resolve_llm
+from docuflow.masterdata.from_document import RegistrationError, proposals, register
 from docuflow.masterdata.importer import TEMPLATES, MasterImportError, import_csv
 from docuflow.masterdata.repository import MasterDataRepository
 from docuflow.ocr.factory import describe_providers
@@ -630,7 +631,31 @@ def get_document(document_id: str) -> dict[str, Any]:
         },
         "audit": RecordStore(settings.db_path).audit_for(document_id),
         "corrections": CorrectionStore(settings.db_path).for_document(document_id),
+        # What master record this document could become, if any.
+        "register": [proposal.to_json() for proposal in proposals(run, master)],
     }
+
+
+class RegisterRequest(BaseModel):
+    kind: str = Field(..., pattern="^(vendors|purchase_orders|contracts)$")
+    values: dict[str, Any] = Field(default_factory=dict, description="Reviewer edits to the proposal")
+    reviewer: str = "reviewer"
+
+
+@app.post("/api/documents/{document_id}/register")
+def register_from_document(document_id: str, request: RegisterRequest) -> dict[str, Any]:
+    """Create the master record this document is asking for.
+
+    Only ever from a person pressing the button: a system that registered
+    unknown suppliers by itself would let an invoice from a company that does
+    not exist create the company, and then pass the check written to catch it.
+    """
+    try:
+        return register(
+            active_settings(), document_id, request.kind, request.values, actor=request.reviewer
+        )
+    except RegistrationError as exc:
+        return JSONResponse(status_code=409, content={"detail": str(exc)})
 
 
 @app.get("/api/documents/{document_id}/page/{page_number}")

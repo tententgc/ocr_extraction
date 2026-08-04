@@ -305,6 +305,7 @@ function renderResult(data, host, editable) {
         ${doc.decision_reasons.map((r) => `<li>${esc(r)}</li>`).join('')}</ul></div>` : ''}
 
     ${renderAnalyst(data)}
+    ${renderRegister(data)}
 
     <div class="result-grid">
       <div>
@@ -329,6 +330,11 @@ function renderResult(data, host, editable) {
 
   renderPageViewer(doc, host);
   if (editable) wireReview(doc, schema, host);
+
+  // Wired outside the editable branch: a posted document can still be the one
+  // that tells you a contract belongs in the register.
+  $$('[data-register]', host).forEach((button) => button.addEventListener(
+    'click', () => submitRegistration(doc.document_id, button.dataset.register, host)));
 }
 
 function renderTrace(trace = []) {
@@ -391,6 +397,78 @@ function renderVendorCard(data) {
       <span class="chip ${vendor.status === 'active' ? 'ok' : 'warn'}">${esc(vendor.status)}</span></p>
     <p class="muted" style="margin-top:5px">Matched by ${esc(match.method)} (${pct(match.score)}) ·
       tax ID ${esc(vendor.tax_id || '—')} · account ${esc(vendor.bank_account || '—')}</p></div>`;
+}
+
+/* A document is not only something to check against the master file — often it
+   is the thing asking to be *in* it. The values are already read and already
+   carry their evidence, so registering is a matter of confirming them, not of
+   retyping them somewhere else. A person presses the button; nothing here is
+   automatic, which is the entire point of `vendor_known`. */
+const REGISTER_LABELS = {
+  legal_name: 'Legal name', tax_id: 'Tax ID', bank_account: 'Bank account',
+  currency: 'Currency', payment_terms: 'Payment terms', po_number: 'PO number',
+  po_date: 'PO date', amount: 'Amount', contract_number: 'Contract number',
+  party_a: 'Party A', party_b: 'Party B', effective_date: 'Effective', expiry_date: 'Expires',
+  value: 'Value', vendor_id: 'Vendor',
+};
+
+function renderRegister(data) {
+  const offers = data.register || [];
+  if (!offers.length) return '';
+
+  return offers.map((offer) => {
+    if (!offer.available) {
+      return `<div class="card"><h3>${esc(offer.title)}</h3>
+        <p class="muted" style="margin-top:6px">${esc(offer.blocked)}</p></div>`;
+    }
+    const fields = Object.entries(offer.values).map(([name, value]) => `
+      <label class="reg-field">
+        <span class="lbl">${esc(REGISTER_LABELS[name] || name)}
+          ${offer.ungrounded.includes(name) ? '<span class="chip warn">unverified</span>' : ''}</span>
+        <input class="reg-input" data-reg-field="${esc(name)}" value="${esc(value)}" />
+        ${offer.evidence[name]
+          ? `<span class="evidence">“${esc(offer.evidence[name])}”</span>`
+          : '<span class="evidence">no quote on the page supports this</span>'}
+      </label>`).join('');
+
+    return `<div class="card" data-register-card="${esc(offer.kind)}">
+      <div class="card-head"><h3>${esc(offer.title)}</h3>
+        <button class="btn primary" data-register="${esc(offer.kind)}">Add to master data</button></div>
+      <p class="muted">Read from this document. Check each value against the image before saving —
+        once it is in the master file, every future document is judged against it.</p>
+      ${offer.warnings.map((text) => `<div class="notice"><span>⚠</span><div>${esc(text)}</div></div>`).join('')}
+      <div class="reg-grid">${fields}</div>
+    </div>`;
+  }).join('');
+}
+
+async function submitRegistration(documentId, kind, host) {
+  const card = $(`[data-register-card="${kind}"]`, host);
+  const values = Object.fromEntries(
+    $$('.reg-input', card).map((input) => [input.dataset.regField, input.value.trim()]));
+
+  const button = $(`[data-register="${kind}"]`, host);
+  button.disabled = true;
+  button.textContent = 'Saving…';
+  try {
+    const result = await api(`/api/documents/${encodeURIComponent(documentId)}/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kind, values }),
+    });
+    toast(result.message, 'success');
+    // The document was held because this record was missing. Now that it
+    // exists, re-judge it rather than leaving the reviewer to work out that
+    // the reason has gone.
+    await api(`/api/documents/${encodeURIComponent(documentId)}/reevaluate`, { method: 'POST' });
+    await loadQueue();
+    await openDocument(documentId);
+    loadStatus();
+  } catch (error) {
+    toast(error.message, 'error');
+    button.disabled = false;
+    button.textContent = 'Add to master data';
+  }
 }
 
 function renderAnalyst(data) {

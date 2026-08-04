@@ -498,6 +498,22 @@ tbody tr:hover { background: var(--surface-2); }
 .master-tabs .grow { flex: 1; }
 .master-tabs a.btn { text-decoration: none; }
 .notice.ok { background: var(--ok-soft); }
+/* ---------- register a document as master data ---------- */
+.reg-grid {
+  display: grid; gap: 14px; margin-top: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+.reg-field { display: flex; flex-direction: column; gap: 4px; }
+.reg-field .lbl {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 600;
+}
+.reg-input {
+  background: var(--surface-2); border: 1px solid var(--border); color: var(--text);
+  border-radius: 8px; padding: 7px 10px; font-family: var(--mono); font-size: 13px; width: 100%;
+}
+.reg-input:focus { outline: none; border-color: var(--accent); }
+
 .import-errors { margin: 7px 0 0; padding-left: 18px; font-size: 12.5px; line-height: 1.6; }
 .import-errors b { font-family: var(--mono); font-size: 11.5px; }
 .chip-tab {

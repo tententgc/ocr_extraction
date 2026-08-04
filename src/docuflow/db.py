@@ -148,10 +148,29 @@ def connect(db_path: Path) -> sqlite3.Connection:
     return connection
 
 
+# Columns added after the first release. SQLite cannot express them in
+# `CREATE TABLE IF NOT EXISTS`, and a database that already exists would never
+# see them. Adding a nullable column is the one schema change that is safe to
+# apply blind: it cannot fail on existing rows and it cannot lose data.
+ADDED_COLUMNS: tuple[tuple[str, str, str], ...] = (
+    # Where a master record came from, when it came from a document we read
+    # rather than from the ERP. A supplier registered off the invoice it sent is
+    # a weaker record than one synced from the system of record, and the file
+    # should be able to say which is which.
+    ("vendors", "source_document_id", "TEXT"),
+    ("purchase_orders", "source_document_id", "TEXT"),
+    ("contracts", "source_document_id", "TEXT"),
+)
+
+
 def init_db(db_path: Path) -> None:
-    """Create tables if they do not exist."""
+    """Create tables if they do not exist, and add any columns added since."""
     connection = connect(db_path)
     connection.executescript(SCHEMA)
+    for table, column, declaration in ADDED_COLUMNS:
+        present = {row["name"] for row in connection.execute(f"PRAGMA table_info({table})")}
+        if column not in present:
+            connection.execute(f"ALTER TABLE {table} ADD COLUMN {column} {declaration}")
     connection.commit()
 
 

@@ -176,18 +176,23 @@ class MasterDataRepository:
             "status": row.get("status") or "active",
             "payment_terms": row.get("payment_terms"),
             "currency": row.get("currency") or "THB",
+            # Only set when the record came off a document; a CSV from the ERP
+            # leaves it null, which is how the two are told apart later.
+            "source_document_id": row.get("source_document_id"),
         }
         with transaction(self.db_path) as connection:
             connection.execute(
                 """INSERT INTO vendors
-                   (vendor_id, legal_name, aliases, tax_id, bank_account, status, payment_terms, currency)
+                   (vendor_id, legal_name, aliases, tax_id, bank_account, status, payment_terms,
+                    currency, source_document_id)
                    VALUES (:vendor_id, :legal_name, :aliases, :tax_id, :bank_account, :status,
-                           :payment_terms, :currency)
+                           :payment_terms, :currency, :source_document_id)
                    ON CONFLICT(vendor_id) DO UPDATE SET
                        legal_name = excluded.legal_name, aliases = excluded.aliases,
                        tax_id = excluded.tax_id, bank_account = excluded.bank_account,
                        status = excluded.status, payment_terms = excluded.payment_terms,
-                       currency = excluded.currency""",
+                       currency = excluded.currency,
+                       source_document_id = excluded.source_document_id""",
                 values,
             )
         return "updated" if existing else "created"
@@ -197,13 +202,16 @@ class MasterDataRepository:
         with transaction(self.db_path) as connection:
             connection.execute(
                 """INSERT INTO purchase_orders
-                   (po_number, vendor_id, po_date, currency, amount, status, description)
-                   VALUES (:po_number, :vendor_id, :po_date, :currency, :amount, :status, :description)
+                   (po_number, vendor_id, po_date, currency, amount, status, description,
+                    source_document_id)
+                   VALUES (:po_number, :vendor_id, :po_date, :currency, :amount, :status,
+                           :description, :source_document_id)
                    ON CONFLICT(po_number) DO UPDATE SET
                        vendor_id = excluded.vendor_id, po_date = excluded.po_date,
                        currency = excluded.currency, amount = excluded.amount,
-                       status = excluded.status, description = excluded.description""",
-                row,
+                       status = excluded.status, description = excluded.description,
+                       source_document_id = excluded.source_document_id""",
+                {"source_document_id": None, **row},
             )
         return "updated" if existing else "created"
 
@@ -213,15 +221,16 @@ class MasterDataRepository:
             connection.execute(
                 """INSERT INTO contracts
                    (contract_number, vendor_id, party_a, party_b, effective_date,
-                    expiry_date, value, currency)
+                    expiry_date, value, currency, source_document_id)
                    VALUES (:contract_number, :vendor_id, :party_a, :party_b, :effective_date,
-                           :expiry_date, :value, :currency)
+                           :expiry_date, :value, :currency, :source_document_id)
                    ON CONFLICT(contract_number) DO UPDATE SET
                        vendor_id = excluded.vendor_id, party_a = excluded.party_a,
                        party_b = excluded.party_b, effective_date = excluded.effective_date,
                        expiry_date = excluded.expiry_date, value = excluded.value,
-                       currency = excluded.currency""",
-                row,
+                       currency = excluded.currency,
+                       source_document_id = excluded.source_document_id""",
+                {"source_document_id": None, **row},
             )
         return "updated" if existing else "created"
 
