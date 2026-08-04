@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Callable, Iterable
 if TYPE_CHECKING:  # pragma: no cover - import cycle: custom rules need the registry
     from docuflow.rules.custom import CustomRule
 
-from docuflow.models import RuleFinding, Severity
+from docuflow.models import RuleFinding, Severity, SuggestedFix
 from docuflow.rules.context import RuleContext
 
 logger = logging.getLogger(__name__)
@@ -279,8 +279,15 @@ def failed(
     message: str,
     severity: Severity = "warning",
     fields: Iterable[str] = (),
+    fixes: Iterable[SuggestedFix] = (),
     **detail,
 ) -> RuleFinding:
+    """Report a failure, and where possible what to do about it.
+
+    `fixes` is what a reviewer can accept with one click. A rule that can tell
+    something is wrong but not what would be right passes none, which is the
+    honest outcome and the common one.
+    """
     return RuleFinding(
         rule_id=rule_id,
         passed=False,
@@ -288,6 +295,7 @@ def failed(
         message=message,
         fields=tuple(fields),
         detail=detail,
+        fixes=tuple(fixes),
     )
 
 

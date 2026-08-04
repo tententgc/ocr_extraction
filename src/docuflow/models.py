@@ -98,6 +98,43 @@ class LineItem(Frozen):
     confidence: float = Field(default=0.0, ge=0.0, le=1.0)
 
 
+class SuggestedFix(Frozen):
+    """A concrete correction a reviewer can accept or ignore.
+
+    A failing rule knows something is wrong. Knowing which of the values on the
+    page is the wrong one, and what it should say instead, is a further step -
+    and it is the step that turns a reviewer's five minutes of re-reading into a
+    glance and a click.
+
+    A suggestion is never applied on its own. It is offered, a person accepts
+    it, and the full rule set runs again over what they accepted, exactly as if
+    they had typed the value themselves. `confidence` is what separates a value
+    two independent relations agree on from one a single relation implies, and
+    the UI orders and words them by it.
+    """
+
+    field: str
+    current: Any = None
+    suggested: Any = None
+    reason: str = ""
+    # Where the replacement came from: arithmetic on the document's own numbers,
+    # a record we already hold, something read off the page, or the agent.
+    source: Literal["arithmetic", "master_data", "prior_record", "page", "policy", "agent"] = (
+        "arithmetic"
+    )
+    confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+
+    def to_json(self) -> dict[str, Any]:
+        return {
+            "field": self.field,
+            "current": self.current,
+            "suggested": self.suggested,
+            "reason": self.reason,
+            "source": self.source,
+            "confidence": round(self.confidence, 2),
+        }
+
+
 class RuleFinding(Frozen):
     """Outcome of one business rule."""
 
@@ -107,6 +144,9 @@ class RuleFinding(Frozen):
     message: str
     fields: tuple[str, ...] = ()
     detail: dict[str, Any] = Field(default_factory=dict)
+    # What to do about it, when the rule can work that out. Empty is the honest
+    # answer for a check that can tell something is wrong but not what is right.
+    fixes: tuple[SuggestedFix, ...] = ()
 
     @property
     def is_blocking(self) -> bool:
@@ -178,6 +218,18 @@ class DocumentRun(Frozen):
     @property
     def failed_findings(self) -> tuple[RuleFinding, ...]:
         return tuple(f for f in self.findings if not f.passed)
+
+    @property
+    def suggested_fixes(self) -> tuple[SuggestedFix, ...]:
+        """Every correction the failing checks propose, best per field.
+
+        Gathered across rules rather than per rule, because two checks failing
+        on the same misread number should put one suggestion in front of the
+        reviewer, not two that say the same thing at different confidences.
+        """
+        from docuflow.rules.repair import best_of
+
+        return best_of(fix for finding in self.failed_findings for fix in finding.fixes)
 
     def with_step(self, step: TraceStep) -> DocumentRun:
         return self.evolve(trace=self.trace + (step,))

@@ -643,6 +643,7 @@ function renderFindings(findings = []) {
     <div class="finding ${finding.passed ? 'passed' : finding.severity}">
       <span>${finding.passed ? '✓' : finding.severity === 'blocking' ? '✕' : '⚠'}</span>
       <div>${esc(finding.message)}<span class="rid">${esc(finding.rule_id)}</span>
+        ${renderFixes(finding.fixes)}
         ${renderAgentWork(finding.detail)}</div>
     </div>`;
   return `${freeMode ? `<div class="finding warning"><span>⚠</span>
@@ -651,6 +652,32 @@ function renderFindings(findings = []) {
     ${passed.length ? `<details style="margin-top:8px"><summary class="muted" style="cursor:pointer;font-size:12.5px">
       ${passed.length} check${passed.length === 1 ? '' : 's'} passed</summary>
       <div style="margin-top:8px">${passed.map(render).join('')}</div></details>` : ''}`;
+}
+
+/**
+ * What the rule thinks the value should be.
+ *
+ * Worded by confidence rather than shown uniformly. A number two independent
+ * relations agree on and a plausible reading of a damaged tax ID are not the
+ * same kind of claim, and a reviewer who cannot tell them apart will either
+ * accept both or trust neither.
+ */
+function renderFixes(fixes = []) {
+  if (!fixes.length) return '';
+  return fixes.map((fix) => {
+    const sure = fix.confidence >= 0.85;
+    const value = fix.suggested === null || fix.suggested === undefined ? '' : String(fix.suggested);
+    return `<div class="suggestion">
+      <span class="chip ${sure ? 'ok' : ''}">${sure ? 'suggested fix' : 'worth checking'}</span>
+      <span><b>${esc(fix.field.replace(/_/g, ' '))}</b>
+        ${fix.current === null || fix.current === undefined ? ''
+          : `<code class="was">${esc(String(fix.current))}</code> →`}
+        <code>${esc(value)}</code></span>
+      <span class="muted" style="flex:1 1 100%">${esc(fix.reason)}</span>
+      <button class="btn small" data-apply="${esc(fix.field)}"
+        data-value="${esc(value)}">Apply</button>
+    </div>`;
+  }).join('');
 }
 
 /* ---------------------------------------------------------------- review */

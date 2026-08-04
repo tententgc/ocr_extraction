@@ -57,6 +57,13 @@ def _print_result(result: PipelineResult, verbose: bool = True) -> None:
         for finding in failed:
             print(f"  [{finding.severity.upper():8}] {finding.rule_id}: {finding.message}")
 
+    fixes = run.suggested_fixes
+    if fixes:
+        print("\nSUGGESTED CORRECTIONS")
+        for fix in fixes:
+            print(f"  {fix.field} = {fix.suggested!r} (was {fix.current!r}, {fix.confidence:.0%})")
+            print(f"    {fix.reason}")
+
     if result.reconciliation.assessment:
         print(f"\nANALYST: {result.reconciliation.assessment}")
         if result.reconciliation.reviewer_note:

@@ -8,6 +8,7 @@ from docuflow.models import RuleFinding
 from docuflow.normalize.identifiers import thai_tax_id_checksum_ok
 from docuflow.rules.context import RuleContext
 from docuflow.rules.engine import failed, passed, rule
+from docuflow.rules.repair import tax_id_fixes
 
 THAI_TAX_ID_LENGTH = 13
 
@@ -21,11 +22,20 @@ def _check_tax_id(value: str | None, field_name: str) -> RuleFinding | None:
         return passed("tax_id_checksum", "Tax ID is not a 13-digit Thai number; checksum not applicable.")
     if thai_tax_id_checksum_ok(digits):
         return passed("tax_id_checksum", "Thai tax ID checksum is valid.")
+
+    # The check digit is strong enough to locate the damage as well as detect
+    # it: exactly one plausible single-digit change makes the number valid often
+    # enough to be worth offering, and pointing at the character is what lets a
+    # reviewer confirm it against the page in a second.
+    fixes = tax_id_fixes(field_name, digits)
+    located = f" {fixes[0].reason.capitalize()}." if fixes else ""
     return failed(
         "tax_id_checksum",
-        f"Thai tax ID {digits} fails its check-digit test - it was either mis-read or is invalid.",
+        f"Thai tax ID {digits} fails its check-digit test - it was either mis-read "
+        f"or is invalid.{located}",
         severity="blocking",
         fields=[field_name],
+        fixes=fixes,
         tax_id=digits,
     )
 

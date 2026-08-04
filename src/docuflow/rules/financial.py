@@ -13,6 +13,7 @@ from docuflow.normalize.identifiers import reference_key
 from docuflow.rules.context import RuleContext
 from docuflow.rules.compare import same_value
 from docuflow.rules.engine import failed, passed, rule
+from docuflow.rules.repair import Money, explain_difference, money_fixes, value_fix
 
 MONEY_DOCS = ("invoice", "receipt", "purchase_order")
 # VAT rates and the purchase-order threshold are finance policy and come from
@@ -22,8 +23,55 @@ ARITHMETIC_ABSOLUTE_SLACK = 0.02
 
 
 def _tolerance(context: RuleContext, base: float) -> float:
-    """Relative tolerance with a small absolute floor for rounding."""
+    """How far a document may differ from a *purchase order*.
+
+    A commercial allowance, and a wide one: 2% of a large order is real money,
+    on purpose. Only for comparisons against another document.
+    """
     return max(abs(base) * context.amount_tolerance, ARITHMETIC_ABSOLUTE_SLACK)
+
+
+def _arithmetic_slack(context: RuleContext, base: float) -> float:
+    """How far a document may differ from *itself*.
+
+    Rounding, and nothing else. Using the commercial allowance here was a real
+    silent error: on a 200,090-baht invoice it allowed 4,001 baht of drift, so a
+    total misread as 200,900 was reported as adding up and posted.
+    """
+    return max(abs(base) * context.arithmetic_tolerance, ARITHMETIC_ABSOLUTE_SLACK)
+
+
+def _money(context: RuleContext) -> Money:
+    """The amounts that have to agree with each other, as they were read.
+
+    Gathered once and handed to the diagnosis so that every arithmetic rule
+    reasons about the whole set rather than the pair it happens to compare. A
+    rule that only sees the subtotal and the total cannot know which of them is
+    wrong; one that also sees the line items and the tax rate usually can.
+    """
+    amounts = [item.amount for item in context.line_items if item.amount is not None]
+    return Money(
+        subtotal=_as_float(context.value("subtotal")),
+        tax_amount=_as_float(context.value("tax_amount")),
+        tax_rate=_as_float(context.value("tax_rate")),
+        total_amount=_as_float(context.value("total_amount")),
+        line_total=round(sum(amounts), 2) if amounts else None,
+    )
+
+
+def _as_float(value: object) -> float | None:
+    try:
+        return None if value is None else float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+MONEY_LABELS = {
+    "subtotal": "the subtotal",
+    "tax_amount": "the tax",
+    "tax_rate": "the tax rate",
+    "total_amount": "the total",
+}
 
 
 @rule(*MONEY_DOCS, emits=("invoice_totals_consistent",), severity="blocking")
@@ -37,15 +85,23 @@ def totals_consistent(context: RuleContext) -> RuleFinding | None:
 
     computed = float(subtotal) + float(tax or 0.0)
     difference = abs(computed - float(total))
-    if difference <= _tolerance(context, total):
+    if difference <= _arithmetic_slack(context, total):
         return passed("invoice_totals_consistent", f"Totals add up: {subtotal:,.2f} + {tax or 0:,.2f} = {total:,.2f}.")
+
+    # Which of the three is wrong is a different question from whether they
+    # agree, and it is the one the reviewer actually has to answer. The line
+    # items and the tax rate are extra relations over the same numbers, so where
+    # they exist they usually settle it.
+    fixes = money_fixes(_money(context), MONEY_LABELS)
+    culprit = f" {fixes[0].reason}." if fixes else ""
 
     return failed(
         "invoice_totals_consistent",
         f"Totals do not add up: {subtotal:,.2f} + {tax or 0:,.2f} = {computed:,.2f}, "
-        f"but the document states {total:,.2f} (difference {difference:,.2f}).",
+        f"but the document states {total:,.2f} (difference {difference:,.2f}).{culprit}",
         severity="blocking",
         fields=["subtotal", "tax_amount", "total_amount"],
+        fixes=fixes,
         computed_total=round(computed, 2),
         stated_total=round(float(total), 2),
         difference=round(difference, 2),
@@ -63,13 +119,27 @@ def tax_rate_consistent(context: RuleContext) -> RuleFinding | None:
 
     expected = float(subtotal) * float(rate) / 100.0
     difference = abs(expected - float(tax))
-    if difference <= _tolerance(context, expected or 1.0):
+    if difference <= _arithmetic_slack(context, expected or 1.0):
         return passed("tax_rate_consistent", f"Tax of {tax:,.2f} matches {rate:g}% of {subtotal:,.2f}.")
+    fixes = money_fixes(_money(context), MONEY_LABELS)
+    if not fixes:
+        # Nothing else constrains these three, so the tax is the value this rule
+        # is entitled to name - but say so as one relation's answer, not as a
+        # settled fact.
+        fixes = value_fix(
+            "tax_amount", float(tax), round(expected, 2),
+            f"{rate:g}% of a subtotal of {subtotal:,.2f} is {expected:,.2f}",
+            source="arithmetic", confidence=0.7,
+        )
+    slip = explain_difference(float(tax), expected)
+
     return failed(
         "tax_rate_consistent",
-        f"Tax of {tax:,.2f} does not match {rate:g}% of {subtotal:,.2f} (expected {expected:,.2f}).",
+        f"Tax of {tax:,.2f} does not match {rate:g}% of {subtotal:,.2f} (expected {expected:,.2f})."
+        + (f" Looking at the page: {slip}." if slip else ""),
         severity="blocking",
         fields=["subtotal", "tax_rate", "tax_amount"],
+        fixes=fixes,
         expected_tax=round(expected, 2),
     )
 
@@ -109,14 +179,19 @@ def line_items_sum_to_subtotal(context: RuleContext) -> RuleFinding | None:
 
     line_total = sum(amounts)
     difference = abs(line_total - float(base))
-    if difference <= _tolerance(context, base):
+    if difference <= _arithmetic_slack(context, base):
         return passed("line_items_sum_to_subtotal", f"{len(amounts)} line items sum to {line_total:,.2f}.")
+    fixes = money_fixes(_money(context), MONEY_LABELS)
+    slip = explain_difference(float(base), line_total)
+
     return failed(
         "line_items_sum_to_subtotal",
         f"Line items sum to {line_total:,.2f} but the subtotal is {float(base):,.2f} "
-        f"(difference {difference:,.2f}). A line may have been missed or mis-read.",
+        f"(difference {difference:,.2f}). A line may have been missed or mis-read."
+        + (f" Looking at the page: {slip}." if slip else ""),
         severity="warning",
         fields=["subtotal"],
+        fixes=fixes,
         line_total=round(line_total, 2),
     )
 
@@ -149,11 +224,31 @@ def vendor_known(context: RuleContext) -> RuleFinding | None:
         if blocks
         else " It will be recorded against an unregistered counterparty."
     )
+    # A near-miss is worth offering as a correction; a field of three equally
+    # plausible names is not, because picking the first would be arbitrary and
+    # would look like a finding.
+    field = next(
+        (key for key in ("vendor_name", "merchant_name", "applicant_name")
+         if context.value(key) == name),
+        "vendor_name",
+    )
+    fixes = (
+        value_fix(
+            field, name, match.candidates[0]["legal_name"],
+            f"the closest registered vendor, matching {match.score:.0%} of the name as read"
+            f" ({match.candidates[0]['vendor_id']})",
+            source="master_data", confidence=round(min(match.score, 0.75), 2),
+        )
+        if len(match.candidates) == 1 and match.score >= 0.75
+        else ()
+    )
+
     return failed(
         "vendor_known",
         f"'{name}' is not in the vendor master file.{hint}{consequence}",
         severity="blocking" if blocks else "warning",
         fields=["vendor_name", "merchant_name", "applicant_name"],
+        fixes=fixes,
         best_score=match.score,
         candidates=[candidate["legal_name"] for candidate in match.candidates[:3]],
     )
@@ -203,12 +298,29 @@ def bank_account_matches_vendor(context: RuleContext) -> RuleFinding | None:
 
     owner = context.master.vendor_for_bank_account(account)
     extra = f" It belongs to {owner['legal_name']}." if owner else " It is not on file for any vendor."
+
+    # Offered at low confidence and never for an account that belongs to someone
+    # else. A changed account is the signature of payment-redirection fraud: if
+    # the document is genuine the master file is stale, and if it is not, the
+    # registered account is the only safe one - but either way a person decides,
+    # not a suggestion box.
+    fixes = (
+        ()
+        if owner
+        else value_fix(
+            "bank_account", str(account), registered,
+            f"{vendor['legal_name']} is registered against {registered}; confirm the change "
+            f"with the vendor by a channel you already had before accepting this",
+            source="master_data", confidence=0.35,
+        )
+    )
     return failed(
         "bank_account_matches_vendor",
         f"Bank account {account} does not match the account registered for "
         f"{vendor['legal_name']} ({registered}).{extra}",
         severity="blocking",
         fields=["bank_account"],
+        fixes=fixes,
         registered=registered,
         extracted=str(account),
     )
@@ -324,6 +436,11 @@ def po_currency_matches(context: RuleContext) -> RuleFinding | None:
         f"Invoice is in {currency} but purchase order {reference} is in {order['currency']}.",
         severity="blocking",
         fields=["currency"],
+        fixes=value_fix(
+            "currency", currency, order["currency"],
+            f"purchase order {reference} was raised in {order['currency']}",
+            source="master_data", confidence=0.7,
+        ),
     )
 
 

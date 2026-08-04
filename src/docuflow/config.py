@@ -99,7 +99,14 @@ class Settings(BaseSettings):
     # --- Routing thresholds ------------------------------------------------
     auto_post_min_confidence: float = Field(default=0.90, ge=0.0, le=1.0)
     field_review_confidence: float = Field(default=0.75, ge=0.0, le=1.0)
+    # How far an invoice may differ from the purchase order it quotes: a
+    # commercial allowance for freight, part shipments and price movement.
     amount_tolerance: float = Field(default=0.02, ge=0.0)
+    # How far a document may differ from itself. Rounding only - subtotal plus
+    # tax either makes the total or the document is wrong. Kept separate from
+    # the commercial allowance above, which is thousands of times looser and
+    # would let a misread digit through as "totals add up".
+    arithmetic_tolerance: float = Field(default=0.0001, ge=0.0)
 
     # --- Business policy ---------------------------------------------------
     # These are finance policy, not code. Change them here (or in .env) rather
