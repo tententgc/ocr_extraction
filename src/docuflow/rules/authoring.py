@@ -55,10 +55,18 @@ Rules:
   "invoices over 50,000 need a PO" is a rule that applies only over 50,000:
     "when":{"field":"total_amount","op":"gt","value":50000},
     "assert":{"field":"purchase_order_ref","op":"present"}
+- Some requests name no condition to check at all - they ask for a document to
+  be held so a person sees it. Give those a "when" and set "assert" to null:
+    "invoices over 100,000 need user review" ->
+      "when":{"field":"total_amount","op":"gt","value":100000},"assert":null
+  Never invent something to assert. If the request does not say what must be
+  true, it is asking to flag, not to check.
 - Encode only what was asked. Add no extra condition, exception or escape clause.
 - Use only the field names listed. Never invent one.
 - For a true/false field, compare it: {"field":"vendor_matched","op":"eq","value":true}.
   Never use present/absent on one - False is still a value, so the test never fails.
+- duplicate_found and ocr_degraded report a problem. Never assert one must be
+  true: that would make a document have to be broken in order to pass.
 - severity "blocking" stops the document posting; "warning" lets it through flagged."""
 
 

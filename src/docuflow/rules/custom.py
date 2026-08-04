@@ -36,6 +36,10 @@ DOCUMENT_FACTS: dict[str, str] = {
 # the worst outcome available: a check that reports success without checking.
 BOOLEAN_FACTS = frozenset({"vendor_matched", "duplicate_found", "ocr_degraded"})
 
+# Booleans that report a problem. Asserting one must be TRUE inverts the rule:
+# the document would have to be broken to pass.
+PROBLEM_FLAGS = frozenset({"duplicate_found", "ocr_degraded"})
+
 MAX_RULE_ID = 60
 MAX_MESSAGE = 300
 
@@ -78,7 +82,7 @@ class CustomRule:
     title: str
     message: str
     doc_types: tuple[str, ...]
-    assert_: dict[str, Any]
+    assert_: dict[str, Any] | None = None
     severity: Severity = "warning"
     when: dict[str, Any] | None = None
     enabled: bool = True
@@ -89,6 +93,8 @@ class CustomRule:
     @property
     def explanation(self) -> str:
         """The compiled logic in words, for the user to check before saving."""
+        if self.assert_ is None:
+            return f"Flag every document where {describe(self.when)}."
         condition = describe(self.assert_)
         if self.when:
             return f"When {describe(self.when)}, require that {condition}."
@@ -148,6 +154,18 @@ def reject_meaningless_tests(expression: Any) -> None:
             f"present would never fail. Compare it instead: "
             f"{{\"field\": \"{expression['field']}\", \"op\": \"eq\", \"value\": true}}."
         )
+    # `duplicate_found` and `ocr_degraded` report that something is wrong.
+    # Requiring one to be true to PASS means a document only clears the check by
+    # being a duplicate, or by being badly scanned. Nobody asks for that; it is
+    # what a model produces when the request cannot be expressed and it reaches
+    # for the nearest boolean.
+    if (expression.get("field") in PROBLEM_FLAGS
+            and expression.get("op") == "eq" and expression.get("value") is True):
+        raise CustomRuleError(
+            f"This would only pass when {expression['field']} is true — a document would have "
+            f"to be a problem to clear the check. If the intent is to flag these documents, "
+            f"give the rule a `when` and no assertion."
+        )
 
 
 def _normalize_id(raw: str) -> str:
@@ -193,28 +211,39 @@ def build_rule(payload: dict[str, Any], *, prompt: str = "") -> CustomRule:
         raise CustomRuleError("The rule needs a message explaining a failure to a reviewer.")
 
     assertion = payload.get("assert") or payload.get("assert_")
-    if not assertion:
-        raise CustomRuleError("The rule needs a condition to check.")
+    when = payload.get("when")
+    # "Invoices over 100,000 need a human to look" asks for no comparison at all
+    # - the condition *is* the guard, and matching it is the whole finding. With
+    # no way to say that, a model has to invent something to assert, and what it
+    # invents is unrelated to what was asked. A rule may therefore carry a guard
+    # and no assertion: it fails every document the guard matches.
+    if not assertion and not when:
+        raise CustomRuleError(
+            "The rule needs either a condition to check, or a `when` describing "
+            "which documents to flag."
+        )
 
     # A rule spanning several types may only use variables all of them have.
     covered = set(DOCUMENT_SCHEMAS) if "*" in doc_types else set(doc_types)
     shared = frozenset.intersection(*(fields_for(name) for name in covered))
 
     try:
-        validate(assertion, shared)
-        if payload.get("when"):
-            validate(payload["when"], shared)
+        if assertion:
+            validate(assertion, shared)
+        if when:
+            validate(when, shared)
     except ExpressionError as exc:
         raise CustomRuleError(str(exc)) from exc
 
-    reject_meaningless_tests(assertion)
+    if assertion:
+        reject_meaningless_tests(assertion)
 
     return CustomRule(
         rule_id=rule_id,
         title=str(payload.get("title") or rule_id).strip()[:120],
         message=message[:MAX_MESSAGE],
         doc_types=doc_types,
-        assert_=assertion,
+        assert_=assertion or None,
         severity=severity,
         when=payload.get("when") or None,
         enabled=bool(payload.get("enabled", True)),
@@ -230,6 +259,22 @@ def run_custom_rule(rule: CustomRule, context: RuleContext) -> RuleFinding | Non
 
     if rule.when is not None and not evaluate(rule.when, values).holds:
         return None
+
+    # No assertion: matching the guard is the whole finding. "Invoices over
+    # 100,000 need a human" has nothing to compare - the document qualifying is
+    # the reason to stop.
+    if rule.assert_ is None:
+        return RuleFinding(
+            rule_id=rule.rule_id,
+            passed=False,
+            severity=rule.severity,
+            message=rule.message,
+            fields=rule.fields,
+            detail={"custom": True, "flag_only": True,
+                    "observed": {k: v for k, v in evaluate(rule.when, values).observed.items()
+                                 if v is not None} if rule.when else {},
+                    "explanation": rule.explanation},
+        )
 
     outcome = evaluate(rule.assert_, values)
     quoted = {name: value for name, value in outcome.observed.items() if value is not None}

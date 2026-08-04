@@ -197,3 +197,76 @@ class TestStorage:
 
     def test_deleting_a_rule_that_is_not_there_reports_so(self, settings):
         assert CustomRuleStore(settings.db_path).delete("nothing") is False
+
+
+class TestFlagOnlyRules:
+    """Some requests name nothing to check — they ask for a person to look.
+
+    "Invoices over 100,000 need user review" has no condition: qualifying *is*
+    the finding. With no way to express that, a model has to invent something to
+    assert, and what it invents is unrelated to what was asked. One real attempt
+    compiled it to "require that duplicate_found is True" — a rule that only
+    passes if the invoice is a duplicate.
+    """
+
+    def test_a_guard_with_no_assertion_is_allowed(self):
+        rule = build_rule({
+            "rule_id": "big_invoices_need_review",
+            "message": "Invoices over 100,000 THB are reviewed by a person.",
+            "doc_types": ["invoice"],
+            "severity": "warning",
+            "when": {"field": "total_amount", "op": "gt", "value": 100_000},
+            "assert": None,
+        })
+        assert rule.assert_ is None
+        assert rule.explanation == "Flag every document where total_amount is more than 100000."
+
+    def test_it_fails_every_document_the_guard_matches(self, master, make_run):
+        from tests.test_rules import GOOD_INVOICE, build_context
+
+        rule = build_rule({
+            "rule_id": "big_invoices_need_review",
+            "message": "Invoices over 100,000 THB are reviewed by a person.",
+            "doc_types": ["invoice"], "severity": "warning",
+            "when": {"field": "total_amount", "op": "gt", "value": 100_000},
+            "assert": None,
+        })
+        over = run_custom_rule(rule, build_context(
+            master, {**GOOD_INVOICE, "total_amount": 150_000.0}, make_run=make_run))
+        under = run_custom_rule(rule, build_context(
+            master, {**GOOD_INVOICE, "total_amount": 90_000.0}, make_run=make_run))
+
+        assert over is not None and not over.passed and over.severity == "warning"
+        assert under is None, "below the guard the rule does not apply at all"
+
+    def test_neither_a_guard_nor_an_assertion_is_refused(self):
+        with pytest.raises(CustomRuleError, match="condition to check"):
+            build_rule({
+                "rule_id": "empty", "message": "x", "doc_types": ["invoice"],
+                "when": None, "assert": None,
+            })
+
+    def test_requiring_a_document_to_be_a_duplicate_is_refused(self):
+        """The shape a model reaches for when the request cannot be expressed."""
+        with pytest.raises(CustomRuleError, match="would have to be a problem"):
+            build_rule({
+                "rule_id": "nonsense", "message": "x", "doc_types": ["invoice"],
+                "when": {"field": "total_amount", "op": "gte", "value": 100_000},
+                "assert": {"field": "duplicate_found", "op": "eq", "value": True},
+            })
+
+    def test_requiring_a_bad_scan_is_refused_too(self):
+        with pytest.raises(CustomRuleError, match="would have to be a problem"):
+            build_rule({
+                "rule_id": "nonsense2", "message": "x", "doc_types": ["invoice"],
+                "assert": {"field": "ocr_degraded", "op": "eq", "value": True},
+            })
+
+    def test_checking_a_document_is_not_a_duplicate_is_still_fine(self):
+        """Only the inverted direction is nonsense."""
+        rule = build_rule({
+            "rule_id": "no_duplicates", "message": "Already posted.",
+            "doc_types": ["invoice"],
+            "assert": {"field": "duplicate_found", "op": "eq", "value": False},
+        })
+        assert rule.assert_["value"] is False
