@@ -334,8 +334,37 @@ stop a document:
 | `critical_fields_grounded` | a money or identity value not traceable to the page |
 | `contract_dates_ordered` | expiry before commencement |
 
-Warnings (VAT rate unusual, contract expiring, low-confidence fields, degraded
-OCR) inform the reviewer without blocking.
+### The three tiers, and what each one actually does
+
+Three severities are only worth having if they behave differently:
+
+| Tier | What happens | Who acts |
+|---|---|---|
+| **blocking** | The document stops. Nothing posts past a failing blocking rule — not even on approval. | A person corrects the values and re-checks, or rejects it. |
+| **warning** | Recorded on the document, shown to the reviewer, carried into the posted record. **Does not stop it.** | Nobody, unless they want to. |
+| **info** | Recorded. Notes a mode or a decision rather than a problem. | Nobody. |
+
+That middle row is load-bearing and used not to be true. A warning previously
+cut confidence by 8% each, so three advisory findings took a perfectly-read
+document from 95% to 72% — under the threshold — and sent it to someone with
+nothing to correct. **A warning that holds documents is a blocking rule that has
+not admitted it**, and it is how a human-in-the-loop system ends up with a human
+in every loop.
+
+So confidence now answers one question — *how sure are we the values were read
+correctly* — and routing answers the other. A blocked vendor, an expired
+purchase order, a duplicate submission and an unusual VAT rate no longer move
+the score at all: every one of them was read perfectly, and calling them
+doubtful reading leaves a reviewer unable to tell a document we could not read
+from one we read fine and may not pay.
+
+What does move it is a failure saying a *character* was misread — the arithmetic
+disagreeing, a check digit failing, a date next decade — because the rest of the
+page came off the same engine under the same conditions. Weighted by the rule's
+own severity: a blocking one takes a fifth, a warning a twentieth. A page read
+at 95% still clears an 84% bar with two warnings against it, and is held once
+three of them agree something is off. One advisory finding is noise; three are a
+pattern.
 
 ### And when one fails, what to do about it
 
