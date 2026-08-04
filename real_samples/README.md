@@ -12,25 +12,36 @@ docuflow reset --confirm
 docuflow load-master real_samples/master
 ```
 
-| # | File | Arrives as | What it is for | Expected to trip |
-|---|------|-----------|----------------|------------------|
-| 1 | `1_invoice_clean_matches_po.pdf` | digital PDF | Everything reconciles: PO, vendor, bank account, arithmetic. Should post without a person. | — |
-| 2 | `2_invoice_total_transposed.pdf` | digital PDF | Subtotal, VAT and the line items all agree on 44,940.00; the total reads 49,440.00. The suggestion should name the total and call the transposition. | `invoice_totals_consistent` |
-| 3 | `3_invoice_photo_on_a_desk.jpg` | phone photograph | A phone photo: skewed, lit from one side, slightly soft. Preprocessing has to straighten and relight it before OCR sees it. | — |
-| 4 | `4_invoice_vat_miscalculated.pdf` | digital PDF | States 7% but charges 4,590.00 on 76,500.00, which is 6%. The tax is the only value the arithmetic can blame, and the vendor is on hold as well. | `tax_rate_consistent`, `vendor_active` |
-| 5 | `5_invoice_bank_account_changed.pdf` | digital PDF | The signature of payment-redirection fraud: a correct invoice with new remittance details. Must block, and must not offer a one-click fix. | `bank_account_matches_vendor` |
-| 6 | `6_invoice_unknown_vendor.png` | scanned page | Nothing about the document is wrong; the counterparty is simply unregistered. Blocks, and the agent must not invent a match. | `vendor_known` |
-| 7 | `7_invoice_from_a_blocked_vendor.pdf` | digital PDF | A clean, correct invoice that must still not pay automatically, because the block is a decision someone made deliberately. | `vendor_active` |
-| 8 | `8_invoice_over_the_purchase_order.pdf` | digital PDF | Arithmetic is perfect; the commercial overrun is the problem. Tests that the 2% purchase-order allowance is still a commercial one. | `po_amount_within_tolerance` |
-| 9 | `9_invoice_thai_buddhist_dates.png` | scanned page | Thai layout, Thai month names, dates in BE 2569. Everything reconciles once the calendar is converted. | — |
-| 10 | `10_invoice_no_po_above_threshold.pdf` | digital PDF | Above the 50,000 threshold with nothing to match against. Blocks on policy rather than on anything being wrong. | `purchase_order_required` |
-| 11 | `11_receipt_photographed.jpg` | phone photograph | 80mm thermal paper, low contrast, photographed. The hardest OCR case in the corpus and the one preprocessing matters most for. | — |
-| 12 | `12_contract_expiring_soon.pdf` | digital PDF | Nothing is wrong with it; it simply needs renewing before it lapses. A warning, not a block. | `contract_expiring_soon` |
-| 13 | `13_contract_already_expired.jpg` | faded photocopy | A faded photocopy of a contract that has already lapsed. Tests the contrast correction and the expiry check together. | `contract_expired` |
-| 14 | `14_form_vendor_onboarding.png` | scanned page | An unregistered counterparty is the point of the document, so an unknown vendor must not block it. | — |
-| 15 | `15_invoice_duplicate_submission.pdf` | digital PDF | Identical to document 1. Only detectable against what has already been posted, so it needs document 1 to have gone through first. | `duplicate_document` |
-| 16 | `16_invoice_line_items_do_not_sum.jpg` | faded photocopy | The stated subtotal is right and the visible lines are 4,300 short. A faded copy, so it also tests whether the missing line was misread rather than absent. | `line_items_sum_to_subtotal` |
-| 17 | `17_invoice_currency_disagrees_with_po.pdf` | digital PDF | Same numbers, wrong currency. Paying it as printed overpays by the exchange rate, and the fix is on the purchase order. | `po_currency_matches` |
-| 18 | `18_invoice_unlabelled_amounts.jpg` | phone photograph | Three bare numbers in a column and a company name. Nothing for a label matcher to anchor on, so the two extraction channels have to disagree honestly rather than both guessing. | — |
+The filename ends in the expected outcome. `_True` means nothing is
+wrong with the document and holding it is a false alarm; `_False` means
+something is wrong and posting it is a silent error. The evaluation
+compares that against what actually happened.
 
-Document 15 is a duplicate of document 1 and can only be detected once document 1 has posted, so run them in order.
+| # | File | Arrives as | Should post | What it is for | Expected to trip |
+|---|------|-----------|---|----------------|------------------|
+| 1 | `1_invoice_clean_matches_po_True.pdf` | digital PDF | yes | Everything reconciles: PO, vendor, bank account, arithmetic. Should post without a person. | — |
+| 2 | `2_invoice_total_transposed_False.pdf` | digital PDF | no | Subtotal, VAT and the line items all agree on 44,940.00; the total reads 49,440.00. The suggestion should name the total and call the transposition. | `invoice_totals_consistent` |
+| 3 | `3_invoice_photo_on_a_desk_False.jpg` | phone photograph | no | A phone photo: skewed, lit from one side, slightly soft. Preprocessing has to straighten and relight it before OCR sees it. | — |
+| 4 | `4_invoice_vat_miscalculated_False.pdf` | digital PDF | no | States 7% but charges 4,590.00 on 76,500.00, which is 6%. The tax is the only value the arithmetic can blame, and the vendor is on hold as well. | `tax_rate_consistent`, `vendor_active` |
+| 5 | `5_invoice_bank_account_changed_False.pdf` | digital PDF | no | The signature of payment-redirection fraud: a correct invoice with new remittance details. Must block, and must not offer a one-click fix. | `bank_account_matches_vendor` |
+| 6 | `6_invoice_unknown_vendor_False.png` | scanned page | no | Nothing about the document is wrong; the counterparty is simply unregistered. Blocks, and the agent must not invent a match. | `vendor_known` |
+| 7 | `7_invoice_from_a_blocked_vendor_False.pdf` | digital PDF | no | A clean, correct invoice that must still not pay automatically, because the block is a decision someone made deliberately. | `vendor_active` |
+| 8 | `8_invoice_over_the_purchase_order_False.pdf` | digital PDF | no | Arithmetic is perfect; the commercial overrun is the problem. Tests that the 2% purchase-order allowance is still a commercial one. | `po_amount_within_tolerance` |
+| 9 | `9_invoice_thai_buddhist_dates_True.png` | scanned page | yes | Thai layout, Thai month names, dates in BE 2569. Everything reconciles once the calendar is converted. | — |
+| 10 | `10_invoice_no_po_above_threshold_False.pdf` | digital PDF | no | Above the 50,000 threshold with nothing to match against. Blocks on policy rather than on anything being wrong. | `purchase_order_required` |
+| 11 | `11_receipt_photographed_True.jpg` | phone photograph | yes | 80mm thermal paper, low contrast, photographed. The hardest OCR case in the corpus and the one preprocessing matters most for. | — |
+| 12 | `12_contract_expiring_soon_True.pdf` | digital PDF | yes | Nothing is wrong with it; it simply needs renewing before it lapses. A warning, not a block. | `contract_expiring_soon` |
+| 13 | `13_contract_already_expired_False.jpg` | faded photocopy | no | A faded photocopy of a contract that has already lapsed. Tests the contrast correction and the expiry check together. | `contract_expired` |
+| 14 | `14_form_vendor_onboarding_True.png` | scanned page | yes | An unregistered counterparty is the point of the document, so an unknown vendor must not block it. | — |
+| 15 | `15_invoice_duplicate_submission_False.pdf` | digital PDF | no | Identical to document 1. Only detectable against what has already been posted, so it needs document 1 to have gone through first. | `duplicate_document` |
+| 16 | `16_invoice_line_items_do_not_sum_False.jpg` | faded photocopy | no | The stated subtotal is right and the visible lines are 4,300 short. A faded copy, so it also tests whether the missing line was misread rather than absent. | `line_items_sum_to_subtotal` |
+| 17 | `17_invoice_currency_disagrees_with_po_False.pdf` | digital PDF | no | Same numbers, wrong currency. Paying it as printed overpays by the exchange rate, and the fix is on the purchase order. | `po_currency_matches` |
+| 18 | `18_invoice_unlabelled_amounts_True.jpg` | phone photograph | yes | Three bare numbers in a column and a company name. Nothing for a label matcher to anchor on, so the two extraction channels have to disagree honestly rather than both guessing. | — |
+| 19 | `19_invoice_two_column_layout_True.pdf` | digital PDF | yes | Correct in every way; the header sits in two columns instead of one. Must post. | — |
+| 20 | `20_invoice_dense_no_whitespace_True.pdf` | digital PDF | yes | Correct, and packed edge to edge. Tests that density alone does not hold a document. | — |
+| 21 | `21_invoice_minimal_unlabelled_True.pdf` | digital PDF | yes | Correct, but the amounts are a bare column with no words beside them. The label-first channel has nothing to anchor on. | — |
+| 22 | `22_invoice_thai_layout_correct_True.png` | scanned page | yes | Thai layout, Thai month names, Buddhist-era dates, and nothing wrong with it. Must post. | — |
+| 23 | `23_invoice_modern_scanned_True.png` | scanned page | yes | Correct, zero-rated, in USD, and arriving as an image with no text layer. | — |
+| 24 | `24_receipt_clean_thermal_True.pdf` | digital PDF | yes | The same shape as the photographed receipt, without the photograph. Isolates layout from image quality. | — |
+
+The duplicate submission can only be detected once the original has posted, so run these in order.
