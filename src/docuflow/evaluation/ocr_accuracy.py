@@ -164,19 +164,23 @@ def _date_forms(value: str) -> tuple[str, ...]:
     """
     from datetime import date
 
+    # The corpus is printed by four named formatters, so the reference set is
+    # not a guess - it is the same functions the pages were drawn with. Guessing
+    # was the first attempt and it covered one of the four: the two-column
+    # layout prints "Jul 29, 2026" where the guess expected "29 July 2026", and
+    # every date on every such document was reported as lost.
+    from docuflow.samples.formatting import date_long_en, date_slash, date_thai, date_us
+
     try:
         parsed = date.fromisoformat(value[:10])
     except (TypeError, ValueError):
         return ()
-    return (
-        parsed.isoformat(),
-        f"{parsed.day} {parsed.strftime('%B')} {parsed.year}",
-        f"{parsed.day:02d}/{parsed.month:02d}/{parsed.year}",
-        f"{parsed.day}/{parsed.month}/{parsed.year}",
-        f"{parsed.strftime('%d %b %Y')}",
-        # Thai documents print the Buddhist year, 543 ahead of the Gregorian.
-        f"{parsed.day} {parsed.strftime('%B')} {parsed.year + 543}",
-    )
+
+    iso = parsed.isoformat()
+    forms = {iso, date_long_en(iso), date_us(iso), date_slash(iso)}
+    # Thai pages carry the Buddhist year and, on some layouts, Thai numerals.
+    forms.update({date_thai(iso, thai_digits=False), date_thai(iso, thai_digits=True)})
+    return tuple(form for form in forms if form)
 
 
 def _printed_forms(value: Any) -> tuple[str, ...]:

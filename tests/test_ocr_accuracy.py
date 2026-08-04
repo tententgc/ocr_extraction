@@ -97,22 +97,28 @@ class TestValueRecall:
         plain = PAGE.replace("415,000.00", "415000.00").replace("444,050.00", "444050")
         assert score_document(PAGE, plain, VALUES).value_recall == 1.0
 
-    def test_a_date_is_found_however_the_page_writes_it(self):
+    def test_a_date_is_found_in_every_form_the_corpus_prints(self):
         """Ground truth stores 2026-07-14; no invoice in the corpus prints that.
 
-        Searching for the stored form alone reported every date on every
-        document as lost, taking value recall down by a sixth and blaming the
-        OCR engine for the harness.
+        The reference set is taken from the four formatters the pages are drawn
+        with rather than guessed. Guessing was the first attempt and it covered
+        one of the four - the two-column layout prints "Jul 14, 2026" where the
+        guess expected "14 July 2026" - so every date on every such document
+        was reported as lost, blaming the OCR engine for the harness.
         """
-        dates = {"invoice_date": "2026-07-14"}
-        for printed in ("14 July 2026", "14/07/2026", "2026-07-14", "14 Jul 2026"):
-            page = f"Invoice Date: {printed}"
-            assert score_document(page, page, dates).value_recall == 1.0, printed
+        from docuflow.samples.formatting import date_long_en, date_slash, date_thai, date_us
 
-    def test_a_buddhist_era_year_is_the_same_date(self):
-        """Thai tax invoices print 2569 where the record says 2026."""
-        page = "วันที่ 25 July 2569"
-        assert score_document(page, page, {"invoice_date": "2026-07-25"}).value_recall == 1.0
+        iso = "2026-07-14"
+        printed_by_the_corpus = [
+            iso,
+            date_long_en(iso),                    # 14 July 2026
+            date_us(iso),                         # Jul 14, 2026
+            date_slash(iso),                      # 14/07/2026
+            date_thai(iso, thai_digits=False),    # 14 กรกฎาคม 2569 (Buddhist year)
+        ]
+        for printed in printed_by_the_corpus:
+            page = f"Invoice Date: {printed}"
+            assert score_document(page, page, {"invoice_date": iso}).value_recall == 1.0, printed
 
     def test_a_date_the_transcript_really_lost_is_still_reported(self):
         """The forgiving matching must not forgive an actual loss."""

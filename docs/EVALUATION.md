@@ -1,6 +1,6 @@
 # Evaluation
 
-What the system does on eighteen documents that arrive the way documents
+What the system does on twenty-four documents that arrive the way documents
 actually arrive, and — more usefully — what it got wrong and why.
 
 The raw output behind every number here is
@@ -38,10 +38,17 @@ silent error rate is deployable. Ninety-nine per cent with silent errors is not.
 high number here is only worth having alongside a zero above it; a system that
 posts everything scores 100% coverage and is a liability.
 
-**Defect recall** is what stops the corpus flattering the reader. Thirteen of
-the eighteen documents have a specific defect planted in them and declare which
+**Defect recall** is what stops the corpus flattering the reader. Twelve of the
+twenty-four documents have a specific defect planted in them and declare which
 rule should catch it. A corpus that only measured reading would score well on a
 system that validates nothing.
+
+**False alarms** are the number the others cannot see. Twelve documents are
+correct and must post; six of those are deliberately laid out unlike anything
+the system was tuned on. A pipeline that holds valid documents costs nothing
+measurable per document and everything in aggregate, because a queue full of
+false alarms is a queue nobody reads — at which point the missed defects stop
+being caught either.
 
 **Time saved** is modelled, not measured, and the assumptions print with the
 number every time. See [the assumptions](#the-time-saved-model) below — they are
@@ -54,13 +61,13 @@ system made things worse.
 
 | | |
 |---|---|
-| Corpus | [`real_samples/`](../real_samples/) — 18 documents |
-| Arrival | 10 digital PDFs, 3 scans, 3 phone photographs, 2 faded photocopies |
+| Corpus | [`real_samples/`](../real_samples/) — 24 documents, 12 that should post and 12 that should not |
+| Arrival | 14 digital PDFs, 5 scans, 3 phone photographs, 2 faded photocopies |
 | OCR | Typhoon OCR 1.5 (3B) on-device via Ollama |
 | Reading 1 | Typhoon `typhoon-v2.5-30b-a3b-instruct`, field-first |
 | Reading 2 | Claude `claude-opus-5`, label-first — a different backend on purpose |
 | Rules | 26 built-in + 7 written for this corpus (5 expression, 2 agent) |
-| Master data | 12 vendors, 10 purchase orders, 5 contracts, loaded from CSV |
+| Master data | 13 vendors, 10 purchase orders, 5 contracts, loaded from CSV |
 | Auto-post threshold | 84% confidence |
 
 The two readings are deliberately on different backends. Two passes of the same
@@ -70,129 +77,139 @@ much less than it appears to.
 Documents run in numeric order because document 15 is a duplicate of document 1
 and can only be detected once document 1 has posted.
 
+The filename carries the expected outcome — `_True` should post, `_False` should
+be held — so the evaluation compares two decisions rather than grading the
+system against itself.
+
 ---
 
-## Results
+## The four questions
 
-| Metric | Result |
+| | Result |
 |---|---|
-| **Silent error rate** | **0%** — all 3 auto-posted documents were read perfectly, every field |
-| Planted defects caught | **13 / 13** (100%) |
-| Document type accuracy | **18 / 18** (100%) |
-| Field accuracy (exact) | **191 / 216** (88.4%) |
-| Straight-through rate | 3 / 18 (17%) — the other 15 were held, each for a stated reason |
-| Wall clock | 574s for 18 documents (32s each) |
-| Time saved (modelled) | 112 of 135 manual minutes (83%) |
+| **Did anything wrong reach the ledger?** | **No.** 0 missed defects out of 12 documents that should have been held. |
+| **Was the page read?** | 92.8% character accuracy; **90.3% recall** on the values that become a payment. |
+| **Did the gate open correctly?** | 87.5% — 21 of 24 documents went the way the corpus said they should. |
+| **Did each rule earn its place?** | 12 rules exercised, **all 12 at full recall**. 18 untested by this corpus. |
 
-Seventeen per cent straight-through looks low until you read the corpus: thirteen
-of the eighteen documents have a defect planted in them on purpose. A corpus
-built to be caught is not a corpus that measures throughput.
+24 documents, 789 seconds (33s each). Field accuracy 252/289 (87.2%). Time saved,
+modelled: 158 of 180 manual minutes (88%).
 
-### Per document
+---
 
-`S` marks a silent error — auto-posted with a wrong critical value.
+## 1. Was the page read correctly?
 
-Read the confidence column against the decision column. That pairing is the
-useful one, and it only became useful once confidence stopped answering two
-questions at once: it now says *how well we read the page*, and the decision says
-*whether it may post*. A document at 95% that is held was read perfectly and
-stopped by a fact about the world. A document at 60% that is held is one we could
-not read. Those need different things from a reviewer, and a single number that
-conflated them told them neither.
+Every other number is downstream of this one. Two measurements, because they
+answer different questions and they disagree.
 
-| # | Document | Arrives as | Decision | Conf. | Fields | S | Defect | Held by |
-|---|---|---|---|---|---|---|---|---|
-| 1 | `invoice_clean_matches_po` | PDF | **auto-post** | 93% | 14/14 | | — | — |
-| 2 | `invoice_total_transposed` | PDF | held | 75% | 14/14 | | 1/1 | the arithmetic |
-| 3 | `invoice_photo_on_a_desk` | photo | held | 93% | 14/14 | | — | the PO is closed |
-| 4 | `invoice_vat_miscalculated` | PDF | held | 73% | 12/14 | | 2/2 | VAT ≠ stated rate; vendor on hold |
-| 5 | `invoice_bank_account_changed` | PDF | held | 93% | 13/13 | | 1/1 | not the vendor's account |
-| 6 | `invoice_unknown_vendor` | scan | held | 82% | 10/12 | | 1/1 | vendor not registered |
-| 7 | `invoice_from_a_blocked_vendor` | PDF | held | 91% | 12/13 | | 1/1 | vendor blocked |
-| 8 | `invoice_over_the_purchase_order` | PDF | held | 93% | 13/14 | | 1/1 | 22% over the order |
-| 9 | `invoice_thai_buddhist_dates` | scan | held | 63% | 11/13 | | — | the first reading returned invalid JSON |
-| 10 | `invoice_no_po_above_threshold` | PDF | held | 82% | 10/13 | | 1/1 | no PO above the threshold |
-| 11 | `receipt_photographed` | photo | held | 81% | 7/9 | | — | required field missing |
-| 12 | `contract_expiring_soon` | PDF | **auto-post** | 92% | 8/8 | | 1/1 | — (warning: expires in 56 days) |
-| 13 | `contract_already_expired` | photocopy | held | 76% | 5/8 | | 1/1 | expired |
-| 14 | `form_vendor_onboarding` | scan | **auto-post** | 88% | 7/7 | | — | — |
-| 15 | `invoice_duplicate_submission` | PDF | held | 93% | 14/14 | | 1/1 | already posted |
-| 16 | `invoice_line_items_do_not_sum` | photocopy | held | 62% | 7/13 | | 1/1 | date misread; lines short |
-| 17 | `invoice_currency_disagrees_with_po` | PDF | held | 93% | 12/13 | | 1/1 | USD against an SGD order |
-| 18 | `invoice_unlabelled_amounts` | photo | held | 60% | 8/10 | | — | required fields missing |
+| | |
+|---|---|
+| Character accuracy | **92.78%** (CER 7.22%, over 13,587 reference characters) |
+| Value recall | **90.3%** — 215 of 238 values that matter survived into the transcript |
 
-Five documents sit at 91–93% and are still held. Every one was read correctly and
-stopped by something that has nothing to do with reading: a closed purchase
-order, a changed bank account, a duplicate, a currency mismatch, a blocked
-vendor. The three at 60–63% are the ones the system genuinely could not read — a
-faded photocopy, an invoice with no field labels, and one where the first
-extraction channel returned invalid JSON — and all three are held for that.
+The reference is exact rather than estimated: the corpus is drawn here, so the
+PDF text layer is the string the renderer was given, captured before the page
+was ever photographed.
 
-Document 12 is the tier change visible in one row: a contract expiring in 56 days
-posts, carrying `contract_expiring_soon` as a warning on its record. Somebody
-should renew it; nobody needs to stop what they are doing and confirm eight
-fields that are already right.
+**Where the characters went.** Two documents drag the corpus figure down hard,
+and both are thermal receipts at ~55%. An 80mm receipt is a few hundred
+characters, so the denominator is tiny and any reformatting dominates — the OCR
+returns a tidier transcript than the raw text layer, and on a page that short
+that reads as a third of the characters being wrong. Both receipts nonetheless
+score 86% value recall and every amount on them is correct. It is a caution
+about the metric on short pages, not about the engine.
 
-### What posted, audited field by field
+Excluding those two, character accuracy across the other 20 documents is above
+89% everywhere and above 93% on all but three.
 
-The straight-through set is where a silent error would live, so it is worth
-listing in full rather than summarising:
+**Where the values went.** The 23 lost values cluster, and the clustering is the
+useful part:
 
-| Document | Wrong | Missing | Critical wrong |
-|---|---|---|---|
-| `1_invoice_clean_matches_po` | — | — | none |
-| `12_contract_expiring_soon` | — | — | none |
-| `14_form_vendor_onboarding` | — | — | none |
-
-All three are perfect — every field on every posted document matches ground
-truth. That is what a 0% silent error rate should look like when it is real
-rather than an artefact of posting almost nothing.
-
-### Run-to-run variance, which is not nothing
-
-The same corpus, same code, run twice with a different backend on the **second**
-reading:
-
-| | Claude `opus-5` | OpenAI `gpt-5.1` |
+| Document | Lost | Why |
 |---|---|---|
-| Silent errors | 0 | 0 |
-| Defects caught | **13/13** | 12/13 |
-| Field accuracy | 88.4% | 88.4% |
-| Auto-posted | 3 | 4 |
+| `16_line_items_do_not_sum` (photocopy) | 6 of 10 | the worst page in the corpus, 72% characters |
+| `13_contract_already_expired` (photocopy) | 3 of 6 | faded prose, 89.8% characters |
+| `19_two_column_layout` | 3 of 12 | `buyer_name` misread as "Mirthphol", an inserted h |
+| `6`, `10` | `vendor_tax_id`, `payment_terms` | the layout prints neither |
 
-Identical field accuracy, and the two disagree about which documents to trust.
-Two differences are worth naming rather than averaging away.
+The two faded photocopies account for nine of the twenty-three on their own.
+Both were held.
 
-**Document 10** was the one defect missed in the OpenAI run: extraction read the
-bank account `8890014455` into `purchase_order_ref`, so `purchase_order_required`
-correctly concluded a PO had been quoted. With Claude the field went to
-`vendor_tax_id` instead — still wrong, but it left `purchase_order_ref` empty and
-the rule fired as designed. The corpus scores that as a hit and it was luck.
+---
 
-**Document 9** posted in one run and was held at 63% in the other, because the
-first channel returned invalid JSON on the Thai document that time. Nothing about
-the page changed. This is the honest shape of the thing: the same document does
-not always get the same decision, and the routing conservatism is what makes that
-tolerable — the variance moves documents between *posted* and *reviewed*, not
-between *right* and *wrong*.
+## 2. Did each rule fire for the reason it exists?
 
-Eighteen documents cannot separate these two configurations. The numbers above
-are a demonstration that the pipeline works, not evidence that one model reads
-better than another.
+Every document declares which rules its defect should trip, so each rule gets a
+confusion matrix rather than a share of a corpus-wide score.
 
-### The one defect not caught as expected
+**Twelve rules exercised, twelve at full recall.** Nothing that should have
+fired stayed silent:
 
-Document 10 has no purchase order and a total above the threshold, so
-`purchase_order_required` should have blocked it. It passed — because extraction
-read the bank account `8890014455` into the `purchase_order_ref` field. Given a
-purchase order reference, the rule correctly concluded one had been quoted.
+| Rule | Recall | Precision | Fired |
+|---|---|---|---|
+| `invoice_totals_consistent` | 100% | 100% | 1 |
+| `tax_rate_consistent` | 100% | 50% | 2 |
+| `line_items_sum_to_subtotal` | 100% | 100% | 1 |
+| `vendor_known` | 100% | 50% | 2 |
+| `vendor_active` | 100% | 100% | 2 |
+| `bank_account_matches_vendor` | 100% | 50% | 2 |
+| `purchase_order_required` | 100% | 33% | 3 |
+| `po_amount_within_tolerance` | 100% | 100% | 1 |
+| `po_currency_matches` | 100% | 100% | 1 |
+| `duplicate_document` | 100% | 100% | 1 |
+| `contract_expiring_soon` | 100% | 100% | 1 |
+| `contract_expired` | 100% | 100% | 1 |
 
-`po_exists` then blocked the document anyway: *"Purchase order 8890014455 does
-not exist in the system."* The outcome was right and the reasoning was right; the
-rule that produced it was not the one predicted. Recorded as a miss because
-scoring it as a hit would let a corpus grade itself on outcomes rather than on
-mechanism — and the underlying fault is real: a bank account landed in a
-reference field, and nothing noticed the shape was wrong.
+**Read the precision column carefully — it is not a fault count.** A rule "fires
+unexpectedly" whenever it trips on a document that did not declare it, and most
+of those are correct. `purchase_order_required` shows 33% because it fired on
+three documents where only one declared it: the other two genuinely quote no
+purchase order and are genuinely above the threshold. The corpus declares the
+*defect a document was built around*, not every true statement about it. A
+precision figure here measures how completely the corpus was annotated, and it
+is the honest way round — inflating it would mean annotating after seeing the
+output.
+
+**Eighteen rules were never exercised** and are reported as untested rather than
+as passing: `tax_id_checksum`, `dates_not_in_future`, `due_date_after_issue`,
+`contract_dates_ordered`, `contract_parties_distinct`, `vat_rate_expected` and
+the form rules among them. Untested is the honest word, and the list is the
+shopping list for the next batch of corpus documents.
+
+---
+
+## 3. Did the document go the right way?
+
+The expectation is in every filename before the system is asked.
+
+| | Documents | Correct | Wrong |
+|---|---|---|---|
+| Should be **held** (`_False`) | 12 | 12 | **0 missed defects** |
+| Should **post** (`_True`) | 12 | 9 | 3 false alarms |
+
+**Zero missed defects.** Nothing that should have been stopped reached the
+ledger, and every one of the three posted documents was read perfectly.
+
+**Three false alarms, and all three are the same failure**: a document the
+system could not read confidently, held on the confidence threshold with the
+rules behaving correctly.
+
+| Document | Confidence | Rules firing |
+|---|---|---|
+| `9_invoice_thai_buddhist_dates` | 63% | **none** |
+| `18_invoice_unlabelled_amounts` | 60% | 1 |
+| `21_invoice_minimal_unlabelled` | 72% | 2 |
+
+That is the right shape for the failures to have. None was a rule misfiring on a
+valid document; all three are the system declining to post a page it read badly,
+which is what the conservatism is for. Two of the three are the invoices with no
+field labels at all, which is the hardest case in the corpus by construction.
+
+The structural-variation set is the other half of this number: six correct
+invoices in unfamiliar layouts — two-column, dense, minimal, Thai, scanned,
+thermal — of which **five posted**. Layout alone does not hold a document.
+
+---
 
 ### Which value is wrong
 
@@ -355,14 +372,25 @@ anyone's critical path.
 
 ## What this evaluation cannot tell you
 
-- **Eighteen documents is a demonstration, not a statistic.** One document
-  moving between posted and held shifts the straight-through rate by six points.
-  The per-document table is the useful part; the percentages are context.
-- **The corpus is synthetic.** The layouts, the damage and the defects were all
-  authored here. Real suppliers produce failure modes nobody thought to plant —
-  and the two authoring errors found in this corpus (a VAT that was correct when
-  it was meant to be wrong, and two contracts with no body text) are a small
-  demonstration of how easily a corpus can measure the wrong thing.
+- **Twenty-four documents is a demonstration, not a statistic.** One document
+  moving between posted and held shifts a rate by four points. The per-document
+  tables are the useful part; the percentages are context.
+- **The corpus is synthetic, and it has been wrong more often than the pipeline
+  has.** Every authoring error found so far looked like a system fault until it
+  was read closely: a VAT that was correct when it was meant to be wrong; two
+  contracts rendered with no body text; four documents declaring ground truth
+  their own layout never draws; two real defects labelled as clean cases; and a
+  value-recall metric searching for `2026-07-14` on pages that print
+  "14 July 2026". Six of those were caught by this evaluation on its first run,
+  which is the strongest thing that can be said for it and the weakest thing
+  that can be said for the corpus.
+- **Precision on a rule is a statement about annotation, not about the rule.**
+  The corpus declares the defect each document was built around, not every true
+  statement about it, so a rule that fires correctly on an undeclared document
+  scores as imprecise. Annotating after seeing the output would fix the number
+  and ruin the measurement.
+- **Eighteen of the thirty rules were never exercised.** They are reported as
+  untested, not as passing.
 - **Ground truth is what the document says, not what is true.** A supplier who
   invoices the wrong amount is extracted correctly and caught by a rule, not by
   accuracy.
