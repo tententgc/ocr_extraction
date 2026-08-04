@@ -97,6 +97,29 @@ class TestValueRecall:
         plain = PAGE.replace("415,000.00", "415000.00").replace("444,050.00", "444050")
         assert score_document(PAGE, plain, VALUES).value_recall == 1.0
 
+    def test_a_date_is_found_however_the_page_writes_it(self):
+        """Ground truth stores 2026-07-14; no invoice in the corpus prints that.
+
+        Searching for the stored form alone reported every date on every
+        document as lost, taking value recall down by a sixth and blaming the
+        OCR engine for the harness.
+        """
+        dates = {"invoice_date": "2026-07-14"}
+        for printed in ("14 July 2026", "14/07/2026", "2026-07-14", "14 Jul 2026"):
+            page = f"Invoice Date: {printed}"
+            assert score_document(page, page, dates).value_recall == 1.0, printed
+
+    def test_a_buddhist_era_year_is_the_same_date(self):
+        """Thai tax invoices print 2569 where the record says 2026."""
+        page = "วันที่ 25 July 2569"
+        assert score_document(page, page, {"invoice_date": "2026-07-25"}).value_recall == 1.0
+
+    def test_a_date_the_transcript_really_lost_is_still_reported(self):
+        """The forgiving matching must not forgive an actual loss."""
+        score = score_document("Invoice Date: 14 July 2026", "Invoice Date:",
+                               {"invoice_date": "2026-07-14"})
+        assert score.values_missing == ("invoice_date",)
+
     def test_a_short_value_is_not_scored(self):
         """A currency code or a single digit matches by accident too often to
         mean anything."""

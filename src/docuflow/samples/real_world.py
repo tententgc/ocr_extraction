@@ -93,6 +93,20 @@ EXTRA_VENDORS: tuple[dict[str, Any], ...] = (
         "currency": "THB",
     },
     {
+        # A fuel station a company buys from every week is a registered
+        # counterparty, not a stranger. Leaving it out made every fuel receipt
+        # trip `vendor_known` for a reason that was about the master file
+        # rather than about the receipt.
+        "vendor_id": "V-1013",
+        "legal_name": "PTT Station Rama IV",
+        "aliases": "PTT Rama IV;PTT Oil and Retail;บริษัท ปตท. น้ำมันและการค้าปลีก จำกัด",
+        "tax_id": "0105554000770",
+        "bank_account": "0140099887",
+        "status": "active",
+        "payment_terms": "Corporate card",
+        "currency": "THB",
+    },
+    {
         "vendor_id": "V-1012",
         "legal_name": "Nakhon Chemicals Co., Ltd.",
         "aliases": "Nakhon Chemicals;NCC",
@@ -658,17 +672,22 @@ VARIED_DOCUMENTS: tuple[tuple[str, Arrival, bool, SampleDoc], ...] = (
             doc_type="invoice", layout="dense",
             title="Rungruang Steel invoice typeset with no whitespace",
             demonstrates="Correct, and packed edge to edge. Tests that density alone does not hold a document.",
+            # The dense layout prints no purchase-order line, so the ground truth
+            # must not claim one - and the total therefore has to sit below the
+            # 50,000 threshold, or `purchase_order_required` is right to block
+            # and the document is not the clean case it is here to be.
+            # Declaring fields the chosen layout never draws was the authoring
+            # error that made four of these look like false alarms.
             ground_truth={
                 "invoice_number": "RSW-2026-1240", "invoice_date": "2026-07-29",
                 "due_date": "2026-09-27", "vendor_name": "Rungruang Steel Works Co., Ltd.",
                 "vendor_tax_id": "0105552000110", "buyer_name": BUYER,
-                "purchase_order_ref": "PO-2026-0501", "currency": "THB",
-                "subtotal": 62_000.00, "tax_rate": 7.0, "tax_amount": 4_340.00,
-                "total_amount": 66_340.00, "payment_terms": "Net 60",
-                "bank_account": "3120045678",
+                "currency": "THB",
+                "subtotal": 28_000.00, "tax_rate": 7.0, "tax_amount": 1_960.00,
+                "total_amount": 29_960.00, "bank_account": "3120045678",
             },
             line_items=(
-                {"description": "Steel channel 100x50x5mm", "quantity": 155, "unit_price": 400.00, "amount": 62_000.00},
+                {"description": "Steel channel 100x50x5mm", "quantity": 70, "unit_price": 400.00, "amount": 28_000.00},
             ),
         ),
     ),
@@ -679,13 +698,16 @@ VARIED_DOCUMENTS: tuple[tuple[str, Arrival, bool, SampleDoc], ...] = (
             doc_type="invoice", layout="minimal",
             title="Sunrise Electrical invoice with almost no labels",
             demonstrates="Correct, but the amounts are a bare column with no words beside them. The label-first channel has nothing to anchor on.",
+            # No payment terms and no tax ID: the minimal layout draws neither,
+            # and claiming them in the ground truth invents fields the page does
+            # not have.
             ground_truth={
                 "invoice_number": "SE-2026-0488", "invoice_date": "2026-07-29",
                 "due_date": "2026-09-12", "vendor_name": "Sunrise Electrical Co., Ltd.",
-                "vendor_tax_id": "0105571000448", "buyer_name": BUYER,
+                "buyer_name": BUYER,
                 "currency": "THB", "subtotal": 22_000.00, "tax_rate": 7.0,
                 "tax_amount": 1_540.00, "total_amount": 23_540.00,
-                "payment_terms": "Net 45", "bank_account": "8890014455",
+                "bank_account": "8890014455",
             },
             line_items=(
                 {"description": "Distribution board, 12-way", "quantity": 4, "unit_price": 5_500.00, "amount": 22_000.00},
@@ -724,14 +746,18 @@ VARIED_DOCUMENTS: tuple[tuple[str, Arrival, bool, SampleDoc], ...] = (
                 "invoice_number": "MC-2026-0801", "invoice_date": "2026-07-30",
                 "due_date": "2026-08-29", "vendor_name": "Meridian Consulting LLP",
                 "vendor_tax_id": "GB428765190", "buyer_name": BUYER,
+                # The full order value. Invoicing 30,000 against a 36,000 order
+                # is a part delivery, which `po_amount_within_tolerance` is
+                # right to stop - and this document is here to be the clean
+                # case, not to smuggle in a second defect.
                 "purchase_order_ref": "PO-2026-0534", "currency": "USD",
-                "subtotal": 30_000.00, "tax_rate": 0.0, "tax_amount": 0.00,
-                "total_amount": 30_000.00, "payment_terms": "Net 30",
+                "subtotal": 36_000.00, "tax_rate": 0.0, "tax_amount": 0.00,
+                "total_amount": 36_000.00, "payment_terms": "Net 30",
                 "bank_account": "GB29NWBK60161331926819",
             },
             line_items=(
-                {"description": "Operations advisory, phase 2 - senior partner", "quantity": 75, "unit_price": 280.00, "amount": 21_000.00},
-                {"description": "Operations advisory, phase 2 - analyst", "quantity": 90, "unit_price": 100.00, "amount": 9_000.00},
+                {"description": "Operations advisory, phase 2 - senior partner", "quantity": 90, "unit_price": 280.00, "amount": 25_200.00},
+                {"description": "Operations advisory, phase 2 - analyst", "quantity": 108, "unit_price": 100.00, "amount": 10_800.00},
             ),
         ),
     ),
@@ -748,8 +774,11 @@ VARIED_DOCUMENTS: tuple[tuple[str, Arrival, bool, SampleDoc], ...] = (
                 "subtotal": 1_401.87, "tax_rate": 7.0, "tax_amount": 98.13,
                 "total_amount": 1_500.00, "payment_method": "Corporate card",
             },
+            # Net, not gross. A line item priced at the VAT-inclusive total makes
+            # the rows disagree with the subtotal by exactly the tax, and
+            # `line_items_sum_to_subtotal` is right to say so.
             line_items=(
-                {"description": "Diesel B7", "quantity": 46.01, "unit_price": 32.60, "amount": 1_500.00},
+                {"description": "Diesel B7", "quantity": 43.00, "unit_price": 32.60, "amount": 1_401.87},
             ),
         ),
     ),

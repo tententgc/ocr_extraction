@@ -154,12 +154,38 @@ def _significant(value: Any) -> int:
     return sum(1 for char in compact if char.isalnum())
 
 
+def _date_forms(value: str) -> tuple[str, ...]:
+    """The ways a date is written on a page, given its ISO form.
+
+    Ground truth stores `2026-07-14`; no invoice in the corpus prints that.
+    They print "14 July 2026", or "14/07/2026". Searching for the stored form
+    alone reported the OCR as having lost every date on every document - which
+    took value recall down by a sixth and blamed the engine for the harness.
+    """
+    from datetime import date
+
+    try:
+        parsed = date.fromisoformat(value[:10])
+    except (TypeError, ValueError):
+        return ()
+    return (
+        parsed.isoformat(),
+        f"{parsed.day} {parsed.strftime('%B')} {parsed.year}",
+        f"{parsed.day:02d}/{parsed.month:02d}/{parsed.year}",
+        f"{parsed.day}/{parsed.month}/{parsed.year}",
+        f"{parsed.strftime('%d %b %Y')}",
+        # Thai documents print the Buddhist year, 543 ahead of the Gregorian.
+        f"{parsed.day} {parsed.strftime('%B')} {parsed.year + 543}",
+    )
+
+
 def _printed_forms(value: Any) -> tuple[str, ...]:
     """How a value might legitimately appear on the page.
 
-    An amount stored as 1500.0 is printed as "1,500.00"; a rate stored as 7.0 is
-    printed as "7%". Searching for the stored form alone would report the OCR as
-    having lost values that are plainly there.
+    An amount stored as 1500.0 is printed as "1,500.00"; a date stored as
+    2026-07-14 is printed as "14 July 2026". Searching for the stored form alone
+    reports the OCR as having lost values that are plainly there, which measures
+    the harness rather than the engine.
     """
     if isinstance(value, bool) or value is None:
         return ()
@@ -169,7 +195,9 @@ def _printed_forms(value: Any) -> tuple[str, ...]:
         if number.is_integer():
             forms.add(str(int(number)))
         return tuple(forms)
-    return (str(value),)
+
+    text = str(value)
+    return _date_forms(text) or (text,)
 
 
 def score_document(reference: str, transcript: str, values: dict[str, Any],
