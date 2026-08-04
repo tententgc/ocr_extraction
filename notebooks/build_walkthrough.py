@@ -56,19 +56,37 @@ system knows which of its own answers to distrust.
 A value the model produced but the page does not contain is treated as invented
 and never posts automatically, however confident the model sounded.
 
-| Stage | What it does | Model? |
+| Stage | What it does | Model |
 |---|---|---|
-| render | PDF/photo → page images | no |
-| OCR | image → text (Typhoon OCR 1.5) | yes |
-| classify | which kind of document | keywords first, model only if unsure |
+| render | PDF/photo → page images | — |
+| OCR | image → text (Typhoon OCR 1.5) | Typhoon OCR |
+| classify | which kind of document | keywords; a model only if they are close |
 | extract A | field-first reading | Typhoon |
 | extract B | label-first reading | Claude |
-| merge | agreement, grounding, confidence | no |
-| rules | business checks against master data | no |
-| route | post automatically, or hold | no |
+| merge | agreement, grounding, confidence | — |
+| **validate** | 26 fixed checks: arithmetic recomputed, vendors, purchase orders, contracts and prior postings looked up | — |
+| **agent rules** | the checks a comparison cannot express: a fixed plan, run with **tool calling** | Typhoon / Claude |
+| route | post automatically, or hold | — |
+| **investigate** | when a check failed *and* a person will see it: **tool calling** to explain why | Typhoon / Claude |
 
-Note the "no" column. **Models read; code decides.** A model never chooses whether
-a document posts.
+**"—" does not mean "did not touch the back office".** The validate stage reads
+the vendor master file, the purchase-order register, the contract register and the
+ledger of what was already posted — it just calls them **directly in code** rather
+than asking a model to decide to call a tool.
+
+The split is about who chooses the sequence:
+
+* **A question you can write down in advance** — "does PO-2026-0412 exist, and
+  does its value cover this invoice?" — is a function call. Wrapping it in tool
+  calling adds three ways to get the same fact wrong (the model may not call it,
+  may call it with the wrong argument, may misread what comes back) and a round
+  trip, for no upside.
+* **An investigation whose next step depends on what the last one returned** —
+  "these do not match; find out why" — cannot be written in advance. That is
+  where tool calling earns its cost, and it is exactly where this system uses it.
+
+So: deterministic checks first, tool calling second, and **only code decides
+whether a document posts.** A model reads and investigates; it never routes.
 """)
 
 # -------------------------------------------------------------- install ----
@@ -754,6 +772,50 @@ print(f"{held.document_id}  {held.decision.upper()}  ({held.confidence:.0%})")
 for finding in held.findings:
     if not finding.passed:
         print(f"   [{finding.severity:8}] {finding.rule_id}: {finding.message[:66]}")
+''')
+
+md(r"""
+### The tool-calling layer, on a document that needed it
+
+The checks above ran as code. Now that one of them has failed, an agent goes and
+finds out why — and this is where tool calling happens: it decides what to look
+up next based on what the last lookup returned, which is the part you cannot
+write down in advance.
+
+Every call and its result is below, unedited. Worth reading closely — this is
+what an agent actually looks like, not what an architecture diagram suggests:
+
+* it **probes**. Several `read_document` calls hunt for a purchase order under
+  different names before accepting there is none;
+* it sometimes **repeats itself**. A call it has already made comes back with
+  *"You already made this exact call and this was the answer"* — the tool is not
+  re-run, and two repeats end the loop rather than letting it spend its budget
+  going in circles;
+* it sometimes **wanders** into a lookup that was never going to help.
+
+None of that reaches the record. Every value it proposes is re-grounded against
+the page first, and the routing decision was already made by code before this ran.
+""")
+
+code(r'''
+analyst = held_outcome.reconciliation
+
+if not analyst.ran:
+    print("the analyst did not run:", analyst.note)
+else:
+    print(f"{len(analyst.tool_calls)} tool call(s)\n")
+    for call in analyst.tool_calls:
+        args = ", ".join(f"{k}={v!r}" for k, v in (call.arguments or {}).items())
+        answer = {k: v for k, v in call.result.items() if k not in {"warning"}}
+        print(f"  {call.name}({args[:60]})")
+        print(f"      -> {str(answer)[:96]}")
+
+    print(f"\nassessment : {analyst.assessment[:300]}")
+    print(f"root cause : {analyst.root_cause}")
+    for correction in analyst.corrections:
+        mark = "verified on page" if correction.grounded else (
+            "THE PAGE SAYS OTHERWISE" if correction.contradicts_evidence else "not on page")
+        print(f"  [{mark}] {correction.field} -> {correction.suggested_value}")
 ''')
 
 md(r"""
