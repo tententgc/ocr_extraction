@@ -82,6 +82,38 @@ def expired(make_run):
     )
 
 
+class TestWhenItIsWorthCalling:
+    """It writes a note for a reviewer. No reviewer, no note."""
+
+    def test_a_held_document_with_a_failure_is_investigated(self, expired):
+        from docuflow.agents.reconciler import should_run
+
+        assert should_run(expired.evolve(decision="needs_review")) is True
+
+    def test_a_document_that_posted_is_not(self, expired):
+        """The warning is still recorded as a finding; the paragraph is not written."""
+        from docuflow.agents.reconciler import should_run
+
+        posted = expired.evolve(decision="auto_post")
+        assert posted.failed_findings, "the finding still exists"
+        assert should_run(posted) is False
+
+    def test_a_clean_document_is_not_either(self, make_run):
+        from docuflow.agents.reconciler import should_run
+
+        assert should_run(make_run(CONTRACT, doc_type="contract")) is False
+
+    def test_skipping_it_says_why(self, expired, master, settings):
+        from docuflow.store.records import RecordStore
+
+        result = reconcile(expired.evolve(decision="auto_post"),
+                           Replying({"assessment": "should never be asked"}),
+                           master=master, records=RecordStore(settings.db_path))
+        assert result.ran is False
+        assert "no reviewer" in result.note
+        assert result.assessment == ""
+
+
 class TestWhatTheAgentIsTold:
     def test_it_is_shown_the_page_text_behind_a_grounded_value(self, expired):
         """It cannot report a value as unsupported while looking at the support."""

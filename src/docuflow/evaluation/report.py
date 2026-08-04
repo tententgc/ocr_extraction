@@ -12,6 +12,43 @@ def _bar(fraction: float, width: int = BAR_WIDTH) -> str:
     return "█" * filled + "·" * (width - filled)
 
 
+def _print_cost(cost: dict[str, Any]) -> None:
+    """Where the time went, and what the model calls bought.
+
+    Printed beside accuracy on purpose: a stage that got faster while the numbers
+    above it fell is not an improvement, and neither is an agent whose calls all
+    end in "could not decide".
+    """
+    if not cost.get("documents"):
+        return
+
+    print("\n--- Where the time went " + "-" * 53)
+    print(f"Per document         : {cost['mean_ms'] / 1000:.1f}s mean · "
+          f"{cost['median_ms'] / 1000:.1f}s median · {cost['p90_ms'] / 1000:.1f}s p90 · "
+          f"{cost['slowest_ms'] / 1000:.1f}s slowest")
+    print(f"{'STAGE':14} {'TOTAL':>9} {'MEAN':>8} {'SHARE':>7}")
+    for stage, data in cost.get("stages", {}).items():
+        print(f"{stage:14} {data['total_ms'] / 1000:>8.1f}s {data['mean_ms'] / 1000:>7.1f}s "
+              f"{data['share']:>7.0%}")
+
+    if cost.get("agent_rules_run") or cost.get("reconciler_runs"):
+        print("\n--- What the agents did " + "-" * 53)
+        if cost.get("agent_rules_run"):
+            verdicts = ", ".join(f"{count} {name}"
+                                 for name, count in sorted(cost["agent_rule_verdicts"].items()))
+            print(f"Agent rules run      : {cost['agent_rules_run']}  ({verdicts})")
+            print(f"Could not decide     : {cost['undecided_rate']:.0%}  "
+                  f"(held for a person, never passed)")
+            print(f"Tool calls           : {cost['agent_rule_tool_calls']}")
+        print(f"Reconciler ran on    : {cost['reconciler_runs']}/{cost['documents']} documents "
+              f"({cost['reconciler_tool_calls']} tool calls)")
+        if cost.get("repeated_tool_calls"):
+            # A call that asked something already answered. Not free: each one
+            # is a turn of a bounded budget spent learning nothing.
+            print(f"Repeated calls       : {cost['repeated_tool_calls']}  "
+                  f"(asked something already answered)")
+
+
 def print_report(report: dict[str, Any]) -> None:
     """Print the accuracy report to stdout."""
     summary = report.get("summary", {})
@@ -46,6 +83,8 @@ def print_report(report: dict[str, Any]) -> None:
     print(f"Auto-post precision  : {summary['auto_post_precision']:.1%}")
     print(f"Planted defects      : {summary['planted_defects_caught']}/{summary['planted_defects']} caught "
           f"({summary['defect_recall']:.0%} recall)")
+
+    _print_cost(report.get("cost") or {})
 
     breakdown = report.get("field_breakdown", {})
     weak = [(name, data) for name, data in breakdown.items() if data["accuracy"] < 1.0]

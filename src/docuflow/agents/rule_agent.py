@@ -229,6 +229,7 @@ def _finish(
         "checked": [dict(row) for row in _clean_checked(payload.get("checked"), rule.plan)],
         "tools_used": result.tool_names,
         "iterations": result.iterations,
+        "repeated_calls": result.repeated_calls,
         "model": getattr(runner.llm, "name", "") or "",
     }
 

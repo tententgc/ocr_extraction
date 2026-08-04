@@ -25,6 +25,11 @@ logger = logging.getLogger(__name__)
 
 MAX_ITERATIONS = 6
 MAX_TOOL_RESULT_CHARS = 2_500
+# Asking the same question with the same arguments a third time is not research,
+# it is a loop. One real run called check_arithmetic four times with identical
+# inputs before answering; each repeat costs a turn of the budget and returns
+# what the agent was already told.
+MAX_REPEATED_CALLS = 2
 # Providers cap the message list (Typhoon rejects more than 50). A loop that
 # makes several tool calls per turn reaches that quickly, so the transcript is
 # trimmed rather than allowed to grow until the request is refused.
@@ -51,10 +56,17 @@ class AgentResult:
     used_tools: bool = False
     ok: bool = False
     note: str = ""
+    # Calls that asked a question already answered in this run.
+    repeated_calls: int = 0
 
     @property
     def tool_names(self) -> list[str]:
         return [call.name for call in self.calls]
+
+
+def _call_key(name: str, arguments: dict[str, Any]) -> str:
+    """Identity of a tool call: the same tool asked the same thing."""
+    return f"{name}:{json.dumps(arguments or {}, sort_keys=True, default=str)}"
 
 
 def _truncate(value: str) -> str:
@@ -131,6 +143,8 @@ def run_agent(
         {"role": "user", "content": user},
     ]
     calls: list[ToolInvocation] = []
+    answered: dict[str, dict[str, Any]] = {}
+    repeated = 0
 
     for iteration in range(1, max_iterations + 1):
         messages = _trim_history(messages)
@@ -167,6 +181,7 @@ def run_agent(
                 used_tools=bool(calls),
                 ok=payload is not None,
                 note="" if payload is not None else "final reply was not valid JSON",
+                repeated_calls=repeated,
             )
 
         # Record the assistant's tool request, then answer each call.
@@ -185,7 +200,19 @@ def run_agent(
             }
         )
         for call in turn.tool_calls:
-            result = run_tool(tools, call.name, call.arguments)
+            key = _call_key(call.name, call.arguments)
+            if key in answered:
+                # The tool would return the same thing, so it is not run again.
+                # Saying so is the point: an agent that cannot tell it is
+                # repeating itself will keep repeating itself until the budget
+                # is gone, and then answer with nothing to show for it.
+                repeated += 1
+                result = {**answered[key],
+                          "note": "You already made this exact call and this was the answer. "
+                                  "Use it, or try something different."}
+            else:
+                result = run_tool(tools, call.name, call.arguments)
+                answered[key] = result
             calls.append(ToolInvocation(name=call.name, arguments=call.arguments, result=result))
             messages.append(
                 {
@@ -196,7 +223,11 @@ def run_agent(
                 }
             )
 
-    # Out of iterations: ask once more for the answer, with tools switched off.
+        if repeated >= MAX_REPEATED_CALLS:
+            logger.info("agent repeated %s call(s); asking for the answer now", repeated)
+            break
+
+    # Out of budget, or going in circles: ask once more with tools switched off.
     messages.append(
         {
             "role": "user",
@@ -213,6 +244,7 @@ def run_agent(
             used_tools=bool(calls),
             ok=False,
             note=f"agent did not finish: {exc}",
+            repeated_calls=repeated,
         )
 
     return AgentResult(
@@ -222,5 +254,6 @@ def run_agent(
         iterations=max_iterations,
         used_tools=bool(calls),
         ok=payload is not None,
+        repeated_calls=repeated,
         note="" if payload is not None else "agent ran out of turns before answering",
     )
