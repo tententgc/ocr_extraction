@@ -496,27 +496,26 @@ Full results, per document, with what was read wrong and why:
 **[docs/EVALUATION.md](docs/EVALUATION.md)**.
 
 The headline, measured on the eighteen-document working corpus — Typhoon OCR 1.5
-on-device, Typhoon Cloud reading it, GPT-5.1 reading it again:
+on-device, Typhoon Cloud reading it, Claude reading it again:
 
 | Metric | Result |
 |---|---|
-| **Silent error rate** | **0%** — nothing wrong reached the ledger |
-| Planted defects caught | **12/13** (92%) |
+| **Silent error rate** | **0%** — all three auto-posted documents were read perfectly, every field |
+| Planted defects caught | **13/13** (100%) |
 | Document type accuracy | **18/18** (100%) |
 | Field accuracy (exact) | **191/216** (88.4%) |
-| Straight-through rate | 4/18 — the other 14 were held, each for a stated reason |
-| Time saved (modelled) | 114 of 135 manual minutes (84%) |
+| Straight-through rate | 3/18 — the other 15 were held, each for a stated reason |
+| Time saved (modelled) | 112 of 135 manual minutes (83%) |
 
-Twenty-two per cent straight-through looks low until you read the corpus:
-thirteen of the eighteen documents have a defect planted in them on purpose, and
-the four that posted are four that should have.
+Seventeen per cent straight-through looks low until you read the corpus: thirteen
+of the eighteen documents have a defect planted in them on purpose.
 
-Read the confidence beside the decision, not instead of it. Six held documents
-sit at 94–95%: every one was read correctly and stopped by a closed purchase
-order, a changed bank account, a duplicate or a currency mismatch. The two at
-60–62% are the two the system genuinely could not read. Those need different
-things from a reviewer, and a single number that conflated them told them
-neither.
+Read the confidence beside the decision, not instead of it. Five held documents
+sit at 91–93%: every one was read correctly and stopped by a closed purchase
+order, a changed bank account, a duplicate, a currency mismatch or a blocked
+vendor. The three at 60–63% are the ones the system genuinely could not read.
+Those need different things from a reviewer, and a single number that conflated
+them told them neither.
 
 The silent error rate is the number that matters. Field accuracy in the low
 nineties with a 0% silent error rate is deployable; 99% accuracy with silent

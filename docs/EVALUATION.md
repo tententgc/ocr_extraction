@@ -58,7 +58,7 @@ system made things worse.
 | Arrival | 10 digital PDFs, 3 scans, 3 phone photographs, 2 faded photocopies |
 | OCR | Typhoon OCR 1.5 (3B) on-device via Ollama |
 | Reading 1 | Typhoon `typhoon-v2.5-30b-a3b-instruct`, field-first |
-| Reading 2 | OpenAI `gpt-5.1`, label-first — a different backend on purpose |
+| Reading 2 | Claude `claude-opus-5`, label-first — a different backend on purpose |
 | Rules | 26 built-in + 7 written for this corpus (5 expression, 2 agent) |
 | Master data | 12 vendors, 10 purchase orders, 5 contracts, loaded from CSV |
 | Auto-post threshold | 84% confidence |
@@ -76,18 +76,17 @@ and can only be detected once document 1 has posted.
 
 | Metric | Result |
 |---|---|
-| **Silent error rate** | **0%** — 0 of 4 auto-posted documents carried a wrong critical value |
-| Planted defects caught | **12 / 13** (92%) |
+| **Silent error rate** | **0%** — all 3 auto-posted documents were read perfectly, every field |
+| Planted defects caught | **13 / 13** (100%) |
 | Document type accuracy | **18 / 18** (100%) |
 | Field accuracy (exact) | **191 / 216** (88.4%) |
-| Straight-through rate | 4 / 18 (22%) — the other 14 were held, each for a stated reason |
-| Wall clock | 523s for 18 documents (29s each) |
-| Time saved (modelled) | 114 of 135 manual minutes (84%) |
+| Straight-through rate | 3 / 18 (17%) — the other 15 were held, each for a stated reason |
+| Wall clock | 574s for 18 documents (32s each) |
+| Time saved (modelled) | 112 of 135 manual minutes (83%) |
 
-Twenty-two per cent straight-through looks low until you read the corpus:
-thirteen of the eighteen documents have a defect planted in them on purpose. The
-four that posted are four that should have. A corpus built to be caught is not a
-corpus that measures throughput.
+Seventeen per cent straight-through looks low until you read the corpus: thirteen
+of the eighteen documents have a defect planted in them on purpose. A corpus
+built to be caught is not a corpus that measures throughput.
 
 ### Per document
 
@@ -103,30 +102,36 @@ conflated them told them neither.
 
 | # | Document | Arrives as | Decision | Conf. | Fields | S | Defect | Held by |
 |---|---|---|---|---|---|---|---|---|
-| 1 | `invoice_clean_matches_po` | PDF | **auto-post** | 95% | 14/14 | | — | — |
-| 2 | `invoice_total_transposed` | PDF | held | 76% | 14/14 | | 1/1 | the arithmetic |
-| 3 | `invoice_photo_on_a_desk` | photo | held | 95% | 14/14 | | — | the PO is closed |
-| 4 | `invoice_vat_miscalculated` | PDF | held | 75% | 11/14 | | 2/2 | VAT ≠ stated rate; vendor on hold |
-| 5 | `invoice_bank_account_changed` | PDF | held | 95% | 13/13 | | 1/1 | not the vendor's account |
-| 6 | `invoice_unknown_vendor` | scan | held | 83% | 10/12 | | 1/1 | vendor not registered |
-| 7 | `invoice_from_a_blocked_vendor` | PDF | held | 94% | 11/13 | | 1/1 | vendor blocked |
-| 8 | `invoice_over_the_purchase_order` | PDF | held | 95% | 13/14 | | 1/1 | 22% over the order |
-| 9 | `invoice_thai_buddhist_dates` | scan | **auto-post** | 84% | 13/13 | | — | — |
-| 10 | `invoice_no_po_above_threshold` | PDF | held | 88% | 10/13 | | see below | PO does not exist |
-| 11 | `receipt_photographed` | photo | **auto-post** | 88% | 7/9 | | — | — |
-| 12 | `contract_expiring_soon` | PDF | held | 82% | 8/8 | | 1/1 | expires in 56 days |
-| 13 | `contract_already_expired` | photocopy | held | 68% | 5/8 | | 1/1 | expired |
-| 14 | `form_vendor_onboarding` | scan | **auto-post** | 96% | 7/7 | | — | — |
-| 15 | `invoice_duplicate_submission` | PDF | held | 95% | 14/14 | | 1/1 | already posted |
+| 1 | `invoice_clean_matches_po` | PDF | **auto-post** | 93% | 14/14 | | — | — |
+| 2 | `invoice_total_transposed` | PDF | held | 75% | 14/14 | | 1/1 | the arithmetic |
+| 3 | `invoice_photo_on_a_desk` | photo | held | 93% | 14/14 | | — | the PO is closed |
+| 4 | `invoice_vat_miscalculated` | PDF | held | 73% | 12/14 | | 2/2 | VAT ≠ stated rate; vendor on hold |
+| 5 | `invoice_bank_account_changed` | PDF | held | 93% | 13/13 | | 1/1 | not the vendor's account |
+| 6 | `invoice_unknown_vendor` | scan | held | 82% | 10/12 | | 1/1 | vendor not registered |
+| 7 | `invoice_from_a_blocked_vendor` | PDF | held | 91% | 12/13 | | 1/1 | vendor blocked |
+| 8 | `invoice_over_the_purchase_order` | PDF | held | 93% | 13/14 | | 1/1 | 22% over the order |
+| 9 | `invoice_thai_buddhist_dates` | scan | held | 63% | 11/13 | | — | the first reading returned invalid JSON |
+| 10 | `invoice_no_po_above_threshold` | PDF | held | 82% | 10/13 | | 1/1 | no PO above the threshold |
+| 11 | `receipt_photographed` | photo | held | 81% | 7/9 | | — | required field missing |
+| 12 | `contract_expiring_soon` | PDF | **auto-post** | 92% | 8/8 | | 1/1 | — (warning: expires in 56 days) |
+| 13 | `contract_already_expired` | photocopy | held | 76% | 5/8 | | 1/1 | expired |
+| 14 | `form_vendor_onboarding` | scan | **auto-post** | 88% | 7/7 | | — | — |
+| 15 | `invoice_duplicate_submission` | PDF | held | 93% | 14/14 | | 1/1 | already posted |
 | 16 | `invoice_line_items_do_not_sum` | photocopy | held | 62% | 7/13 | | 1/1 | date misread; lines short |
-| 17 | `invoice_currency_disagrees_with_po` | PDF | held | 95% | 12/13 | | 1/1 | USD against an SGD order |
+| 17 | `invoice_currency_disagrees_with_po` | PDF | held | 93% | 12/13 | | 1/1 | USD against an SGD order |
 | 18 | `invoice_unlabelled_amounts` | photo | held | 60% | 8/10 | | — | required fields missing |
 
-Six documents sit at 94–95% and are still held. Every one of them was read
-correctly and stopped by something that has nothing to do with reading: a closed
-purchase order, a changed bank account, a duplicate, a currency mismatch. The two
-at 60–62% are the two the system genuinely struggled to read — a faded photocopy
-and an invoice with no field labels at all — and both are held for that.
+Five documents sit at 91–93% and are still held. Every one was read correctly and
+stopped by something that has nothing to do with reading: a closed purchase
+order, a changed bank account, a duplicate, a currency mismatch, a blocked
+vendor. The three at 60–63% are the ones the system genuinely could not read — a
+faded photocopy, an invoice with no field labels, and one where the first
+extraction channel returned invalid JSON — and all three are held for that.
+
+Document 12 is the tier change visible in one row: a contract expiring in 56 days
+posts, carrying `contract_expiring_soon` as a warning on its record. Somebody
+should renew it; nobody needs to stop what they are doing and confirm eight
+fields that are already right.
 
 ### What posted, audited field by field
 
@@ -136,15 +141,44 @@ listing in full rather than summarising:
 | Document | Wrong | Missing | Critical wrong |
 |---|---|---|---|
 | `1_invoice_clean_matches_po` | — | — | none |
-| `9_invoice_thai_buddhist_dates` | — | — | none |
-| `11_receipt_photographed` | `payment_method` | `tax_rate` | **none** |
+| `12_contract_expiring_soon` | — | — | none |
 | `14_form_vendor_onboarding` | — | — | none |
 
-Three of the four are perfect. The fourth is a thermal receipt photographed on a
-desk: every amount, the merchant and the receipt number are right, and what it
-got wrong is how the fuel was paid for. That is a real cost of letting warnings
-pass — and the right trade, because the alternative was holding all four and
-having a person confirm three documents that had nothing wrong with them.
+All three are perfect — every field on every posted document matches ground
+truth. That is what a 0% silent error rate should look like when it is real
+rather than an artefact of posting almost nothing.
+
+### Run-to-run variance, which is not nothing
+
+The same corpus, same code, run twice with a different backend on the **second**
+reading:
+
+| | Claude `opus-5` | OpenAI `gpt-5.1` |
+|---|---|---|
+| Silent errors | 0 | 0 |
+| Defects caught | **13/13** | 12/13 |
+| Field accuracy | 88.4% | 88.4% |
+| Auto-posted | 3 | 4 |
+
+Identical field accuracy, and the two disagree about which documents to trust.
+Two differences are worth naming rather than averaging away.
+
+**Document 10** was the one defect missed in the OpenAI run: extraction read the
+bank account `8890014455` into `purchase_order_ref`, so `purchase_order_required`
+correctly concluded a PO had been quoted. With Claude the field went to
+`vendor_tax_id` instead — still wrong, but it left `purchase_order_ref` empty and
+the rule fired as designed. The corpus scores that as a hit and it was luck.
+
+**Document 9** posted in one run and was held at 63% in the other, because the
+first channel returned invalid JSON on the Thai document that time. Nothing about
+the page changed. This is the honest shape of the thing: the same document does
+not always get the same decision, and the routing conservatism is what makes that
+tolerable — the variance moves documents between *posted* and *reviewed*, not
+between *right* and *wrong*.
+
+Eighteen documents cannot separate these two configurations. The numbers above
+are a demonstration that the pipeline works, not evidence that one model reads
+better than another.
 
 ### The one defect not caught as expected
 
@@ -268,15 +302,16 @@ The effect on this corpus:
 | | Before | After |
 |---|---|---|
 | Silent errors | 0 | **0** |
-| Defects caught | 12/13 | **12/13** |
-| Auto-posted | 3/18 | **4/18** |
-| Documents held at ≥94% confidence | 0 | 6 |
-| Time saved | 83% | **84%** |
+| Defects caught | 12/13 | **13/13** |
+| Auto-posted | 3/18 | 3/18 |
+| Documents held at ≥91% confidence | 0 | **5** |
 
-The last two rows are the interesting ones. Six documents now sit at 94–95% and
-are still held, which is the honest description of what they are: read
-correctly, stopped by a fact about the world. Before, they were reported at
-38–45%, which told the reviewer the reading was doubtful when it was not.
+The last row is the one that matters. Five documents now sit at 91–93% and are
+still held, which is the honest description of what they are: read correctly,
+stopped by a fact about the world. Before, the same documents reported 38–45%,
+telling the reviewer the reading was doubtful when it was not — and a reviewer
+who opens a 40% document expecting to fix a misread number, and finds a
+perfectly-read invoice from a blocked vendor, learns to distrust the number.
 
 ---
 
@@ -293,9 +328,10 @@ can find afterwards. So the model is stated rather than buried:
 | Reviewing one the system held, with the values and failing checks on screen | 1.5 |
 | Cleaning up one silently posted error | 45.0 |
 
-On this corpus: 135 minutes by hand, 21 minutes through here, **114 saved (84%)**.
-Scaled up, that is 16.7 working days per thousand documents by hand against 2.6.
-The nine minutes of machine time sit beside those numbers rather than inside them.
+On this corpus: 135 minutes by hand, 22.5 minutes through here, **112.5 saved
+(83%)**. Scaled up, that is 16.7 working days per thousand documents by hand
+against 2.8. The ten minutes of machine time sit beside those numbers rather than
+inside them.
 
 Three properties keep it honest.
 
