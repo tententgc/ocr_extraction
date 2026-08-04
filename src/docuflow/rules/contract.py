@@ -61,10 +61,17 @@ def contract_expiring_soon(context: RuleContext) -> RuleFinding | None:
         # "expiring soon", and an id that says otherwise gets argued with - one
         # run spent its assessment correcting the label rather than reading the
         # message beside it, which said exactly the right thing.
+        # Blocking, where "expiring soon" below is a warning. Now that a warning
+        # genuinely does not hold a document, the two cases need different
+        # severities or the wrong one of them decides. A contract with two months
+        # left is something to put on someone's list; one that ended last week is
+        # not a note, it is a supplier being paid under an agreement that no
+        # longer exists, and somebody has to decide what to do before it is filed.
         return failed(
             "contract_expired",
-            f"This agreement expired {abs(days)} days ago ({end.isoformat()}).",
-            severity="warning",
+            f"This agreement expired {abs(days)} days ago ({end.isoformat()}). It cannot be "
+            f"filed as current until it is renewed or superseded.",
+            severity="blocking",
             fields=["expiry_date"],
             days_remaining=days,
         )

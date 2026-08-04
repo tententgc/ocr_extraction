@@ -14,12 +14,35 @@ from typing import TYPE_CHECKING, Callable, Iterable
 if TYPE_CHECKING:  # pragma: no cover - import cycle: custom rules need the registry
     from docuflow.rules.custom import CustomRule
 
+from docuflow.confidence import MISREAD_SIGNALS
 from docuflow.models import RuleFinding, Severity, SuggestedFix
 from docuflow.rules.context import RuleContext
 
 logger = logging.getLogger(__name__)
 
 RuleFunction = Callable[[RuleContext], RuleFinding | None]
+
+# What each severity actually does. Written down because the three words are
+# only meaningful if they behave differently, and for a while two of them did
+# not: a warning reduced confidence enough to drop a document under the
+# auto-post threshold, which is a block wearing a warning's label.
+#
+#   blocking  the document stops. A person corrects it and re-checks, or
+#             rejects it. Nothing posts past a failing blocking rule, ever -
+#             not even on approval.
+#   warning   recorded on the document, shown to the reviewer, carried into the
+#             posted record. It does NOT hold the document. If a check should
+#             hold a document, it is a blocking check and should say so.
+#   info      recorded. Notes a mode or a decision rather than a problem.
+#
+# Separately from severity, `confidence.MISREAD_SIGNALS` lists the failures that
+# are evidence a value was read wrongly. Those reduce confidence at any severity,
+# because they are about the reading rather than about the business.
+SEVERITY_MEANING: dict[str, str] = {
+    "blocking": "stops the document; a person must correct it and re-check, or reject it",
+    "warning": "recorded and shown to the reviewer; does not stop the document",
+    "info": "recorded; notes a mode or a decision rather than a problem",
+}
 
 
 @dataclass(frozen=True)
@@ -131,6 +154,13 @@ def describe_rules(
             "default_severity": info.severity,
             "severity": graded.get(info.rule_id, info.severity),
             "regraded": info.rule_id in graded and graded[info.rule_id] != info.severity,
+            # What the severity does, in words, next to the switch that changes
+            # it. Someone re-grading a rule to "warning" should be able to read
+            # that this stops holding documents.
+            "severity_means": SEVERITY_MEANING.get(
+                graded.get(info.rule_id, info.severity), ""
+            ),
+            "affects_confidence": info.rule_id in MISREAD_SIGNALS,
         }
         for info in all_rules()
     ]

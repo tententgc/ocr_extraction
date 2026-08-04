@@ -40,7 +40,7 @@ def _check_tax_id(value: str | None, field_name: str) -> RuleFinding | None:
     )
 
 
-@rule("*")
+@rule("*", severity="blocking")
 def tax_id_checksum(context: RuleContext) -> RuleFinding | None:
     """Validate any Thai tax ID on the document."""
     for field_name in ("vendor_tax_id", "merchant_tax_id", "tax_id"):
