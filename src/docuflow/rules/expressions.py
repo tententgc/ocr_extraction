@@ -35,6 +35,18 @@ TEXT_OPS = frozenset({"contains", "not_contains", "starts_with", "ends_with"})
 PRESENCE = frozenset({"present", "absent"})
 OPERATORS = COMPARISONS | MEMBERSHIPS | TEXT_OPS | PRESENCE
 
+# An invoice *is* its line items, and until now a rule could only see how many
+# there were. These two quantifiers run an ordinary condition against each row.
+# The condition inside them addresses a row, not the document, so it is checked
+# against a different set of names.
+QUANTIFIERS = frozenset({"any_item", "every_item"})
+ITEM_FIELDS = frozenset({"description", "quantity", "unit_price", "amount"})
+# Where `values` carries the rows. Not a field name: a rule that tries to
+# compare `line_items` to something is rejected like any other unknown field.
+LINE_ITEMS = "__line_items__"
+# Quoted back in a failure message, so "a line item is over 50,000" can say which.
+MAX_QUOTED_ITEMS = 3
+
 
 class ExpressionError(ValueError):
     """The expression is not something this language can represent."""
@@ -164,6 +176,22 @@ def validate(expression: Any, known_fields: frozenset[str], depth: int = 0) -> N
         validate(expression["not"], known_fields, depth + 1)
         return
 
+    for key in QUANTIFIERS:
+        if key in expression:
+            if known_fields is ITEM_FIELDS:
+                raise ExpressionError(
+                    f"'{key}' cannot be used inside another line-item condition: "
+                    f"a line item has no line items of its own."
+                )
+            inner = expression[key]
+            if not isinstance(inner, dict):
+                raise ExpressionError(f"'{key}' needs a condition to apply to each line item.")
+            # The names change here: inside the quantifier the condition is
+            # about one row, so `amount` means the row's amount and the
+            # document's fields are deliberately out of reach.
+            validate(inner, ITEM_FIELDS, depth + 1)
+            return
+
     field = expression.get("field")
     if not isinstance(field, str) or not field:
         raise ExpressionError("A condition needs a 'field'.")
@@ -206,6 +234,9 @@ def _evaluate(expression: dict[str, Any], values: dict[str, Any], observed: dict
     if "not" in expression:
         return not _evaluate(expression["not"], values, observed)
 
+    if "any_item" in expression or "every_item" in expression:
+        return _evaluate_items(expression, values, observed)
+
     field = expression["field"]
     left = values.get(field)
     observed[field] = left
@@ -220,6 +251,39 @@ def _evaluate(expression: dict[str, Any], values: dict[str, Any], observed: dict
     return _compare(expression["op"], left, right)
 
 
+def _evaluate_items(
+    expression: dict[str, Any], values: dict[str, Any], observed: dict[str, Any]
+) -> bool:
+    """Run the inner condition against each row.
+
+    `any_item` on a document with no rows is false - nothing satisfies it. The
+    mirror case, `every_item` on no rows, is true, which is the standard reading
+    of "every" over an empty set and worth knowing about: a rule saying every
+    line needs a description does not fail a document that has no lines. The row
+    count is recorded either way, so a reviewer can see it was nought.
+    """
+    every = "every_item" in expression
+    inner = expression["every_item" if every else "any_item"]
+    items = values.get(LINE_ITEMS) or []
+    observed["line_item_count"] = len(items)
+
+    matched: list[dict[str, Any]] = []
+    for item in items:
+        # Each row gets its own observed map: what the last row happened to hold
+        # is not evidence about the document.
+        if _evaluate(inner, item, {}):
+            matched.append(item)
+
+    if every:
+        failing = [item for item in items if item not in matched]
+        if failing:
+            observed["line_items_failing"] = failing[:MAX_QUOTED_ITEMS]
+        return not failing
+    if matched:
+        observed["line_items_matching"] = matched[:MAX_QUOTED_ITEMS]
+    return bool(matched)
+
+
 def describe(expression: dict[str, Any]) -> str:
     """Read an expression back as a sentence, so a user can check it."""
     if "all" in expression:
@@ -228,6 +292,10 @@ def describe(expression: dict[str, Any]) -> str:
         return " or ".join(describe(branch) for branch in expression["any"])
     if "not" in expression:
         return f"not ({describe(expression['not'])})"
+    if "any_item" in expression:
+        return f"any line item has {describe(expression['any_item'])}"
+    if "every_item" in expression:
+        return f"every line item has {describe(expression['every_item'])}"
 
     field = expression["field"]
     op = expression["op"]

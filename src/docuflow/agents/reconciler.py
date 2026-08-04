@@ -213,6 +213,7 @@ def reconcile(
             records=records,
             doc_type=run.doc_type,
             document_id=run.document_id,
+            line_items=run.line_items,
         )
 
     result = run_agent(

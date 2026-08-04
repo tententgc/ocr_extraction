@@ -209,6 +209,7 @@ def _toolbox(rule: "CustomRule", context: RuleContext, runner: AgentRuleRunner) 
         records=runner.records,
         doc_type=context.doc_type,
         document_id=context.document_id,
+        line_items=context.line_items,
     )
     return select_tools(full, rule.tools)
 
