@@ -33,7 +33,13 @@ from docuflow.rules.agentic import (
     validate_agent_payload,
 )
 from docuflow.rules.context import RuleContext
-from docuflow.rules.expressions import ExpressionError, describe, evaluate, validate
+from docuflow.rules.expressions import (
+    LINE_ITEMS,
+    ExpressionError,
+    describe,
+    evaluate,
+    validate,
+)
 from docuflow.schemas.registry import DOCUMENT_SCHEMAS, get_schema
 
 # Facts about the document that are not schema fields. Exposed by name so a rule
@@ -85,6 +91,18 @@ def values_for(context: RuleContext) -> dict[str, Any]:
             "line_item_count": len(context.line_items),
             "duplicate_found": context.duplicate_of is not None,
             "ocr_degraded": context.ocr_degraded,
+            # The rows themselves, for `any_item` / `every_item`. Under a name no
+            # rule can reference directly, so the only way to reach a row is
+            # through a quantifier that knows a row's field names.
+            LINE_ITEMS: [
+                {
+                    "description": item.description,
+                    "quantity": item.quantity,
+                    "unit_price": item.unit_price,
+                    "amount": item.amount,
+                }
+                for item in context.line_items
+            ],
         }
     )
     return values

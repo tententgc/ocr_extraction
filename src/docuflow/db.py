@@ -8,13 +8,22 @@ the "wrong values are costly" requirement enforceable in one place.
 from __future__ import annotations
 
 import json
+import logging
 import sqlite3
 import threading
+from collections import OrderedDict
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator
 
+logger = logging.getLogger(__name__)
+
 _local = threading.local()
+
+# How many databases one thread keeps open at once. A deployment uses one; the
+# headroom is for the evaluation harness and for tests, which each run against
+# their own.
+MAX_CACHED_CONNECTIONS = 8
 
 SCHEMA = """
 PRAGMA journal_mode = WAL;
@@ -134,18 +143,53 @@ CREATE TABLE IF NOT EXISTS custom_rules (
 
 
 def connect(db_path: Path) -> sqlite3.Connection:
-    """Per-thread connection (SQLite objects are not shareable across threads)."""
-    key = f"conn_{db_path}"
-    existing = getattr(_local, key, None)
+    """Per-thread connection (SQLite objects are not shareable across threads).
+
+    Cached, because opening one per query would be wasteful, and **bounded**,
+    because the cache is keyed by path and a process that touches many databases
+    would otherwise hold every one of them open forever. In WAL mode that is four
+    descriptors apiece - the database, its journal, its shared-memory file - and
+    the evaluation harness, which runs each corpus in an isolated database, was
+    the case that made it visible.
+
+    A server uses one path and so keeps one connection, exactly as before.
+    """
+    cache: OrderedDict[str, sqlite3.Connection] = getattr(_local, "connections", None)
+    if cache is None:
+        cache = _local.connections = OrderedDict()
+
+    key = str(db_path)
+    existing = cache.get(key)
     if existing is not None:
+        cache.move_to_end(key)
         return existing
 
     db_path.parent.mkdir(parents=True, exist_ok=True)
     connection = sqlite3.connect(str(db_path), timeout=30.0)
     connection.row_factory = sqlite3.Row
     connection.execute("PRAGMA foreign_keys = ON")
-    setattr(_local, key, connection)
+    cache[key] = connection
+    _evict_until(cache, MAX_CACHED_CONNECTIONS)
     return connection
+
+
+def _evict_until(cache: "OrderedDict[str, sqlite3.Connection]", limit: int) -> None:
+    """Close the least recently used connections down to `limit`.
+
+    A connection mid-transaction is left alone and its turn passes: closing it
+    would roll back work its caller still believes is in progress, and the caller
+    is holding the object anyway.
+    """
+    for key in list(cache)[: max(0, len(cache) - limit)]:
+        connection = cache[key]
+        if connection.in_transaction:
+            cache.move_to_end(key)
+            continue
+        try:
+            connection.close()
+        except sqlite3.Error as exc:  # pragma: no cover - closing rarely fails
+            logger.debug("could not close the connection to %s: %s", key, exc)
+        del cache[key]
 
 
 # Columns added after the first release. SQLite cannot express them in

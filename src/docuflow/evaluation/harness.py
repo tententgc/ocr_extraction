@@ -20,6 +20,7 @@ from typing import Any
 from docuflow.bootstrap import bootstrap
 from docuflow.config import Settings
 from docuflow.evaluation.compare import compare_document
+from docuflow.evaluation.cost import document_cost, summarize_cost
 from docuflow.pipeline import Pipeline
 from docuflow.samples.catalog import SAMPLE_DOCUMENTS
 from docuflow.schemas.registry import get_schema
@@ -126,6 +127,7 @@ def run_evaluation(settings: Settings, limit: int = 0) -> dict[str, Any]:
                 "confidence": run.confidence,
                 "ocr_provider": run.ocr.provider,
                 "ocr_ms": run.ocr.duration_ms,
+                "cost": document_cost(run),
                 "fields_total": len(comparisons),
                 "fields_correct": sum(1 for c in comparisons if c.correct),
                 "fields_near": sum(1 for c in comparisons if c.status == "near"),
@@ -214,6 +216,10 @@ def _summarize(results: list[dict[str, Any]], elapsed: float) -> dict[str, Any]:
             "defect_recall": round(caught_total / expected_total, 3) if expected_total else 1.0,
             "average_confidence": round(sum(i["confidence"] for i in results) / len(results), 3),
         },
+        # What it took, beside what it got right: an optimisation is only worth
+        # having if the numbers above it did not move. Empty on a report written
+        # before timings were collected, and the section is then not printed.
+        "cost": summarize_cost([item["cost"] for item in results if item.get("cost")]),
         "field_breakdown": dict(sorted(breakdown.items(), key=lambda kv: kv[1]["accuracy"])),
         "documents": results,
     }

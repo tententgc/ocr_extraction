@@ -14,6 +14,8 @@ import re
 from dataclasses import dataclass
 from typing import Any, Callable, Iterable
 
+from rapidfuzz import fuzz
+
 from docuflow.masterdata.repository import MasterDataRepository
 from docuflow.normalize.identifiers import thai_tax_id_checksum_ok
 from docuflow.normalize.text import normalize_for_match
@@ -24,6 +26,11 @@ logger = logging.getLogger(__name__)
 MAX_SEARCH_HITS = 8
 SEARCH_CONTEXT_CHARS = 160
 THAI_TAX_ID_LENGTH = 13
+# Returned when a search finds nothing exactly, so the agent has something to
+# read instead of another guess.
+NEAREST_LINES = 3
+NEAREST_MIN_SIMILARITY = 55
+MAX_LINE_ITEMS = 40
 
 # One line per tool, for the screen where someone writes a rule and for the
 # authoring prompt. The toolbox itself is built per document, so this is the
@@ -31,6 +38,7 @@ THAI_TAX_ID_LENGTH = 13
 # lists together so a tool cannot be added here and forgotten there.
 TOOL_HELP: dict[str, str] = {
     "read_document": "search the recognised page text for a word or number",
+    "read_line_items": "list the table rows already read from the document, with amounts",
     "lookup_vendor": "find a vendor in the master file by name or tax id",
     "lookup_purchase_order": "fetch a purchase order: vendor, amount, currency, status",
     "lookup_contract": "fetch a contract from the register: parties, dates, value",
@@ -96,13 +104,56 @@ def _read_document(ocr_text: str) -> Callable[[dict[str, Any]], dict[str, Any]]:
 
         if matches:
             return {"matches": matches, "found": True}
+
+        # An exact miss used to end here, with nothing to go on. Watched on a
+        # real document, an agent answered that by guessing again - five
+        # searches for a purchase order under five spellings of the word, each
+        # one costing a turn and telling it nothing. The nearest lines cost a
+        # fuzzy pass over text already in memory and usually end the hunt.
         return {
             "matches": [],
             "found": False,
             "note": f"'{query}' does not appear in the document text",
+            "closest_lines": _nearest_lines(query, lines),
+            "hint": "These are the most similar lines, not a match. If none of "
+                    "them says what you were looking for, the document does not.",
         }
 
     return run
+
+
+def _nearest_lines(query: str, lines: list[str]) -> list[dict[str, Any]]:
+    """The lines that look most like the query, with their similarity."""
+    scored = [
+        (fuzz.partial_ratio(normalize_for_match(query), normalized), index)
+        for index, normalized in ((i, normalize_for_match(line)) for i, line in enumerate(lines))
+        if normalized
+    ]
+    scored.sort(reverse=True)
+    return [
+        {"line": index + 1, "similarity": round(score), "text": lines[index].strip()[:SEARCH_CONTEXT_CHARS]}
+        for score, index in scored[:NEAREST_LINES]
+        if score >= NEAREST_MIN_SIMILARITY
+    ]
+
+
+def _on_the_page(value: str, ocr_text: str) -> bool:
+    return normalize_for_match(str(value)) in normalize_for_match(ocr_text)
+
+
+def _off_document_note(label: str, value: Any, ocr_text: str) -> dict[str, Any]:
+    """Flag an identifier that is not printed on the document being examined.
+
+    Watched on a real run: the agent called find_posted_records with a vendor id
+    belonging to a different company, and the tool answered as though the pairing
+    made sense. A lookup with an invented argument returns a true answer to a
+    question nobody asked, which is the most expensive kind of wrong. Catching it
+    here is cheaper than catching it after it reaches a reviewer.
+    """
+    if value in (None, "") or _on_the_page(value, ocr_text):
+        return {}
+    return {"argument_warning": f"{label} '{value}' does not appear on this document. "
+                                "If you did not read it off the page, say where it came from."}
 
 
 def _lookup_vendor(master: MasterDataRepository) -> Callable[[dict[str, Any]], dict[str, Any]]:
@@ -145,49 +196,79 @@ def _lookup_vendor(master: MasterDataRepository) -> Callable[[dict[str, Any]], d
     return run
 
 
-def _lookup_purchase_order(master: MasterDataRepository) -> Callable[[dict[str, Any]], dict[str, Any]]:
+def _lookup_purchase_order(
+    master: MasterDataRepository, ocr_text: str
+) -> Callable[[dict[str, Any]], dict[str, Any]]:
     def run(args: dict[str, Any]) -> dict[str, Any]:
         number = args.get("po_number")
         if not number:
             return {"error": "po_number is required"}
+        warning = _off_document_note("purchase order", number, ocr_text)
         order = master.get_purchase_order(str(number))
         if order is None:
-            return {"found": False, "note": f"purchase order {number} is not in the system"}
+            return {"found": False,
+                    "note": f"purchase order {number} is not in the system", **warning}
         vendor = master.get_vendor(order["vendor_id"])
         return {
             "found": True,
             **order,
             "vendor_name": vendor["legal_name"] if vendor else None,
+            **warning,
         }
 
     return run
 
 
-def _lookup_contract(master: MasterDataRepository) -> Callable[[dict[str, Any]], dict[str, Any]]:
+def _lookup_contract(
+    master: MasterDataRepository, ocr_text: str
+) -> Callable[[dict[str, Any]], dict[str, Any]]:
     def run(args: dict[str, Any]) -> dict[str, Any]:
         number = args.get("contract_number")
         if not number:
             return {"error": "contract_number is required"}
+        warning = _off_document_note("contract", number, ocr_text)
         contract = master.get_contract(str(number))
         if contract is None:
-            return {"found": False, "note": f"contract {number} is not in the register"}
-        return {"found": True, **contract}
+            return {"found": False,
+                    "note": f"contract {number} is not in the register", **warning}
+        return {"found": True, **contract, **warning}
 
     return run
 
 
 def _find_posted_records(
-    records: RecordStore, doc_type: str, document_id: str
+    records: RecordStore,
+    master: MasterDataRepository,
+    doc_type: str,
+    document_id: str,
+    ocr_text: str,
 ) -> Callable[[dict[str, Any]], dict[str, Any]]:
     def run(args: dict[str, Any]) -> dict[str, Any]:
         reference = args.get("reference")
         if not reference:
             return {"error": "reference is required"}
+
+        notes = dict(_off_document_note("reference", reference, ocr_text))
+        # A vendor id is a system identifier, never printed on a page, so the
+        # off-document test does not apply - but it can still be invented, and
+        # scoping a duplicate search to the wrong company quietly turns "already
+        # paid" into "nothing found".
+        vendor_id = args.get("vendor_id")
+        if vendor_id:
+            vendor = master.get_vendor(str(vendor_id))
+            if vendor is None:
+                notes["argument_warning"] = (
+                    f"vendor_id '{vendor_id}' is not in the vendor master file, so this "
+                    f"search was scoped to a company that does not exist."
+                )
+            else:
+                notes["scoped_to_vendor"] = vendor["legal_name"]
+
         existing = records.find_duplicate(
-            doc_type, str(reference), args.get("vendor_id"), exclude_document_id=document_id
+            doc_type, str(reference), vendor_id, exclude_document_id=document_id
         )
         if existing is None:
-            return {"found": False, "note": f"nothing posted under reference {reference}"}
+            return {"found": False, "note": f"nothing posted under reference {reference}", **notes}
         return {
             "found": True,
             "record_id": existing["record_id"],
@@ -196,6 +277,40 @@ def _find_posted_records(
             "currency": existing["currency"],
             "posted_at": existing["posted_at"],
             "counterparty": existing["counterparty"],
+            **notes,
+        }
+
+    return run
+
+
+def _read_line_items(line_items: tuple) -> Callable[[dict[str, Any]], dict[str, Any]]:
+    """The table rows, already parsed.
+
+    An agent asked about "the largest line" would otherwise search the page text
+    and read a total, or a page number, as an amount. These are the rows the
+    extractor found, which is also what the deterministic rules were checking.
+    """
+
+    def run(args: dict[str, Any]) -> dict[str, Any]:
+        rows = [
+            {
+                "line": index,
+                "description": item.description,
+                "quantity": item.quantity,
+                "unit_price": item.unit_price,
+                "amount": item.amount,
+            }
+            for index, item in enumerate(line_items[:MAX_LINE_ITEMS], start=1)
+        ]
+        if not rows:
+            return {"count": 0, "items": [],
+                    "note": "no line items were read from this document"}
+        amounts = [row["amount"] for row in rows if row["amount"] is not None]
+        return {
+            "count": len(rows),
+            "items": rows,
+            "total_of_amounts": round(sum(amounts), 2) if amounts else None,
+            "largest_amount": max(amounts) if amounts else None,
         }
 
     return run
@@ -276,9 +391,16 @@ def build_toolbox(
     records: RecordStore,
     doc_type: str,
     document_id: str,
+    line_items: tuple = (),
 ) -> list[Tool]:
     """The tools available for one document."""
     return [
+        Tool(
+            name="read_line_items",
+            description="The table rows already read from this document, with their amounts. Use this rather than searching the page for a row.",
+            parameters={"type": "object", "properties": {}},
+            run=_read_line_items(line_items),
+        ),
         Tool(
             name="read_document",
             description="Search the recognised page text. Use this to check what is actually printed before claiming a value.",
@@ -309,7 +431,7 @@ def build_toolbox(
                 "properties": {"po_number": _string("Purchase order number, e.g. PO-2026-0412")},
                 "required": ["po_number"],
             },
-            run=_lookup_purchase_order(master),
+            run=_lookup_purchase_order(master, ocr_text),
         ),
         Tool(
             name="lookup_contract",
@@ -319,7 +441,7 @@ def build_toolbox(
                 "properties": {"contract_number": _string("Contract number, e.g. CT-2025-018")},
                 "required": ["contract_number"],
             },
-            run=_lookup_contract(master),
+            run=_lookup_contract(master, ocr_text),
         ),
         Tool(
             name="find_posted_records",
@@ -332,7 +454,7 @@ def build_toolbox(
                 },
                 "required": ["reference"],
             },
-            run=_find_posted_records(records, doc_type, document_id),
+            run=_find_posted_records(records, master, doc_type, document_id, ocr_text),
         ),
         Tool(
             name="check_arithmetic",

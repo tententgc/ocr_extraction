@@ -53,6 +53,14 @@ Four mechanisms keep that number down:
 
 ## Quick start
 
+Nothing to install: [`notebooks/docuflow_walkthrough.ipynb`](notebooks/docuflow_walkthrough.ipynb)
+runs the whole pipeline in Colab against Typhoon Cloud and Claude, one stage at a
+time, printing what each one produced — the page image, the OCR markdown, both
+independent readings, which fields they agreed on, what the rules made of it, and
+why it was posted or held. It needs two API keys and no GPU.
+
+To run it locally instead:
+
 ```bash
 git clone https://github.com/tententgc/mirtphol_doc_extraction.git
 cd mirtphol_doc_extraction

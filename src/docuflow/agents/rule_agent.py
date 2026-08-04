@@ -209,6 +209,7 @@ def _toolbox(rule: "CustomRule", context: RuleContext, runner: AgentRuleRunner) 
         records=runner.records,
         doc_type=context.doc_type,
         document_id=context.document_id,
+        line_items=context.line_items,
     )
     return select_tools(full, rule.tools)
 
@@ -229,6 +230,7 @@ def _finish(
         "checked": [dict(row) for row in _clean_checked(payload.get("checked"), rule.plan)],
         "tools_used": result.tool_names,
         "iterations": result.iterations,
+        "repeated_calls": result.repeated_calls,
         "model": getattr(runner.llm, "name", "") or "",
     }
 

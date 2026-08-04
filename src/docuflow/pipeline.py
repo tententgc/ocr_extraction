@@ -21,7 +21,7 @@ from docuflow.agents.classifier import classify
 from docuflow.agents.llm_extractor import extract_with_llm
 from docuflow.agents.merge import merge_all
 from docuflow.agents.verify_extractor import verify_with_llm
-from docuflow.agents.reconciler import Reconciliation, reconcile
+from docuflow.agents.reconciler import Reconciliation, reconcile, should_run as should_reconcile
 from docuflow.agents.rule_agent import AgentRuleRunner
 from docuflow.agents.rule_extractor import (
     detect_currency_from_pages,
@@ -154,9 +154,9 @@ class Pipeline:
         run, vendor_match, duplicate = self._stage_validate(run, schema, pages, llm, progress)
 
         run = self._stage_route(run, schema, progress)
-        reconciliation = self._stage_reconcile(run, llm, progress)
+        reconciliation, reconcile_ms = self._stage_reconcile(run, llm, progress)
 
-        return self._finish(run, schema, vendor_match, duplicate, reconciliation)
+        return self._finish(run, schema, vendor_match, duplicate, reconciliation, reconcile_ms)
 
     # --- stages ------------------------------------------------------------
     def _stage_render(
@@ -582,11 +582,21 @@ class Pipeline:
 
     def _stage_reconcile(
         self, run: DocumentRun, llm: LlmProvider | None, progress: ProgressCallback
-    ) -> Reconciliation:
-        if not run.failed_findings:
-            return Reconciliation(ran=False, note="nothing to reconcile")
+    ) -> tuple[Reconciliation, int]:
+        """Investigate the failures, and report how long it took.
+
+        The duration is returned rather than recorded here because the trace
+        step is written in `_finish`, where the rest of the reconciliation is.
+        Until now it was the one stage with no timing at all - which is a poor
+        place for the blind spot to be, since it is the stage that calls a model
+        an unbounded number of times.
+        """
+        if not should_reconcile(run):
+            return Reconciliation(ran=False, note="nothing to reconcile"), 0
         progress("reconcile", "Investigating the discrepancies")
-        return reconcile(run, llm, master=self.master, records=self.records)
+        started = time.perf_counter()
+        outcome = reconcile(run, llm, master=self.master, records=self.records)
+        return outcome, int((time.perf_counter() - started) * 1000)
 
     # --- persistence -------------------------------------------------------
     def _finish(
@@ -596,12 +606,14 @@ class Pipeline:
         vendor_match: VendorMatch,
         duplicate: dict[str, Any] | None,
         reconciliation: Reconciliation,
+        reconcile_ms: int = 0,
     ) -> PipelineResult:
         if reconciliation.ran or reconciliation.assessment:
             run = run.with_step(
                 TraceStep(
                     step="reconcile",
                     status="warning",
+                    duration_ms=reconcile_ms,
                     summary=reconciliation.assessment[:200] or "discrepancy analysis complete",
                     detail={
                         # The full text lives here; `summary` is the trace one-liner.
@@ -610,6 +622,7 @@ class Pipeline:
                         "recommended_action": reconciliation.recommended_action,
                         "reviewer_note": reconciliation.reviewer_note,
                         "tools_used": reconciliation.tools_used,
+                        "repeated_calls": reconciliation.repeated_calls,
                         "tool_calls": [
                             {
                                 "name": call.name,

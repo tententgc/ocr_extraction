@@ -53,6 +53,8 @@ class Reconciliation:
     tool_calls: tuple[ToolInvocation, ...] = ()
     ran: bool = False
     note: str = ""
+    # Calls that asked something already answered in this investigation.
+    repeated_calls: int = 0
 
     @property
     def tools_used(self) -> list[str]:
@@ -103,8 +105,17 @@ def _findings_summary(run: DocumentRun) -> str:
 
 
 def should_run(run: DocumentRun) -> bool:
-    """Only worth calling when there is something to explain."""
-    return bool(run.failed_findings)
+    """Only worth calling when there is something to explain, to somebody.
+
+    It writes a note for a reviewer. A document that posted automatically has no
+    reviewer: nobody opens it, and the note is a model call spent on a page that
+    already cleared. Warnings on a posted document are still recorded as
+    findings - what is skipped is the paragraph about them, not the check.
+
+    Routing has already run by the time this is asked, which is what makes the
+    question answerable at all.
+    """
+    return bool(run.failed_findings) and run.decision != "auto_post"
 
 
 def _fallback(run: DocumentRun, note: str) -> Reconciliation:
@@ -174,6 +185,7 @@ def _parse(result: AgentResult, run: DocumentRun) -> Reconciliation:
         tool_calls=result.calls,
         ran=True,
         note=result.note,
+        repeated_calls=result.repeated_calls,
     )
 
 
@@ -185,7 +197,11 @@ def reconcile(
 ) -> Reconciliation:
     """Investigate the failures and report what a reviewer needs to know."""
     if not should_run(run):
-        return Reconciliation(ran=False, note="no discrepancies to reconcile")
+        return Reconciliation(
+            ran=False,
+            note="the document posted; no reviewer to write for"
+            if run.failed_findings else "no discrepancies to reconcile",
+        )
     if llm is None:
         return _fallback(run, "no agent model configured")
 
@@ -197,6 +213,7 @@ def reconcile(
             records=records,
             doc_type=run.doc_type,
             document_id=run.document_id,
+            line_items=run.line_items,
         )
 
     result = run_agent(

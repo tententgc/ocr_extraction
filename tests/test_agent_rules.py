@@ -273,6 +273,87 @@ class TestTools:
         assert finding.detail["tools_used"] == ["lookup_purchase_order"]
 
 
+class TestToolsThatAnswerBetter:
+    """Two changes made after watching an agent work on a real document.
+
+    It searched for a purchase order under five spellings, each returning a bare
+    "not found", and it scoped a duplicate search to a vendor id belonging to a
+    different company - which the tool answered as though the pairing made sense.
+    """
+
+    PAGE = ("TAX INVOICE\nInvoice No.: INV-2026-0731\n"
+            "Vendor: Siam Tech Supply Co., Ltd.\nAmount Due 200,090.00 THB\n")
+
+    def _toolbox(self, settings, master):
+        from docuflow.store.records import RecordStore
+
+        return {tool.name: tool for tool in build_toolbox(
+            self.PAGE, master, RecordStore(settings.db_path), "invoice", "DOC-1")}
+
+    def test_a_search_that_misses_offers_the_nearest_lines(self, settings, master):
+        result = self._toolbox(settings, master)["read_document"].run({"query": "Invoice Number"})
+
+        assert result["found"] is False
+        assert result["closest_lines"], "a miss with nothing to read is answered by another guess"
+        assert "INV-2026-0731" in result["closest_lines"][0]["text"]
+        assert result["closest_lines"][0]["similarity"] >= 55
+
+    def test_a_search_that_hits_stays_exactly_as_it_was(self, settings, master):
+        result = self._toolbox(settings, master)["read_document"].run({"query": "INV-2026-0731"})
+        assert result["found"] is True
+        assert "closest_lines" not in result
+
+    def test_nothing_close_is_offered_when_nothing_is_close(self, settings, master):
+        result = self._toolbox(settings, master)["read_document"].run(
+            {"query": "zzzz quantum flux capacitor"})
+        assert result["found"] is False
+        assert result["closest_lines"] == []
+
+    def test_an_identifier_not_printed_on_the_page_is_flagged(self, settings, master):
+        result = self._toolbox(settings, master)["lookup_purchase_order"].run(
+            {"po_number": "PO-9999-0001"})
+        assert "does not appear on this document" in result["argument_warning"]
+
+    def test_an_identifier_that_is_on_the_page_is_not(self, settings, master):
+        result = self._toolbox(settings, master)["find_posted_records"].run(
+            {"reference": "INV-2026-0731"})
+        assert "argument_warning" not in result
+
+    def test_a_vendor_id_that_does_not_exist_is_called_out(self, settings, master):
+        result = self._toolbox(settings, master)["find_posted_records"].run(
+            {"reference": "INV-2026-0731", "vendor_id": "V-DOES-NOT-EXIST"})
+        assert "does not exist" in result["argument_warning"]
+
+    def test_a_real_vendor_id_is_named_so_the_agent_can_see_whose_it_is(self, settings, master):
+        vendor_id = master.list_vendors()[0]["vendor_id"]
+        result = self._toolbox(settings, master)["find_posted_records"].run(
+            {"reference": "INV-2026-0731", "vendor_id": vendor_id})
+        assert result["scoped_to_vendor"] == master.list_vendors()[0]["legal_name"]
+
+
+class TestReadingTheRows:
+    def test_the_agent_gets_the_rows_the_extractor_found(self, settings, master):
+        from docuflow.models import LineItem
+        from docuflow.store.records import RecordStore
+
+        rows = (LineItem(description="Server rack", quantity=2, unit_price=30000, amount=60000),
+                LineItem(description="Cabling", quantity=10, unit_price=1200, amount=12000))
+        toolbox = {tool.name: tool for tool in build_toolbox(
+            "", master, RecordStore(settings.db_path), "invoice", "DOC-1", line_items=rows)}
+
+        result = toolbox["read_line_items"].run({})
+        assert result["count"] == 2
+        assert result["largest_amount"] == 60000
+        assert result["total_of_amounts"] == 72000
+
+    def test_a_document_with_no_rows_says_so(self, settings, master):
+        from docuflow.store.records import RecordStore
+
+        toolbox = {tool.name: tool for tool in build_toolbox(
+            "", master, RecordStore(settings.db_path), "invoice", "DOC-1")}
+        assert toolbox["read_line_items"].run({})["count"] == 0
+
+
 class TestThroughTheEngine:
     def test_it_runs_beside_the_built_in_rules(self, master, make_run, runner):
         from tests.test_rules import result_for

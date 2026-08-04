@@ -54,8 +54,19 @@ A condition is one of:
 {"all":[c,...]} {"any":[c,...]} {"not":c}
 {"field":"name","op":"OP","value":X}
 {"field":"name","op":"OP","other_field":"name"}
+{"any_item":c} {"every_item":c}
 
 OP: eq ne gt gte lt lte in not_in contains not_contains starts_with ends_with present absent
+
+"any_item" and "every_item" run a condition against each row of the document's
+table. Inside them the only field names are: description, quantity, unit_price,
+amount - they describe one row, not the document.
+  "no single line may exceed 50,000" ->
+    "assert":{"not":{"any_item":{"field":"amount","op":"gt","value":50000}}}
+  "every line needs a description" ->
+    "assert":{"every_item":{"field":"description","op":"present"}}
+Use them whenever the request is about the rows rather than the totals. Do not
+use line_item_count for this: it counts rows, it cannot look inside one.
 
 Rules:
 - "assert" is what must be TRUE for a document to PASS. When the request
