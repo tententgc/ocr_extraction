@@ -127,6 +127,14 @@ code, not about one machine's `.env`.
 | Fifteen of eighteen documents held | warnings cutting confidence. See the invariants. |
 | `OSError: too many open files` | `db.connect()` cached one connection per path forever, 4 FDs each under WAL. LRU-capped now. |
 | Two threads rendering PDFs segfaulted | PDFium is not thread-safe; `render.py` holds a module lock. |
+| A 50% false-alarm rate that was not real | ground truth declared fields the chosen layout never draws. **Check what a renderer actually prints before writing its ground truth** — `dense` and `minimal` have no PO line, no payment terms, no tax ID. |
+| OCR "losing" every date | value recall searched for `2026-07-14`; pages print "14 July 2026". |
+
+When the evaluation says the system is wrong, suspect the corpus first. On this
+project it has been the corpus more often than the pipeline: a VAT that was
+correct when it was meant to be wrong, two contracts with no body text, four
+documents claiming fields their layout never drew, and two real defects labelled
+as clean cases. Each looked like a system fault until it was read closely.
 
 ---
 

@@ -836,21 +836,19 @@
         "vendor_name": "Rungruang Steel Works Co., Ltd.",
         "vendor_tax_id": "0105552000110",
         "buyer_name": "Mirtphol Industries PCL",
-        "purchase_order_ref": "PO-2026-0501",
         "currency": "THB",
-        "subtotal": 62000.0,
+        "subtotal": 28000.0,
         "tax_rate": 7.0,
-        "tax_amount": 4340.0,
-        "total_amount": 66340.0,
-        "payment_terms": "Net 60",
+        "tax_amount": 1960.0,
+        "total_amount": 29960.0,
         "bank_account": "3120045678"
       },
       "line_items": [
         {
           "description": "Steel channel 100x50x5mm",
-          "quantity": 155,
+          "quantity": 70,
           "unit_price": 400.0,
-          "amount": 62000.0
+          "amount": 28000.0
         }
       ],
       "body": [],
@@ -862,7 +860,7 @@
       "arrival": "pdf",
       "order": 20,
       "posts": true,
-      "reference_text": "Rungruang Steel Works Co., Ltd.\r\nBangkok, Thailand\r\nTIN 0105552000110 Tel 02-555-0100\r\nINVOICE RSW-2026-1240 Dated 29/07/2026 Terms Net 60 Due 27/09/2026\r\nTo: Mirtphol Industries PCL, 88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\n1. Steel channel 100x50x5mm x155 @ 400.00 = 62,000.00\r\nSub-total 62,000.00 THB VAT 7% 4,340.00 TOTAL DUE 66,340.00 THB\r\nPlease remit to a/c 3120045678 within terms."
+      "reference_text": "Rungruang Steel Works Co., Ltd.\r\nBangkok, Thailand\r\nTIN 0105552000110 Tel 02-555-0100\r\nINVOICE RSW-2026-1240 Dated 29/07/2026 Terms Due 27/09/2026\r\nTo: Mirtphol Industries PCL, 88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\n1. Steel channel 100x50x5mm x70 @ 400.00 = 28,000.00\r\nSub-total 28,000.00 THB VAT 7% 1,960.00 TOTAL DUE 29,960.00 THB\r\nPlease remit to a/c 3120045678 within terms."
     },
     {
       "doc_id": "invoice_minimal_unlabelled",
@@ -875,14 +873,12 @@
         "invoice_date": "2026-07-29",
         "due_date": "2026-09-12",
         "vendor_name": "Sunrise Electrical Co., Ltd.",
-        "vendor_tax_id": "0105571000448",
         "buyer_name": "Mirtphol Industries PCL",
         "currency": "THB",
         "subtotal": 22000.0,
         "tax_rate": 7.0,
         "tax_amount": 1540.0,
         "total_amount": 23540.0,
-        "payment_terms": "Net 45",
         "bank_account": "8890014455"
       },
       "line_items": [
@@ -965,25 +961,25 @@
         "buyer_name": "Mirtphol Industries PCL",
         "purchase_order_ref": "PO-2026-0534",
         "currency": "USD",
-        "subtotal": 30000.0,
+        "subtotal": 36000.0,
         "tax_rate": 0.0,
         "tax_amount": 0.0,
-        "total_amount": 30000.0,
+        "total_amount": 36000.0,
         "payment_terms": "Net 30",
         "bank_account": "GB29NWBK60161331926819"
       },
       "line_items": [
         {
           "description": "Operations advisory, phase 2 - senior partner",
-          "quantity": 75,
+          "quantity": 90,
           "unit_price": 280.0,
-          "amount": 21000.0
+          "amount": 25200.0
         },
         {
           "description": "Operations advisory, phase 2 - analyst",
-          "quantity": 90,
+          "quantity": 108,
           "unit_price": 100.0,
-          "amount": 9000.0
+          "amount": 10800.0
         }
       ],
       "body": [],
@@ -995,7 +991,7 @@
       "arrival": "png",
       "order": 23,
       "posts": true,
-      "reference_text": "Meridian Consulting LLP\r\nBangkok, Thailand\r\nINVOICE\r\nBILLED TO\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nInvoice # MC-2026-0801\r\nIssued Jul 30, 2026\r\nPayment Due Aug 29, 2026\r\nPO PO-2026-0534\r\nSupplier Tax ID GB428765190\r\nDescription Qty Unit Price Amount\r\nOperations advisory, phase 2 - senior partner 75 280.00 21,000.00\r\nOperations advisory, phase 2 - analyst 90 100.00 9,000.00\r\nSubtotal 30,000.00 USD\r\nVAT 0.00 USD\r\nAmount Due 30,000.00 USD\r\nTerms: Net 30\r\nBank Account: GB29NWBK60161331926819"
+      "reference_text": "Meridian Consulting LLP\r\nBangkok, Thailand\r\nINVOICE\r\nBILLED TO\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nInvoice # MC-2026-0801\r\nIssued Jul 30, 2026\r\nPayment Due Aug 29, 2026\r\nPO PO-2026-0534\r\nSupplier Tax ID GB428765190\r\nDescription Qty Unit Price Amount\r\nOperations advisory, phase 2 - senior partner 90 280.00 25,200.00\r\nOperations advisory, phase 2 - analyst 108 100.00 10,800.00\r\nSubtotal 36,000.00 USD\r\nVAT 0.00 USD\r\nAmount Due 36,000.00 USD\r\nTerms: Net 30\r\nBank Account: GB29NWBK60161331926819"
     },
     {
       "doc_id": "receipt_clean_thermal",
@@ -1017,9 +1013,9 @@
       "line_items": [
         {
           "description": "Diesel B7",
-          "quantity": 46.01,
+          "quantity": 43.0,
           "unit_price": 32.6,
-          "amount": 1500.0
+          "amount": 1401.87
         }
       ],
       "body": [],
@@ -1031,7 +1027,7 @@
       "arrival": "pdf",
       "order": 24,
       "posts": true,
-      "reference_text": "PTT Station Rama IV\r\nRama IV Rd, Khlong Toei, Bangkok\r\nTAX ID \r\n- - - - - - - - - - - - - - - - - - - - - - - - - - \r\nRECEIPT PTT-556890\r\n28/07/2026 14:07\r\n- - - - - - - - - - - - - - - - - - - - - - - - - - \r\nDiesel B7\r\n46.01 L x 32.60 1,500.00\r\n- - - - - - - - - - - - - - - - - - - - - - - - - - \r\nSub-total 1,401.87\r\nVAT 7% 98.13\r\nTOTAL 1,500.00\r\nPAID BY VISA ****4412\r\nTHANK YOU / ■■■■■■■■■"
+      "reference_text": "PTT Station Rama IV\r\nRama IV Rd, Khlong Toei, Bangkok\r\nTAX ID \r\n- - - - - - - - - - - - - - - - - - - - - - - - - - \r\nRECEIPT PTT-556890\r\n28/07/2026 14:07\r\n- - - - - - - - - - - - - - - - - - - - - - - - - - \r\nDiesel B7\r\n43 L x 32.60 1,401.87\r\n- - - - - - - - - - - - - - - - - - - - - - - - - - \r\nSub-total 1,401.87\r\nVAT 7% 98.13\r\nTOTAL 1,500.00\r\nPAID BY VISA ****4412\r\nTHANK YOU / ■■■■■■■■■"
     }
   ],
   "master_data": {
@@ -1144,6 +1140,16 @@
         "bank_account": "8890014455",
         "status": "active",
         "payment_terms": "Net 45",
+        "currency": "THB"
+      },
+      {
+        "vendor_id": "V-1013",
+        "legal_name": "PTT Station Rama IV",
+        "aliases": "PTT Rama IV;PTT Oil and Retail;บริษัท ปตท. น้ำมันและการค้าปลีก จำกัด",
+        "tax_id": "0105554000770",
+        "bank_account": "0140099887",
+        "status": "active",
+        "payment_terms": "Corporate card",
         "currency": "THB"
       },
       {
