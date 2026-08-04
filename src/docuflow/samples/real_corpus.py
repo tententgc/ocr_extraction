@@ -17,7 +17,7 @@ from typing import Any
 
 from docuflow.samples.degrade import photocopy, photograph
 from docuflow.samples.generator import render_pdf
-from docuflow.samples.real_world import CSV_COLUMNS, REAL_DOCUMENTS, master_rows, to_csv
+from docuflow.samples.real_world import ALL_DOCUMENTS, CSV_COLUMNS, master_rows, to_csv
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +41,29 @@ def _render_page(pdf_path: Path, scale: float):
         document.close()
 
 
+def page_text(pdf_path: Path) -> str:
+    """Exactly what is printed on the page, from the PDF's own text layer.
+
+    This is the reference OCR is scored against, and it is trustworthy for a
+    reason worth stating: the corpus is *drawn* here, so the text layer is not
+    an approximation of the page - it is the string the renderer was given. A
+    photograph of that page has no text layer at all, which is precisely why
+    the reference has to be taken before the page is photographed.
+    """
+    import pypdfium2 as pdfium
+
+    document = pdfium.PdfDocument(str(pdf_path))
+    try:
+        page = document[0]
+        text_page = page.get_textpage()
+        try:
+            return (text_page.get_text_range() or "").strip()
+        finally:
+            text_page.close()
+    finally:
+        document.close()
+
+
 def write_master_csvs(out_dir: Path) -> dict[str, Path]:
     """The vendor, purchase-order and contract files an ERP would export."""
     directory = out_dir / MASTER_DIR
@@ -59,11 +82,19 @@ def generate(out_dir: Path) -> list[dict[str, Any]]:
     write_master_csvs(out_dir)
 
     manifest: list[dict[str, Any]] = []
-    for index, (name, arrival, doc) in enumerate(REAL_DOCUMENTS):
+    for index, (slug, arrival, posts, doc) in enumerate(ALL_DOCUMENTS):
+        # The expected outcome goes in the filename. A corpus that states what
+        # should happen before the system is asked is one you can grade against;
+        # one that does not ends up graded against itself.
+        name = f"{index + 1}_{slug}_{posts}"
+
         # Rendered to a scratch PDF first in every case: the layouts draw
         # vector pages, and a photograph is a picture of a printed one.
         pdf_path = out_dir / f"{name}.pdf"
         render_pdf(doc, pdf_path)
+
+        # Taken now, while there is still a text layer to take it from.
+        reference = page_text(pdf_path)
 
         if arrival == "pdf":
             artifact = pdf_path
@@ -90,6 +121,8 @@ def generate(out_dir: Path) -> list[dict[str, Any]]:
         entry["file"] = artifact.name
         entry["arrival"] = arrival
         entry["order"] = index + 1
+        entry["posts"] = posts
+        entry["reference_text"] = reference
         manifest.append(entry)
         logger.info("wrote %s (%s)", artifact.name, arrival)
 
@@ -133,19 +166,24 @@ def _readme(manifest: list[dict[str, Any]]) -> str:
         "docuflow load-master real_samples/master",
         "```",
         "",
-        "| # | File | Arrives as | What it is for | Expected to trip |",
-        "|---|------|-----------|----------------|------------------|",
+        "The filename ends in the expected outcome. `_True` means nothing is",
+        "wrong with the document and holding it is a false alarm; `_False` means",
+        "something is wrong and posting it is a silent error. The evaluation",
+        "compares that against what actually happened.",
+        "",
+        "| # | File | Arrives as | Should post | What it is for | Expected to trip |",
+        "|---|------|-----------|---|----------------|------------------|",
     ]
     for entry in manifest:
         findings = ", ".join(f"`{name}`" for name in entry.get("expected_findings", ())) or "—"
         lines.append(
             f"| {entry['order']} | `{entry['file']}` | {ARRIVAL_WORDS[entry['arrival']]} "
-            f"| {entry['demonstrates']} | {findings} |"
+            f"| {'yes' if entry['posts'] else 'no'} | {entry['demonstrates']} | {findings} |"
         )
     lines.append("")
     lines.append(
-        "Document 15 is a duplicate of document 1 and can only be detected once "
-        "document 1 has posted, so run them in order."
+        "The duplicate submission can only be detected once the original has "
+        "posted, so run these in order."
     )
     lines.append("")
     return "\n".join(lines)

@@ -167,14 +167,28 @@ EXTRA_CONTRACTS: tuple[dict[str, Any], ...] = (
 # --------------------------------------------------------------------------- #
 # The documents                                                                 #
 # --------------------------------------------------------------------------- #
-# Numbered by what each one is for, so the corpus reads as a list of cases
-# rather than as a directory of files.
+# `(slug, arrival, posts, document)`, written to disk as
+# `<n>_<slug>_<True|False>.<ext>`.
+#
+# `posts` is the expected outcome, and putting it in the filename is the point:
+# the corpus states what should happen before the system is asked, so the
+# evaluation compares two decisions rather than grading the system against
+# itself. In a directory listing you can see what the corpus expects.
+#
+#   True   nothing is wrong with it. Holding it is a false alarm that costs a
+#          review, and enough of those are what make people stop reading the
+#          queue.
+#   False  something is wrong. Posting it is a silent error, which is the
+#          failure this whole system exists to prevent.
+#
+# The two are not symmetric and the evaluation does not treat them as such: a
+# missed defect is a wrong payment, a false alarm is a wasted minute.
 
-REAL_DOCUMENTS: tuple[tuple[str, Arrival, SampleDoc], ...] = (
+REAL_DOCUMENTS: tuple[tuple[str, Arrival, bool, SampleDoc], ...] = (
     (
-        "1_invoice_clean_matches_po", "pdf",
+        "invoice_clean_matches_po", "pdf", True,
         SampleDoc(
-            doc_id="1_invoice_clean_matches_po",
+            doc_id="invoice_clean_matches_po",
             doc_type="invoice", layout="classic",
             title="Rungruang Steel invoice against PO-2026-0501",
             demonstrates="Everything reconciles: PO, vendor, bank account, arithmetic. Should post without a person.",
@@ -194,9 +208,9 @@ REAL_DOCUMENTS: tuple[tuple[str, Arrival, SampleDoc], ...] = (
         ),
     ),
     (
-        "2_invoice_total_transposed", "pdf",
+        "invoice_total_transposed", "pdf", False,
         SampleDoc(
-            doc_id="2_invoice_total_transposed",
+            doc_id="invoice_total_transposed",
             doc_type="invoice", layout="modern",
             title="Thai Beverage invoice whose total has two digits swapped",
             demonstrates="Subtotal, VAT and the line items all agree on 44,940.00; the total reads 49,440.00. The suggestion should name the total and call the transposition.",
@@ -217,9 +231,9 @@ REAL_DOCUMENTS: tuple[tuple[str, Arrival, SampleDoc], ...] = (
         ),
     ),
     (
-        "3_invoice_photo_on_a_desk", "photo",
+        "invoice_photo_on_a_desk", "photo", False,
         SampleDoc(
-            doc_id="3_invoice_photo_on_a_desk",
+            doc_id="invoice_photo_on_a_desk",
             doc_type="invoice", layout="classic",
             title="Sunrise Electrical invoice photographed at an angle",
             demonstrates="A phone photo: skewed, lit from one side, slightly soft. Preprocessing has to straighten and relight it before OCR sees it.",
@@ -239,9 +253,9 @@ REAL_DOCUMENTS: tuple[tuple[str, Arrival, SampleDoc], ...] = (
         ),
     ),
     (
-        "4_invoice_vat_miscalculated", "pdf",
+        "invoice_vat_miscalculated", "pdf", False,
         SampleDoc(
-            doc_id="4_invoice_vat_miscalculated",
+            doc_id="invoice_vat_miscalculated",
             doc_type="invoice", layout="dense",
             title="Nakhon Chemicals invoice where the VAT does not match the rate",
             demonstrates="States 7% but charges 4,590.00 on 76,500.00, which is 6%. The tax is the only value the arithmetic can blame, and the vendor is on hold as well.",
@@ -266,9 +280,9 @@ REAL_DOCUMENTS: tuple[tuple[str, Arrival, SampleDoc], ...] = (
         ),
     ),
     (
-        "5_invoice_bank_account_changed", "pdf",
+        "invoice_bank_account_changed", "pdf", False,
         SampleDoc(
-            doc_id="5_invoice_bank_account_changed",
+            doc_id="invoice_bank_account_changed",
             doc_type="invoice", layout="classic",
             title="Rungruang Steel invoice quoting an account that is not theirs",
             demonstrates="The signature of payment-redirection fraud: a correct invoice with new remittance details. Must block, and must not offer a one-click fix.",
@@ -287,9 +301,9 @@ REAL_DOCUMENTS: tuple[tuple[str, Arrival, SampleDoc], ...] = (
         ),
     ),
     (
-        "6_invoice_unknown_vendor", "png",
+        "invoice_unknown_vendor", "png", False,
         SampleDoc(
-            doc_id="6_invoice_unknown_vendor",
+            doc_id="invoice_unknown_vendor",
             doc_type="invoice", layout="minimal",
             title="Invoice from a company that is not in the vendor file",
             demonstrates="Nothing about the document is wrong; the counterparty is simply unregistered. Blocks, and the agent must not invent a match.",
@@ -308,9 +322,9 @@ REAL_DOCUMENTS: tuple[tuple[str, Arrival, SampleDoc], ...] = (
         ),
     ),
     (
-        "7_invoice_from_a_blocked_vendor", "pdf",
+        "invoice_from_a_blocked_vendor", "pdf", False,
         SampleDoc(
-            doc_id="7_invoice_from_a_blocked_vendor",
+            doc_id="invoice_from_a_blocked_vendor",
             doc_type="invoice", layout="two_column",
             title="Krungthep Print invoice - vendor is blocked in the master file",
             demonstrates="A clean, correct invoice that must still not pay automatically, because the block is a decision someone made deliberately.",
@@ -329,9 +343,9 @@ REAL_DOCUMENTS: tuple[tuple[str, Arrival, SampleDoc], ...] = (
         ),
     ),
     (
-        "8_invoice_over_the_purchase_order", "pdf",
+        "invoice_over_the_purchase_order", "pdf", False,
         SampleDoc(
-            doc_id="8_invoice_over_the_purchase_order",
+            doc_id="invoice_over_the_purchase_order",
             doc_type="invoice", layout="classic",
             title="Meridian invoice 22% above the purchase order it quotes",
             demonstrates="Arithmetic is perfect; the commercial overrun is the problem. Tests that the 2% purchase-order allowance is still a commercial one.",
@@ -352,9 +366,9 @@ REAL_DOCUMENTS: tuple[tuple[str, Arrival, SampleDoc], ...] = (
         ),
     ),
     (
-        "9_invoice_thai_buddhist_dates", "png",
+        "invoice_thai_buddhist_dates", "png", True,
         SampleDoc(
-            doc_id="9_invoice_thai_buddhist_dates",
+            doc_id="invoice_thai_buddhist_dates",
             doc_type="invoice", layout="thai_tax", language="th",
             title="ใบกำกับภาษี from Thai Beverage with Buddhist-era dates",
             demonstrates="Thai layout, Thai month names, dates in BE 2569. Everything reconciles once the calendar is converted.",
@@ -373,9 +387,9 @@ REAL_DOCUMENTS: tuple[tuple[str, Arrival, SampleDoc], ...] = (
         ),
     ),
     (
-        "10_invoice_no_po_above_threshold", "pdf",
+        "invoice_no_po_above_threshold", "pdf", False,
         SampleDoc(
-            doc_id="10_invoice_no_po_above_threshold",
+            doc_id="invoice_no_po_above_threshold",
             doc_type="invoice", layout="minimal",
             title="Sunrise Electrical invoice for 214,000 with no purchase order",
             demonstrates="Above the 50,000 threshold with nothing to match against. Blocks on policy rather than on anything being wrong.",
@@ -394,9 +408,9 @@ REAL_DOCUMENTS: tuple[tuple[str, Arrival, SampleDoc], ...] = (
         ),
     ),
     (
-        "11_receipt_photographed", "photo",
+        "receipt_photographed", "photo", True,
         SampleDoc(
-            doc_id="11_receipt_photographed",
+            doc_id="receipt_photographed",
             doc_type="receipt", layout="narrow",
             title="Thermal fuel receipt, photographed on a desk",
             demonstrates="80mm thermal paper, low contrast, photographed. The hardest OCR case in the corpus and the one preprocessing matters most for.",
@@ -412,9 +426,9 @@ REAL_DOCUMENTS: tuple[tuple[str, Arrival, SampleDoc], ...] = (
         ),
     ),
     (
-        "12_contract_expiring_soon", "pdf",
+        "contract_expiring_soon", "pdf", True,
         SampleDoc(
-            doc_id="12_contract_expiring_soon",
+            doc_id="contract_expiring_soon",
             doc_type="contract", layout="prose",
             title="Rungruang Steel supply agreement ending in under 90 days",
             demonstrates="Nothing is wrong with it; it simply needs renewing before it lapses. A warning, not a block.",
@@ -453,9 +467,9 @@ REAL_DOCUMENTS: tuple[tuple[str, Arrival, SampleDoc], ...] = (
         ),
     ),
     (
-        "13_contract_already_expired", "photocopy",
+        "contract_already_expired", "photocopy", False,
         SampleDoc(
-            doc_id="13_contract_already_expired",
+            doc_id="contract_already_expired",
             doc_type="contract", layout="prose",
             title="Sunrise Electrical maintenance agreement that ended in June",
             demonstrates="A faded photocopy of a contract that has already lapsed. Tests the contrast correction and the expiry check together.",
@@ -492,9 +506,9 @@ REAL_DOCUMENTS: tuple[tuple[str, Arrival, SampleDoc], ...] = (
         ),
     ),
     (
-        "14_form_vendor_onboarding", "png",
+        "form_vendor_onboarding", "png", True,
         SampleDoc(
-            doc_id="14_form_vendor_onboarding",
+            doc_id="form_vendor_onboarding",
             doc_type="form", layout="form",
             title="New supplier registration form",
             demonstrates="An unregistered counterparty is the point of the document, so an unknown vendor must not block it.",
@@ -507,9 +521,9 @@ REAL_DOCUMENTS: tuple[tuple[str, Arrival, SampleDoc], ...] = (
         ),
     ),
     (
-        "15_invoice_duplicate_submission", "pdf",
+        "invoice_duplicate_submission", "pdf", False,
         SampleDoc(
-            doc_id="15_invoice_duplicate_submission",
+            doc_id="invoice_duplicate_submission",
             doc_type="invoice", layout="classic",
             title="RSW-2026-1188 sent a second time",
             demonstrates="Identical to document 1. Only detectable against what has already been posted, so it needs document 1 to have gone through first.",
@@ -531,9 +545,9 @@ REAL_DOCUMENTS: tuple[tuple[str, Arrival, SampleDoc], ...] = (
         ),
     ),
     (
-        "16_invoice_line_items_do_not_sum", "photocopy",
+        "invoice_line_items_do_not_sum", "photocopy", False,
         SampleDoc(
-            doc_id="16_invoice_line_items_do_not_sum",
+            doc_id="invoice_line_items_do_not_sum",
             doc_type="invoice", layout="dense",
             title="Pacific Rim freight invoice with a line missing from the table",
             demonstrates="The stated subtotal is right and the visible lines are 4,300 short. A faded copy, so it also tests whether the missing line was misread rather than absent.",
@@ -553,9 +567,9 @@ REAL_DOCUMENTS: tuple[tuple[str, Arrival, SampleDoc], ...] = (
         ),
     ),
     (
-        "17_invoice_currency_disagrees_with_po", "pdf",
+        "invoice_currency_disagrees_with_po", "pdf", False,
         SampleDoc(
-            doc_id="17_invoice_currency_disagrees_with_po",
+            doc_id="invoice_currency_disagrees_with_po",
             doc_type="invoice", layout="modern",
             title="Pacific Rim invoice billed in USD against an SGD order",
             demonstrates="Same numbers, wrong currency. Paying it as printed overpays by the exchange rate, and the fix is on the purchase order.",
@@ -575,9 +589,9 @@ REAL_DOCUMENTS: tuple[tuple[str, Arrival, SampleDoc], ...] = (
         ),
     ),
     (
-        "18_invoice_unlabelled_amounts", "photo",
+        "invoice_unlabelled_amounts", "photo", True,
         SampleDoc(
-            doc_id="18_invoice_unlabelled_amounts",
+            doc_id="invoice_unlabelled_amounts",
             doc_type="invoice", layout="minimal",
             title="Invoice with no field labels at all, photographed",
             demonstrates="Three bare numbers in a column and a company name. Nothing for a label matcher to anchor on, so the two extraction channels have to disagree honestly rather than both guessing.",
@@ -593,6 +607,157 @@ REAL_DOCUMENTS: tuple[tuple[str, Arrival, SampleDoc], ...] = (
             ),
         ),
     ),
+)
+
+
+# --------------------------------------------------------------------------- #
+# Structural variation: the same correct document, laid out differently          #
+# --------------------------------------------------------------------------- #
+# Every one of these is a perfectly ordinary invoice or receipt that reconciles
+# in every way - the arithmetic adds up, the vendor is registered and active,
+# the purchase order is open and covers it, the bank account is the one on file.
+# All of them must post.
+#
+# What varies is only the shape: a different renderer, a different label
+# vocabulary, values in a different order, a table that is not a table. That
+# variation is the point. A pipeline tuned on one house style scores beautifully
+# on documents that look like the ones it was tuned on, and the failure it hides
+# is the expensive one - not a wrong value, but a valid document held because it
+# was laid out unfamiliarly. Fifty of those and nobody reads the review queue.
+#
+# So this half of the corpus measures the false-alarm rate, which is the number
+# the accuracy figures cannot see.
+
+VARIED_DOCUMENTS: tuple[tuple[str, Arrival, bool, SampleDoc], ...] = (
+    (
+        "invoice_two_column_layout", "pdf", True,
+        SampleDoc(
+            doc_id="invoice_two_column_layout",
+            doc_type="invoice", layout="two_column",
+            title="Thai Beverage invoice in a two-column layout",
+            demonstrates="Correct in every way; the header sits in two columns instead of one. Must post.",
+            ground_truth={
+                "invoice_number": "TBS-7855", "invoice_date": "2026-07-29",
+                "due_date": "2026-08-13", "vendor_name": "Thai Beverage Supply Co., Ltd.",
+                "vendor_tax_id": "0105563000221", "buyer_name": BUYER,
+                "purchase_order_ref": "PO-2026-0523", "currency": "THB",
+                "subtotal": 38_000.00, "tax_rate": 7.0, "tax_amount": 2_660.00,
+                "total_amount": 40_660.00, "payment_terms": "Net 15",
+                "bank_account": "7710028899",
+            },
+            line_items=(
+                {"description": "Drinking water 20L returnable", "quantity": 280, "unit_price": 95.00, "amount": 26_600.00},
+                {"description": "Instant coffee, catering tin", "quantity": 38, "unit_price": 300.00, "amount": 11_400.00},
+            ),
+        ),
+    ),
+    (
+        "invoice_dense_no_whitespace", "pdf", True,
+        SampleDoc(
+            doc_id="invoice_dense_no_whitespace",
+            doc_type="invoice", layout="dense",
+            title="Rungruang Steel invoice typeset with no whitespace",
+            demonstrates="Correct, and packed edge to edge. Tests that density alone does not hold a document.",
+            ground_truth={
+                "invoice_number": "RSW-2026-1240", "invoice_date": "2026-07-29",
+                "due_date": "2026-09-27", "vendor_name": "Rungruang Steel Works Co., Ltd.",
+                "vendor_tax_id": "0105552000110", "buyer_name": BUYER,
+                "purchase_order_ref": "PO-2026-0501", "currency": "THB",
+                "subtotal": 62_000.00, "tax_rate": 7.0, "tax_amount": 4_340.00,
+                "total_amount": 66_340.00, "payment_terms": "Net 60",
+                "bank_account": "3120045678",
+            },
+            line_items=(
+                {"description": "Steel channel 100x50x5mm", "quantity": 155, "unit_price": 400.00, "amount": 62_000.00},
+            ),
+        ),
+    ),
+    (
+        "invoice_minimal_unlabelled", "pdf", True,
+        SampleDoc(
+            doc_id="invoice_minimal_unlabelled",
+            doc_type="invoice", layout="minimal",
+            title="Sunrise Electrical invoice with almost no labels",
+            demonstrates="Correct, but the amounts are a bare column with no words beside them. The label-first channel has nothing to anchor on.",
+            ground_truth={
+                "invoice_number": "SE-2026-0488", "invoice_date": "2026-07-29",
+                "due_date": "2026-09-12", "vendor_name": "Sunrise Electrical Co., Ltd.",
+                "vendor_tax_id": "0105571000448", "buyer_name": BUYER,
+                "currency": "THB", "subtotal": 22_000.00, "tax_rate": 7.0,
+                "tax_amount": 1_540.00, "total_amount": 23_540.00,
+                "payment_terms": "Net 45", "bank_account": "8890014455",
+            },
+            line_items=(
+                {"description": "Distribution board, 12-way", "quantity": 4, "unit_price": 5_500.00, "amount": 22_000.00},
+            ),
+        ),
+    ),
+    (
+        "invoice_thai_layout_correct", "png", True,
+        SampleDoc(
+            doc_id="invoice_thai_layout_correct",
+            doc_type="invoice", layout="thai_tax", language="th",
+            title="ใบกำกับภาษี that is entirely correct",
+            demonstrates="Thai layout, Thai month names, Buddhist-era dates, and nothing wrong with it. Must post.",
+            ground_truth={
+                "invoice_number": "TBS-7860", "invoice_date": "2026-07-30",
+                "due_date": "2026-08-14", "vendor_name": "บริษัท ไทยเบเวอเรจ ซัพพลาย จำกัด",
+                "vendor_tax_id": "0105563000221", "buyer_name": BUYER,
+                "currency": "THB", "subtotal": 16_000.00, "tax_rate": 7.0,
+                "tax_amount": 1_120.00, "total_amount": 17_120.00,
+                "payment_terms": "Net 15", "bank_account": "7710028899",
+            },
+            line_items=(
+                {"description": "น้ำดื่ม 20 ลิตร", "quantity": 150, "unit_price": 95.00, "amount": 14_250.00},
+                {"description": "กาแฟสำเร็จรูป", "quantity": 7, "unit_price": 250.00, "amount": 1_750.00},
+            ),
+        ),
+    ),
+    (
+        "invoice_modern_scanned", "png", True,
+        SampleDoc(
+            doc_id="invoice_modern_scanned",
+            doc_type="invoice", layout="modern",
+            title="Meridian invoice, modern layout, scanned rather than digital",
+            demonstrates="Correct, zero-rated, in USD, and arriving as an image with no text layer.",
+            ground_truth={
+                "invoice_number": "MC-2026-0801", "invoice_date": "2026-07-30",
+                "due_date": "2026-08-29", "vendor_name": "Meridian Consulting LLP",
+                "vendor_tax_id": "GB428765190", "buyer_name": BUYER,
+                "purchase_order_ref": "PO-2026-0534", "currency": "USD",
+                "subtotal": 30_000.00, "tax_rate": 0.0, "tax_amount": 0.00,
+                "total_amount": 30_000.00, "payment_terms": "Net 30",
+                "bank_account": "GB29NWBK60161331926819",
+            },
+            line_items=(
+                {"description": "Operations advisory, phase 2 - senior partner", "quantity": 75, "unit_price": 280.00, "amount": 21_000.00},
+                {"description": "Operations advisory, phase 2 - analyst", "quantity": 90, "unit_price": 100.00, "amount": 9_000.00},
+            ),
+        ),
+    ),
+    (
+        "receipt_clean_thermal", "pdf", True,
+        SampleDoc(
+            doc_id="receipt_clean_thermal",
+            doc_type="receipt", layout="narrow",
+            title="Thermal receipt, 80mm, clean and correct",
+            demonstrates="The same shape as the photographed receipt, without the photograph. Isolates layout from image quality.",
+            ground_truth={
+                "receipt_number": "PTT-556890", "receipt_date": "2026-07-28",
+                "merchant_name": "PTT Station Rama IV", "currency": "THB",
+                "subtotal": 1_401.87, "tax_rate": 7.0, "tax_amount": 98.13,
+                "total_amount": 1_500.00, "payment_method": "Corporate card",
+            },
+            line_items=(
+                {"description": "Diesel B7", "quantity": 46.01, "unit_price": 32.60, "amount": 1_500.00},
+            ),
+        ),
+    ),
+)
+
+
+ALL_DOCUMENTS: tuple[tuple[str, Arrival, bool, SampleDoc], ...] = (
+    REAL_DOCUMENTS + VARIED_DOCUMENTS
 )
 
 
