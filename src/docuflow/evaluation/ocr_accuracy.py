@@ -26,10 +26,15 @@ was ever photographed.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Any
 
 from docuflow.normalize.text import normalize_for_match
+
+# HTML tags and the `<!-- page 1 -->` markers the OCR layer emits. Structure the
+# engine is right to return, and not text either document claims is on the page.
+_TAG = re.compile(r"<!--.*?-->|</?[a-zA-Z][^>]*>", re.DOTALL)
 
 # Values shorter than this are not worth scoring for recall - a currency code or
 # a one-digit quantity matches by accident too often to mean anything.
@@ -82,13 +87,26 @@ class OcrScore:
 
 
 def _collapse(text: str) -> str:
-    """Whitespace is layout, not content.
+    """The words on the page, with everything structural taken out.
 
-    OCR output puts newlines where the model saw column breaks and the text
-    layer puts them where the renderer did. Scoring those differences as errors
-    would measure the disagreement about layout rather than about characters.
+    Two things are removed and both would otherwise be scored as errors while
+    being entirely correct.
+
+    **Markup.** Typhoon OCR returns structure - HTML tables, page markers -
+    because a total that stays inside a table cell is a total that can still be
+    found later. That is the feature. Compared against a PDF's plain text layer,
+    every `<td>` is half a dozen characters of "error" for output that is doing
+    its job, and a table-heavy invoice would score worse than a page of prose
+    the model read badly.
+
+    **Whitespace.** OCR breaks lines where it saw columns, the text layer where
+    the renderer did. Scoring that measures a disagreement about layout.
+
+    Tags become a space rather than nothing, or `<td>A</td><td>B</td>` collapses
+    into `AB` and invents a word that is in neither document.
     """
-    return " ".join(text.split())
+    without_markup = _TAG.sub(" ", text)
+    return " ".join(without_markup.split())
 
 
 def _edit_distance(left: str, right: str) -> int:

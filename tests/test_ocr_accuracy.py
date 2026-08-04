@@ -41,6 +41,27 @@ class TestCharacterAccuracy:
         reflowed = PAGE.replace("\n", "   ").replace("  ", " ")
         assert score_document(PAGE, reflowed, VALUES).character_accuracy == 1.0
 
+    def test_table_markup_is_not_an_error_either(self):
+        """Typhoon OCR returns HTML tables because a total that stays in its
+        cell is a total that can still be found. Scored against a plain text
+        layer, every `<td>` would be six characters of "error" for output doing
+        exactly its job - and a table-heavy invoice would rank below a page of
+        prose the model read badly."""
+        reference = "Description Qty Amount\nSteel plate 20 370,000.00"
+        marked_up = (
+            "<!-- page 1 -->\n<table><tr><td>Description</td><td>Qty</td>"
+            "<td>Amount</td></tr><tr><td>Steel plate</td><td>20</td>"
+            "<td>370,000.00</td></tr></table>"
+        )
+        assert score_document(reference, marked_up, {}).character_accuracy == 1.0
+
+    def test_stripping_a_tag_does_not_glue_two_cells_together(self):
+        """`<td>A</td><td>B</td>` must not become `AB`, which is a word in
+        neither document."""
+        from docuflow.evaluation.ocr_accuracy import _collapse
+
+        assert _collapse("<td>Steel</td><td>plate</td>") == "Steel plate"
+
     def test_a_misread_character_costs_one_edit(self):
         damaged = PAGE.replace("444,050.00", "444,O50.00")
         score = score_document(PAGE, damaged, VALUES)
