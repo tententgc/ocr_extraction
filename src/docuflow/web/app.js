@@ -18,6 +18,7 @@ const state = {
   insightType: null,    // which document type the insight breakdowns describe
   agenda: null,         // dated items and stuck counterparties needing attention
   masterTab: 'vendors', // which master file is on screen
+  pages: { queue: 1, records: 1, master: 1 },   // current page per list
   draft: null,          // a compiled rule awaiting approval
   currentDoc: null,     // document being reviewed
   edits: {},            // pending reviewer edits
@@ -34,6 +35,40 @@ const pct = (value) => `${Math.round((value ?? 0) * 100)}%`;
 const money = (value, currency) => value == null || value === ''
   ? '—'
   : `${Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${currency ? ' ' + currency : ''}`;
+
+/* ---------------------------------------------------------------- paging */
+
+/* Every list here grows without bound, and the failure mode of not paging is
+   silent: the table renders, it is just missing the rows nobody scrolled to.
+   One pager, driven by the envelope the API returns. */
+const PER_PAGE = 10;
+
+function renderPager(host, meta, onGo) {
+  const element = typeof host === 'string' ? $(host) : host;
+  if (!element) return;
+  const { page = 1, pages = 1, total = 0, per_page = PER_PAGE } = meta || {};
+  if (total <= per_page) { element.innerHTML = ''; return; }
+
+  const first = (page - 1) * per_page + 1;
+  const last = Math.min(page * per_page, total);
+  element.innerHTML = `
+    <div class="pager">
+      <span class="muted">${first}–${last} of ${total}</span>
+      <span class="grow"></span>
+      <button class="btn small" data-page="1" ${page === 1 ? 'disabled' : ''}>« First</button>
+      <button class="btn small" data-page="${page - 1}" ${page === 1 ? 'disabled' : ''}>Previous</button>
+      <span class="muted">Page ${page} of ${pages}</span>
+      <button class="btn small" data-page="${page + 1}" ${page >= pages ? 'disabled' : ''}>Next</button>
+      <button class="btn small" data-page="${pages}" ${page >= pages ? 'disabled' : ''}>Last »</button>
+    </div>`;
+
+  element.querySelectorAll('button[data-page]').forEach((button) =>
+    button.addEventListener('click', () => onGo(Number(button.dataset.page))));
+}
+
+/** Add page/per_page to a path that may already carry a query string. */
+const paged = (path, page) =>
+  `${path}${path.includes('?') ? '&' : '?'}page=${page}&per_page=${PER_PAGE}`;
 
 const DECISION = {
   auto_post: { label: 'Posted automatically', icon: '✓', chip: 'ok' },
@@ -179,18 +214,30 @@ async function loadSamples() {
     toast(`Could not load samples: ${error.message}`, 'error');
     return;
   }
+  // Each sample exists as the PDF it was drawn as and as a photograph of it.
+  // A PDF can carry a text layer; an image cannot, so only the image puts the
+  // OCR model under real load — worth being able to pick.
   $('#sample-list').innerHTML = state.samples
     .filter((sample) => sample.available)
     .map((sample) => `
-      <button class="sample" data-sample="${esc(sample.doc_id)}">
+      <div class="sample">
         <span class="stype">${esc(sample.doc_type.replace('_', ' '))}</span>
-        <span>${esc(sample.title)}
+        <span class="grow">${esc(sample.title)}
           <small>${esc(sample.demonstrates)}</small></span>
-      </button>`).join('');
+        <span class="sample-formats">
+          ${(sample.formats || ['pdf']).map((format) => `
+            <button class="btn small" data-sample="${esc(sample.doc_id)}" data-format="${esc(format)}"
+              title="${format === 'image' ? 'Process a photograph of this page — no text layer, OCR only'
+                                          : 'Process the PDF, text layer included'}"
+              >${format === 'image' ? 'Image' : 'PDF'}</button>`).join('')}
+        </span>
+      </div>`).join('');
 
-  $$('#sample-list .sample').forEach((button) => button.addEventListener('click',
-    () => ingest(`/api/documents/sample/${button.dataset.sample}`, { method: 'POST' },
-      `Processing sample: ${button.textContent.trim().split('\n')[0]}`)));
+  $$('#sample-list button[data-sample]').forEach((button) => button.addEventListener('click', () => {
+    const title = button.closest('.sample').querySelector('.grow').textContent.trim().split('\n')[0];
+    ingest(`/api/documents/sample/${button.dataset.sample}?format=${button.dataset.format}`,
+      { method: 'POST' }, `Processing sample (${button.dataset.format}): ${title}`);
+  }));
 }
 
 /* -------------------------------------------------------------- ingestion */
@@ -673,13 +720,17 @@ function wireReview(doc, schema, host) {
 
 /* ----------------------------------------------------------------- queue */
 
-async function loadQueue() {
+async function loadQueue(page = state.pages.queue) {
   const filter = $('#queue-filter').value;
-  let rows;
+  state.pages.queue = page;
+  let payload;
   try {
-    rows = await api(`/api/documents${filter ? `?decision=${encodeURIComponent(filter)}` : ''}`);
+    payload = await api(paged(
+      `/api/documents${filter ? `?decision=${encodeURIComponent(filter)}` : ''}`, page));
   } catch (error) { toast(error.message, 'error'); return; }
 
+  const rows = payload.rows;
+  renderPager('#queue-pager', payload, loadQueue);
   const body = $('#queue-table tbody');
   if (!rows.length) {
     body.innerHTML = '<tr><td colspan="7"><div class="empty-state">No documents yet — process one from the Process tab.</div></td></tr>';
@@ -777,22 +828,26 @@ function extractReconciliation(doc) {
   };
 }
 
-$('#queue-filter').addEventListener('change', loadQueue);
-$('#queue-refresh').addEventListener('click', loadQueue);
+$('#queue-filter').addEventListener('change', () => loadQueue(1));
+$('#queue-refresh').addEventListener('click', () => loadQueue());
 
 /* --------------------------------------------------------------- records */
 
-async function loadRecords() {
-  let rows, summary;
+async function loadRecords(page = state.pages.records) {
+  state.pages.records = page;
+  let payload, summary;
   try {
     // The summary drives the cards; the list is filtered to whichever kind is
     // selected, so the two calls always describe the same ledger.
-    [summary, rows] = await Promise.all([
+    [summary, payload] = await Promise.all([
       api('/api/records/summary'),
-      api(state.recordKind ? `/api/records?record_kind=${encodeURIComponent(state.recordKind)}` : '/api/records'),
+      api(paged(state.recordKind
+        ? `/api/records?record_kind=${encodeURIComponent(state.recordKind)}` : '/api/records', page)),
     ]);
   } catch (error) { toast(error.message, 'error'); return; }
 
+  const rows = payload.rows;
+  renderPager('#records-pager', payload, loadRecords);
   state.recordSummary = summary;
   renderKindCards(summary);
   renderKindInsight(summary);
@@ -811,13 +866,17 @@ async function loadRecords() {
     <td class="num">${money(row.amount, row.currency)}</td>
     <td>${esc(row.issue_date || '—')}</td>
     <td>${esc(row.posted_by)}</td>
-    <td>${row.document_id
-      ? `<button class="btn small" data-open-record="${esc(row.document_id)}">View</button>`
-      : ''}</td>
+    <td class="row-actions">
+      ${row.document_id
+        ? `<button class="btn small" data-open-record="${esc(row.document_id)}">View</button>` : ''}
+      <button class="btn small danger" data-delete-record="${esc(row.record_id)}"
+        data-label="${esc(`${row.record_id} · ${row.counterparty || ''} ${money(row.amount, row.currency)}`)}"
+        title="Remove this ledger entry and release the document behind it">Delete</button>
+    </td>
   </tr>`).join('');
 }
 
-$('#records-refresh').addEventListener('click', loadRecords);
+$('#records-refresh').addEventListener('click', () => loadRecords());
 
 /* Each kind of record answers a different question, so the ledger is shown as
    one card per kind rather than one undifferentiated table. Clicking a card
@@ -884,15 +943,37 @@ $('#kind-grid').addEventListener('click', (event) => {
   // Clicking the selected kind again clears the filter.
   state.recordKind = state.recordKind === card.dataset.kind ? null : card.dataset.kind;
   $('#record-detail-host').innerHTML = '';
-  loadRecords();
+  loadRecords(1);
 });
 
 $('#kind-clear').addEventListener('click', () => {
   state.recordKind = null;
   $('#record-detail-host').innerHTML = '';
-  loadRecords();
+  loadRecords(1);
 });
 
+
+/* Deleting a ledger entry releases the document that produced it: the document
+   goes back to the queue rather than being removed, because the page is still
+   the evidence for the entry that used to exist. */
+$('#records-table').addEventListener('click', async (event) => {
+  const button = event.target.closest('button[data-delete-record]');
+  if (!button) return;
+  if (!confirm(`Delete ${button.dataset.label}?\n\nThe ledger entry is removed and its document returns to the review queue. This cannot be undone.`)) return;
+
+  button.disabled = true;
+  try {
+    const result = await api(`/api/records/${encodeURIComponent(button.dataset.deleteRecord)}`,
+      { method: 'DELETE' });
+    toast(result.message, 'success');
+    $('#record-detail-host').innerHTML = '';
+    await loadRecords();
+    loadStatus();
+  } catch (error) {
+    toast(error.message, 'error');
+    button.disabled = false;
+  }
+});
 
 /* A posted record is only as trustworthy as the page it came from, so opening
    one shows the same panel the reviewer saw: the document image beside every
@@ -1220,17 +1301,22 @@ const MASTER_VIEWS = {
    also URL fragments. One place to convert. */
 const masterKind = (tab) => tab.replace('-', '_');
 
-async function loadMaster(name) {
+async function loadMaster(name, page = 1) {
   const view = MASTER_VIEWS[name];
   if (!view) return;
+  if (name !== state.masterTab) page = 1;      // a new file starts at its own page one
   state.masterTab = name;
+  state.pages.master = page;
   $$('#master-tabs .chip-tab').forEach((tab) => tab.classList.toggle('active', tab.dataset.master === name));
   $('#master-template').href = `/api/master/template?kind=${masterKind(name)}`;
   $('#master-template').textContent = `Template CSV`;
 
-  let rows;
-  try { rows = await api(view.path); } catch (error) { toast(error.message, 'error'); return; }
+  let payload;
+  try { payload = await api(paged(view.path, page)); }
+  catch (error) { toast(error.message, 'error'); return; }
 
+  const rows = payload.rows;
+  renderPager('#master-pager', payload, (next) => loadMaster(name, next));
   $('#master-host').innerHTML = rows.length
     ? `<table><thead><tr>${view.head.map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead>
        <tbody>${rows.map((row) => `<tr>${view.row(row)}</tr>`).join('')}</tbody></table>`
@@ -1378,7 +1464,7 @@ async function commitSettings() {
 
 async function heldCount() {
   try {
-    return (await api('/api/documents?decision=needs_review&limit=500')).length;
+    return (await api('/api/documents?decision=needs_review&per_page=1')).total;
   } catch { return 0; }
 }
 

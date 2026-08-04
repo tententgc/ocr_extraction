@@ -69,9 +69,8 @@ class DocumentStore:
         ).fetchone()
         return row_to_dict(row)
 
-    def list(
-        self, decision: str | None = None, doc_type: str | None = None, limit: int = 100
-    ) -> list[dict[str, Any]]:
+    @staticmethod
+    def _filters(decision: str | None, doc_type: str | None) -> tuple[str, list[Any]]:
         clauses, params = [], []
         if decision:
             clauses.append("decision = ?")
@@ -79,14 +78,31 @@ class DocumentStore:
         if doc_type:
             clauses.append("doc_type = ?")
             params.append(doc_type)
-        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        return (f"WHERE {' AND '.join(clauses)}" if clauses else ""), params
+
+    def list(
+        self,
+        decision: str | None = None,
+        doc_type: str | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[dict[str, Any]]:
+        where, params = self._filters(decision, doc_type)
         rows = connect(self.db_path).execute(
             f"""SELECT document_id, filename, source_kind, origin, doc_type, decision,
                        confidence, record_id, created_at, byte_size
-                FROM documents {where} ORDER BY created_at DESC LIMIT ?""",
-            (*params, limit),
+                FROM documents {where} ORDER BY created_at DESC LIMIT ? OFFSET ?""",
+            (*params, limit, offset),
         ).fetchall()
         return rows_to_dicts(rows)
+
+    def count(self, decision: str | None = None, doc_type: str | None = None) -> int:
+        """How many match, regardless of the page being shown."""
+        where, params = self._filters(decision, doc_type)
+        row = connect(self.db_path).execute(
+            f"SELECT COUNT(*) AS total FROM documents {where}", params
+        ).fetchone()
+        return int(row["total"]) if row else 0
 
     def find_by_hash(self, sha256: str) -> dict[str, Any] | None:
         row = connect(self.db_path).execute(

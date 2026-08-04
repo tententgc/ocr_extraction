@@ -253,11 +253,11 @@ class TestApiEndpoints:
         assert response.status_code == 400
 
     def test_records_and_metrics_start_empty(self, client):
-        assert client.get("/api/records").json() == []
+        assert client.get("/api/records").json()["rows"] == []
         assert client.get("/api/metrics").json()["total_documents"] == 0
 
     def test_master_data_is_seeded(self, client):
-        vendors = client.get("/api/master/vendors").json()
+        vendors = client.get("/api/master/vendors").json()["rows"]
         assert any(vendor["vendor_id"] == "V-1001" for vendor in vendors)
 
 
@@ -296,7 +296,7 @@ class TestRecordsByKind:
             assert label and label["title"] and label["blurb"]
 
     def test_the_list_can_be_filtered_to_one_kind(self, client, posted_records):
-        rows = client.get("/api/records?record_kind=payable").json()
+        rows = client.get("/api/records?record_kind=payable").json()["rows"]
         assert rows
         assert {row["record_kind"] for row in rows} == {"payable"}
 

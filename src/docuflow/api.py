@@ -48,7 +48,8 @@ from docuflow.store.attention import AttentionStore
 from docuflow.store.corrections import CorrectionStore
 from docuflow.store.documents import DocumentStore
 from docuflow.store.insights import InsightStore
-from docuflow.store.records import RecordStore
+from docuflow.store.paging import DEFAULT_PER_PAGE, MAX_PER_PAGE, clamp_page, paginate, slice_all
+from docuflow.store.records import RecordPostingError, RecordStore
 from docuflow.warmup import warm_ollama_in_background
 
 logger = logging.getLogger(__name__)
@@ -448,12 +449,11 @@ def schemas() -> dict[str, Any]:
 
 @app.get("/api/samples")
 def samples() -> list[dict[str, Any]]:
-    available = {path.stem: path for path in settings.sample_dir.glob("*")}
     result = []
     for doc in SAMPLE_DOCUMENTS:
-        scan = settings.sample_dir / f"{doc.doc_id}.jpg"
         pdf = settings.sample_dir / f"{doc.doc_id}.pdf"
-        path = scan if scan.exists() else pdf
+        image = settings.sample_dir / f"{doc.doc_id}.png"
+        path = _sample_path(doc.doc_id)
         result.append(
             {
                 "doc_id": doc.doc_id,
@@ -462,8 +462,12 @@ def samples() -> list[dict[str, Any]]:
                 "demonstrates": doc.demonstrates,
                 "language": doc.language,
                 "scanned": doc.degrade > 0,
-                "available": path.exists(),
-                "filename": path.name if path.exists() else None,
+                "available": path is not None,
+                "filename": path.name if path else None,
+                # Both are on disk. A PDF can carry a text layer; an image never
+                # can, so the two exercise different halves of the reader.
+                "formats": [name for name, candidate in (("pdf", pdf), ("image", image))
+                            if candidate.exists()],
             }
         )
     return result
@@ -584,12 +588,22 @@ def ingest_url(request: UrlIngestRequest) -> dict[str, Any]:
     return _serialize_result(result)
 
 
-@app.post("/api/documents/sample/{doc_id}")
-def ingest_sample(doc_id: str) -> dict[str, Any]:
+def _sample_path(doc_id: str, fmt: str = "pdf") -> Path | None:
+    """The requested rendering of a sample, or whatever exists."""
+    image = settings.sample_dir / f"{doc_id}.png"
     scan = settings.sample_dir / f"{doc_id}.jpg"
     pdf = settings.sample_dir / f"{doc_id}.pdf"
-    path = scan if scan.exists() else pdf
-    if not path.exists():
+    order = (image, scan, pdf) if fmt == "image" else (scan, pdf, image)
+    return next((path for path in order if path.exists()), None)
+
+
+@app.post("/api/documents/sample/{doc_id}")
+def ingest_sample(
+    doc_id: str, fmt: str = Query(default="pdf", pattern="^(pdf|image)$", alias="format")
+) -> dict[str, Any]:
+    """Process a bundled sample, as its PDF or as a photograph of it."""
+    path = _sample_path(doc_id, fmt)
+    if path is None:
         raise HTTPException(status_code=404, detail=f"Sample '{doc_id}' has not been generated.")
     return _serialize_result(_pipeline().process_file(path, source_kind="sample"))
 
@@ -603,9 +617,17 @@ def ingest_sample(doc_id: str) -> dict[str, Any]:
 def list_documents(
     decision: str | None = Query(default=None),
     doc_type: str | None = Query(default=None),
-    limit: int = Query(default=100, ge=1, le=500),
-) -> list[dict[str, Any]]:
-    return DocumentStore(settings.db_path).list(decision=decision, doc_type=doc_type, limit=limit)
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=DEFAULT_PER_PAGE, ge=1, le=MAX_PER_PAGE),
+) -> dict[str, Any]:
+    store = DocumentStore(settings.db_path)
+    page, per_page, offset = clamp_page(page, per_page)
+    return paginate(
+        store.list(decision=decision, doc_type=doc_type, limit=per_page, offset=offset),
+        store.count(decision=decision, doc_type=doc_type),
+        page,
+        per_page,
+    )
 
 
 @app.get("/api/documents/{document_id}")
@@ -744,9 +766,27 @@ def delete_document_endpoint(document_id: str, reviewer: str = Query(default="re
 
 @app.get("/api/records")
 def list_records(
-    record_kind: str | None = Query(default=None), limit: int = Query(default=200, ge=1, le=1000)
-) -> list[dict[str, Any]]:
-    return RecordStore(settings.db_path).list(record_kind=record_kind, limit=limit)
+    record_kind: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=DEFAULT_PER_PAGE, ge=1, le=MAX_PER_PAGE),
+) -> dict[str, Any]:
+    store = RecordStore(settings.db_path)
+    page, per_page, offset = clamp_page(page, per_page)
+    return paginate(
+        store.list(record_kind=record_kind, limit=per_page, offset=offset),
+        store.count(record_kind=record_kind),
+        page,
+        per_page,
+    )
+
+
+@app.delete("/api/records/{record_id}")
+def delete_record(record_id: str, reviewer: str = Query(default="reviewer")) -> dict[str, Any]:
+    """Remove a posted record and release the document behind it."""
+    try:
+        return RecordStore(settings.db_path).delete(record_id, actor=reviewer)
+    except RecordPostingError as exc:
+        return JSONResponse(status_code=404, content={"detail": str(exc)})
 
 
 @app.get("/api/records/summary")
@@ -806,8 +846,11 @@ def get_record(record_id: str) -> dict[str, Any]:
 
 
 @app.get("/api/master/vendors")
-def list_vendors() -> list[dict[str, Any]]:
-    return MasterDataRepository(settings.db_path).list_vendors()
+def list_vendors(
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=DEFAULT_PER_PAGE, ge=1, le=MAX_PER_PAGE),
+) -> dict[str, Any]:
+    return slice_all(MasterDataRepository(settings.db_path).list_vendors(), page, per_page)
 
 
 class NewVendorRequest(BaseModel):
@@ -830,13 +873,19 @@ def add_vendor(request: NewVendorRequest) -> dict[str, Any]:
 
 
 @app.get("/api/master/purchase-orders")
-def list_purchase_orders() -> list[dict[str, Any]]:
-    return MasterDataRepository(settings.db_path).list_purchase_orders()
+def list_purchase_orders(
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=DEFAULT_PER_PAGE, ge=1, le=MAX_PER_PAGE),
+) -> dict[str, Any]:
+    return slice_all(MasterDataRepository(settings.db_path).list_purchase_orders(), page, per_page)
 
 
 @app.get("/api/master/contracts")
-def list_contracts() -> list[dict[str, Any]]:
-    return MasterDataRepository(settings.db_path).list_contracts()
+def list_contracts(
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=DEFAULT_PER_PAGE, ge=1, le=MAX_PER_PAGE),
+) -> dict[str, Any]:
+    return slice_all(MasterDataRepository(settings.db_path).list_contracts(), page, per_page)
 
 
 @app.post("/api/master/import")

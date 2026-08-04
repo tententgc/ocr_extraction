@@ -45,6 +45,17 @@ def settings(tmp_path: Path) -> Settings:
         # off in their own .env would otherwise run a suite where half the
         # master-data tests have nothing to look up.
         seed_demo_master_data=True,
+        # And the business policy itself. Every threshold here is something a
+        # rule compares against, so leaving any of them to `.env` makes a green
+        # suite a statement about one machine's configuration rather than about
+        # the code. This has now caught three settings the hard way.
+        po_required_above=50_000.0,
+        expected_vat_rates="0,7",
+        unknown_vendor_blocks="invoice,purchase_order",
+        contract_expiry_warning_days=90,
+        max_contract_years=25,
+        future_date_tolerance_days=2,
+        field_review_confidence=0.75,
     )
     config.ensure_directories()
     init_db(config.db_path)

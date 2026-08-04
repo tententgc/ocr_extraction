@@ -207,13 +207,67 @@ class RecordStore:
         ).fetchone()
         return row_to_dict(row)
 
-    def list(self, record_kind: str | None = None, limit: int = 200) -> list[dict[str, Any]]:
+    def list(
+        self, record_kind: str | None = None, limit: int = 200, offset: int = 0
+    ) -> list[dict[str, Any]]:
         where = "WHERE record_kind = ?" if record_kind else ""
-        params = (record_kind, limit) if record_kind else (limit,)
+        params = (record_kind, limit, offset) if record_kind else (limit, offset)
         rows = connect(self.db_path).execute(
-            f"SELECT * FROM records {where} ORDER BY posted_at DESC LIMIT ?", params
+            f"SELECT * FROM records {where} ORDER BY posted_at DESC LIMIT ? OFFSET ?", params
         ).fetchall()
         return rows_to_dicts(rows)
+
+    def count(self, record_kind: str | None = None) -> int:
+        where = "WHERE record_kind = ?" if record_kind else ""
+        params = (record_kind,) if record_kind else ()
+        row = connect(self.db_path).execute(
+            f"SELECT COUNT(*) AS total FROM records {where}", params
+        ).fetchone()
+        return int(row["total"]) if row else 0
+
+    def delete(self, record_id: str, actor: str = "reviewer") -> dict[str, Any]:
+        """Remove a posted record and release the document that produced it.
+
+        A production ledger reverses rather than deletes - you post a credit note
+        and both entries stand. This deletes, because the value here is being
+        able to clear a test run, and the audit log keeps what happened either
+        way. The document is unlinked rather than removed: the page it came from
+        is still the evidence for the entry that used to exist.
+        """
+        record = self.get(record_id)
+        if record is None:
+            raise RecordPostingError(f"Record {record_id} was not found.")
+
+        with transaction(self.db_path) as connection:
+            connection.execute("DELETE FROM records WHERE record_id = ?", (record_id,))
+            # The stored run carries its own copy of record_id, and everything
+            # that refuses to touch a posted document reads *that* one. Clearing
+            # only the column would leave the document permanently frozen.
+            connection.execute(
+                """UPDATE documents
+                      SET record_id = NULL,
+                          payload = json_set(payload, '$.record_id', json('null'))
+                    WHERE document_id = ?""",
+                (record["document_id"],),
+            )
+        self.log(
+            "record_deleted",
+            actor=actor,
+            document_id=record["document_id"],
+            record_id=record_id,
+            reference=record.get("reference"),
+            counterparty=record.get("counterparty"),
+            amount=record.get("amount"),
+            currency=record.get("currency"),
+        )
+        return {
+            "record_id": record_id,
+            "document_id": record["document_id"],
+            "message": (
+                f"Deleted {record_id}. {record['document_id']} is back in the queue and "
+                f"can be approved again or removed."
+            ),
+        }
 
     def totals_by_currency(self) -> list[dict[str, Any]]:
         rows = connect(self.db_path).execute(

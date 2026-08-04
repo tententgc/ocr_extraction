@@ -18,6 +18,9 @@ logger = logging.getLogger(__name__)
 
 # 80mm thermal paper, tall enough for a fuel receipt.
 RECEIPT_PAGE = (226.0, 420.0)
+# 72dpi * 2.5 = 180dpi: what a phone photo or an office scanner produces, and
+# enough for OCR without making the corpus enormous.
+IMAGE_SCALE = 2.5
 THAI_LAYOUTS = frozenset({"thai_tax"})
 
 
@@ -64,8 +67,27 @@ def _pdf_to_scan(pdf_path: Path, out_path: Path, intensity: float, seed: int) ->
     return out_path
 
 
+def _pdf_to_image(pdf_path: Path, out_path: Path, scale: float = IMAGE_SCALE) -> Path:
+    """Rasterise page 1 at print resolution, undamaged."""
+    import pypdfium2 as pdfium
+
+    document = pdfium.PdfDocument(str(pdf_path))
+    try:
+        document[0].render(scale=scale).to_pil().save(out_path, format="PNG")
+    finally:
+        document.close()
+    return out_path
+
+
 def generate_corpus(out_dir: Path, include_clean_pdfs: bool = True) -> list[dict]:
-    """Render every sample and return the ground-truth manifest."""
+    """Render every sample and return the ground-truth manifest.
+
+    Each document is written twice: as the PDF it was drawn as, and as a PNG of
+    its first page. Photographs and scans are how most documents actually
+    arrive, and the two paths through the system are not the same one - a PDF
+    can carry a text layer, an image never can, so the image is the only version
+    that puts the OCR model under real load.
+    """
     out_dir.mkdir(parents=True, exist_ok=True)
     manifest: list[dict] = []
 
@@ -81,9 +103,13 @@ def generate_corpus(out_dir: Path, include_clean_pdfs: bool = True) -> list[dict
         else:
             artifact = pdf_path
 
+        image_path = _pdf_to_image(pdf_path, out_dir / f"{doc.doc_id}.png") if pdf_path.exists() else None
+
         entry = asdict(doc)
         entry["file"] = artifact.name
         entry["path"] = str(artifact)
+        if image_path is not None:
+            entry["image"] = image_path.name
         manifest.append(entry)
         logger.info("rendered %s -> %s", doc.doc_id, artifact.name)
 
