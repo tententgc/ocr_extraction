@@ -9,7 +9,8 @@ const state = {
   models: { ocr: [], llm: [] },
   samples: [],
   schemas: {},
-  settings: null,       // business policy and the rule catalogue
+  settings: null,       // business policy and the rule catalogue, as stored
+  policyDraft: {},      // policy edits staged on screen, not yet saved
   customRules: [],      // rules the user wrote
   recordSummary: null,  // ledger totals per record kind
   recordKind: null,     // which kind the records table is filtered to
@@ -1169,25 +1170,103 @@ async function loadSettings() {
   renderSettings();
 }
 
-/** Send only what changed; the server merges it over the stored policy. */
-async function saveSettings(patch) {
+/* Changes are staged, not sent. Switching off a dozen rules used to be a dozen
+   POSTs, each one immediately live, with no moment to look at the set before it
+   took effect - and policy is exactly the thing worth reading back before it
+   starts deciding what posts to the ledger. */
+
+/** The policy as the screen currently shows it: stored, with pending edits over it. */
+function draftPolicy() {
+  return { ...state.settings.policy, ...state.policyDraft };
+}
+
+/** The rule list as the screen shows it, with pending toggles and re-grades. */
+function draftRules() {
+  const off = state.policyDraft.disabled_rules;
+  const severity = state.policyDraft.rule_severity;
+  return state.settings.rules.map((rule) => ({
+    ...rule,
+    enabled: off ? !off.includes(rule.rule_id) : rule.enabled,
+    severity: severity?.[rule.rule_id] ?? (severity ? rule.default_severity : rule.severity),
+  }));
+}
+
+function stage(patch) {
+  state.policyDraft = { ...state.policyDraft, ...patch };
+  renderSettings();
+}
+
+function describePending() {
+  const stored = state.settings.policy;
+  const draft = state.policyDraft;
+  const changes = [];
+  if (draft.auto_post_min_confidence !== undefined
+      && draft.auto_post_min_confidence !== stored.auto_post_min_confidence) {
+    changes.push(`auto-post threshold ${pct(stored.auto_post_min_confidence)} → ${pct(draft.auto_post_min_confidence)}`);
+  }
+  if (draft.rules_free_mode !== undefined && draft.rules_free_mode !== stored.rules_free_mode) {
+    changes.push(draft.rules_free_mode ? 'free mode on — no rule will run' : 'free mode off');
+  }
+  if (draft.disabled_rules) {
+    const before = new Set(state.settings.rules.filter((rule) => !rule.enabled).map((rule) => rule.rule_id));
+    const after = new Set(draft.disabled_rules);
+    const off = [...after].filter((id) => !before.has(id)).length;
+    const on = [...before].filter((id) => !after.has(id)).length;
+    if (off) changes.push(`${off} rule(s) switched off`);
+    if (on) changes.push(`${on} rule(s) switched back on`);
+  }
+  if (draft.rule_severity) {
+    const regraded = Object.keys(draft.rule_severity).length;
+    const stored_count = state.settings.rules.filter((rule) => rule.regraded).length;
+    if (regraded !== stored_count) changes.push(`${regraded} rule(s) re-graded`);
+  }
+  return changes;
+}
+
+/** Commit every staged change in one request. */
+async function commitSettings() {
+  const button = $('#policy-save');
+  button.disabled = true;
+  const held = await heldCount();
   try {
     state.settings = await api('/api/settings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(patch),
+      body: JSON.stringify(state.policyDraft),
     });
   } catch (error) {
     toast(error.message, 'error');
-    renderSettings();          // snap the controls back to the stored truth
+    button.disabled = false;
     return;
   }
+  state.policyDraft = {};
+  button.disabled = false;
   renderSettings();
   loadStatus();                // the header threshold chip reads from status
+  toast('Policy saved.', 'success');
+
+  // The documents already in the queue were judged by the policy that just
+  // changed. Saying so here is the difference between a setting and an effect.
+  $('#policy-followup').innerHTML = held
+    ? `<div class="notice"><span>↻</span><div>${held} document(s) in the queue were judged under the
+         previous policy. <button class="btn small" id="policy-recheck">Re-check them now</button></div></div>`
+    : '';
+}
+
+async function heldCount() {
+  try {
+    return (await api('/api/documents?decision=needs_review&limit=500')).length;
+  } catch { return 0; }
 }
 
 function renderSettings() {
-  const { policy, rules } = state.settings;
+  const policy = draftPolicy();
+  const rules = draftRules();
+  const pending = describePending();
+
+  $('#policy-save-bar').hidden = pending.length === 0;
+  $('#policy-pending').textContent = pending.length
+    ? `Not saved yet: ${pending.join(' · ')}.` : '';
 
   $('#policy-warnings').innerHTML = (policy.warnings || [])
     .map((text) => `<div class="notice"><span>⚠</span><div>${esc(text)}</div></div>`).join('');
@@ -1199,10 +1278,13 @@ function renderSettings() {
     `Fields below ${pct(policy.field_review_confidence)} are flagged for review individually.`;
 
   $('#free-mode-toggle').checked = policy.rules_free_mode;
-  $('#settings-origin').textContent = policy.overridden.length
-    ? `${policy.overridden.length} setting(s) changed from .env`
+  // `overridden` describes what is stored, so it is read from the saved policy
+  // rather than the draft: a change nobody has saved has not overridden anything.
+  const overridden = state.settings.policy.overridden || [];
+  $('#settings-origin').textContent = overridden.length
+    ? `${overridden.length} setting(s) changed from .env`
     : 'Matching the configured defaults';
-  $('#settings-reset').disabled = policy.overridden.length === 0;
+  $('#settings-reset').disabled = overridden.length === 0;
 
   const docTypes = [...new Set(rules.flatMap((r) => r.doc_types))].filter((t) => t !== '*').sort();
   const filter = $('#rule-doc-filter');
@@ -1214,7 +1296,8 @@ function renderSettings() {
 }
 
 function renderRuleList() {
-  const { policy, rules } = state.settings;
+  const policy = draftPolicy();
+  const rules = draftRules();
   const term = $('#rule-search').value.trim().toLowerCase();
   const docType = $('#rule-doc-filter').value;
 
@@ -1255,13 +1338,50 @@ $('#threshold-slider').addEventListener('input', (event) => {
   $('#threshold-out').textContent = `${event.target.value}%`;
 });
 $('#threshold-slider').addEventListener('change', (event) => {
-  saveSettings({ auto_post_min_confidence: Number(event.target.value) / 100 });
+  stage({ auto_post_min_confidence: Number(event.target.value) / 100 });
 });
 $('#free-mode-toggle').addEventListener('change', (event) => {
-  saveSettings({ rules_free_mode: event.target.checked });
+  stage({ rules_free_mode: event.target.checked });
 });
 $('#rule-search').addEventListener('input', renderRuleList);
 $('#rule-doc-filter').addEventListener('change', renderRuleList);
+
+$('#policy-save').addEventListener('click', commitSettings);
+
+/* Staged policy lives only on this page. Closing the tab with changes on screen
+   should not silently discard them. */
+window.addEventListener('beforeunload', (event) => {
+  if (Object.keys(state.policyDraft).length) event.preventDefault();
+});
+$('#policy-discard').addEventListener('click', () => {
+  state.policyDraft = {};
+  $('#policy-followup').innerHTML = '';
+  renderSettings();
+});
+
+/* Offered after a save, because the queue was filled by the policy that just
+   changed. It re-judges without re-reading anything. */
+$('#policy-followup').addEventListener('click', async (event) => {
+  if (!event.target.closest('#policy-recheck')) return;
+  const button = $('#policy-recheck');
+  button.disabled = true;
+  button.textContent = 'Re-checking…';
+  try {
+    const result = await api('/api/documents/reevaluate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ decision: 'needs_review' }),
+    });
+    toast(result.summary, result.changed ? 'success' : '');
+    $('#policy-followup').innerHTML = '';
+    loadStatus();
+  } catch (error) {
+    toast(error.message, 'error');
+    button.disabled = false;
+    button.textContent = 'Re-check them now';
+  }
+});
+
 $('#settings-reset').addEventListener('click', async () => {
   try {
     state.settings = await api('/api/settings/reset', { method: 'POST' });
@@ -1269,33 +1389,39 @@ $('#settings-reset').addEventListener('click', async () => {
     toast(error.message, 'error');
     return;
   }
+  state.policyDraft = {};   // the stored policy just changed under any draft
+  $('#policy-followup').innerHTML = '';
   renderSettings();
   loadStatus();
   toast('Back to the configured defaults.');
 });
+
 $('#rule-list').addEventListener('change', (event) => {
+  const shown = draftRules();
+
   // Re-grading keeps a check running while stopping it from blocking. Switching
   // a rule off to get past it would lose the warning as well.
   const picker = event.target.closest('select[data-severity]');
   if (picker) {
-    const severity = Object.fromEntries(
-      state.settings.rules
-        .filter((rule) => (rule.rule_id === picker.dataset.severity
-          ? picker.value !== rule.default_severity
-          : rule.severity !== rule.default_severity))
-        .map((rule) => [rule.rule_id,
-          rule.rule_id === picker.dataset.severity ? picker.value : rule.severity]));
-    saveSettings({ rule_severity: severity });
+    // The API replaces the whole map, so it carries every rule not at its default.
+    stage({
+      rule_severity: Object.fromEntries(
+        shown
+          .map((rule) => [rule.rule_id,
+            rule.rule_id === picker.dataset.severity ? picker.value : rule.severity])
+          .filter(([id, level]) => level !== shown.find((r) => r.rule_id === id).default_severity)),
+    });
     return;
   }
 
   const box = event.target.closest('input[data-rule]');
   if (!box) return;
-  // The API replaces the whole set, so send every rule currently switched off.
-  const disabled = state.settings.rules
-    .filter((rule) => (rule.rule_id === box.dataset.rule ? !box.checked : !rule.enabled))
-    .map((rule) => rule.rule_id);
-  saveSettings({ disabled_rules: disabled });
+  // Likewise for the disabled set: it is replaced, not merged.
+  stage({
+    disabled_rules: shown
+      .filter((rule) => (rule.rule_id === box.dataset.rule ? !box.checked : !rule.enabled))
+      .map((rule) => rule.rule_id),
+  });
 });
 
 /* ------------------------------------------------------------ job queue */
