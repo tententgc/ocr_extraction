@@ -2,6 +2,11 @@
 
 **Answer: not on this corpus, and the reason is the interesting part.**
 
+> **Outcome: the feature was removed on this evidence.** It is kept here as the
+> record of what was measured and why, and the code is on the
+> `feat/agentic-repair` branch if a corpus of real, messy documents later makes
+> the case that this one could not.
+
 Ten documents, same rendering, same engines, same rules, one variable:
 `REPAIR_DISABLED`. Each arm gets its own database so duplicate detection cannot
 see the other arm's postings.
@@ -89,21 +94,16 @@ the extractor knows. The case repair is built for is the messy one — a scan
 with an unusual label, a layout nobody anticipated, a field printed somewhere
 the schema did not expect.
 
-On this evidence:
+On this evidence the feature was removed. It recovered one field across ten
+documents, moved no document out of the review queue, and added an agent call,
+two modules and a set of tests to maintain. A stage that cannot show its value
+is complexity, and the honest number is 2/10 either way.
 
-- **Keep it enabled.** It runs only on documents already destined for a human,
-  costs less than the OCR that preceded it, and recovered a real field.
-- **Do not claim a throughput gain.** There is none here, and the honest number
-  is 2/10 either way.
-- **Re-measure on real documents.** The corpus that would show a difference is a
-  batch of genuine supplier invoices, not this one.
+What is kept is what it proved: the guard against a model changing a value to
+make a check pass works on a real document, not only in a unit test. That
+property now belongs to the vetting logic wherever it is next needed.
 
-## Reproducing
-
-```bash
-REPAIR_DISABLED=true  docuflow process <file>   # baseline
-REPAIR_DISABLED=false docuflow process <file>   # with repair
-```
-
-The trace carries a `repair` step recording what was proposed, what was
-accepted, and the reason anything was rejected.
+If a batch of genuine supplier invoices - unfamiliar labels, layouts nobody
+anticipated, fields printed where the schema does not look - later shows the
+recovery rate this corpus could not, the code is on the `feat/agentic-repair`
+branch and the measurement above is the baseline to beat.

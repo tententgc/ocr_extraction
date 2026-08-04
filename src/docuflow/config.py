@@ -133,10 +133,6 @@ class Settings(BaseSettings):
     # "vendor_known,po_exists". Ids are the ones shown in the UI and the API.
     disabled_rules: str = ""
 
-    # The repair pass costs one agent run on documents that are already failing.
-    # Off is a legitimate choice for a deployment that would rather queue them.
-    repair_disabled: bool = False
-
     # rule_id -> severity, set from the settings screen. Serialised because
     # Settings is the one object both entry points already receive.
     rule_severity_json: str = ""
