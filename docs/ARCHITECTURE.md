@@ -12,6 +12,11 @@ read**. An automated pipeline that is right 95% of the time and silently wrong 5
 of the time is worse than useless in accounts payable, because the 5% becomes
 wrong payments. Every design decision below follows from that.
 
+> The same three views as diagrams — where a model is called, the pipeline with
+> the human loop, and the agents with their tools — are in
+> [architecture.drawio.xml](architecture.drawio.xml), openable at
+> [diagrams.net](https://app.diagrams.net).
+
 ## Pipeline
 
 ```
