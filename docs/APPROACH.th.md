@@ -220,6 +220,11 @@ ingestion ──► render ──► ocr ──► classify ──► extract �
 **Feedback loop:** ทุก correction ถูกบันทึกใน `corrections` → หน้า Insights แสดง hotspot ว่า
 field ไหนคนแก้บ่อยที่สุด = บอกตรงๆ ว่าควรไปพัฒนาความแม่นตรงไหนต่อ
 
+หน้า Insights **แยกตัวเลขทุกตัวตามประเภทเอกสาร** เพราะค่าเฉลี่ยรวมกลบสิ่งที่อยากเห็นพอดี:
+invoice ถูกกันไว้เพราะ **กฎธุรกิจ** (ไม่มี PO / ยอดไม่ตรง) ส่วน receipt ถูกกันไว้เพราะ **ความมั่นใจต่ำ**
+(currency ที่เดาจากประเทศ ไม่มีข้อความบนหน้ากระดาษรองรับ) — คนละปัญหา คนละวิธีแก้
+แต่ละประเภทจึงมี 3 มุมของตัวเอง: กฎที่ตก / field ที่ยังอ่านไม่ได้หรือยืนยันไม่ได้ / field ที่คนแก้จริง
+
 ## 2.5 การควบคุมโดยผู้ใช้ (หน้า Settings)
 
 ทีมธุรกิจปรับเองได้โดยไม่ต้องแก้โค้ดและไม่ต้อง restart:
@@ -289,7 +294,7 @@ docuflow serve      # เปิดเว็บ ลากไฟล์ใส่ �
 
 **ทุกอย่างในระบบนี้ทดสอบได้และทดสอบแล้ว:**
 
-- **362 automated tests** ครอบ normalize / grounding / merge / rules / pipeline / API / queue / archive
+- **421 automated tests** ครอบ normalize / grounding / merge / rules / pipeline / API / queue / archive
 - **eval harness** วัด field accuracy กับ ground truth
 - **benchmark** เทียบ OCR engine 6 ตัว ในโหมด strict
 

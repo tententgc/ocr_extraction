@@ -151,26 +151,58 @@
   <!-- ================= INSIGHTS ================= -->
   <section class="view" id="view-insights">
     <div class="metric-grid" id="metric-grid"></div>
-    <div class="two-col">
-      <div class="card">
-        <h3>Vendor master file</h3>
-        <div class="table-wrap"><table id="vendors-table">
-          <thead><tr><th>ID</th><th>Legal name</th><th>Tax ID</th><th>Bank account</th><th>Status</th></tr></thead>
-          <tbody></tbody>
-        </table></div>
+
+    <div class="card">
+      <div class="card-head">
+        <h3>By document type</h3>
+        <button class="btn" id="insights-refresh">Refresh</button>
       </div>
-      <div class="card">
-        <h3>Open purchase orders</h3>
-        <div class="table-wrap"><table id="po-table">
-          <thead><tr><th>PO</th><th>Vendor</th><th class="num">Amount</th><th>Status</th></tr></thead>
-          <tbody></tbody>
-        </table></div>
+      <p class="muted">An overall pass rate says whether the system works. Only the split by
+        type says what to fix next — invoices and contracts are held for different reasons.</p>
+      <div class="kind-grid" id="type-grid"></div>
+    </div>
+
+    <div class="card" id="type-detail-card">
+      <div class="card-head">
+        <h3 id="type-title">All document types</h3>
+        <div class="filters">
+          <span class="muted" id="type-blurb"></span>
+          <button class="btn small" id="type-clear" hidden>Show all</button>
+        </div>
+      </div>
+      <div id="type-insight"></div>
+      <div class="three-col">
+        <div>
+          <h4 class="sub-head">What holds them back</h4>
+          <p class="muted small">Rules that failed. Blocking ones stop the posting; warnings
+            are recorded and let it through.</p>
+          <div id="type-rules"></div>
+        </div>
+        <div>
+          <h4 class="sub-head">Fields that need help</h4>
+          <p class="muted small">Empty means nothing was read. Unverified means a value was
+            read that no quote on the page supports.</p>
+          <div id="type-fields"></div>
+        </div>
+        <div>
+          <h4 class="sub-head">Corrected by reviewers</h4>
+          <p class="muted small">What people actually changed — the ground truth on where
+            accuracy work pays off.</p>
+          <div id="type-corrections"></div>
+        </div>
       </div>
     </div>
+
     <div class="card">
-      <h3>Correction hotspots</h3>
-      <p class="muted">Fields reviewers change most often — where accuracy work pays off next.</p>
-      <div id="hotspots"></div>
+      <div class="card-head"><h3>Master data</h3></div>
+      <p class="muted">What every extracted value is checked against. A counterparty missing
+        from here is why a document gets held as unknown.</p>
+      <div class="master-tabs" id="master-tabs">
+        <button class="chip-tab active" data-master="vendors">Vendors</button>
+        <button class="chip-tab" data-master="purchase-orders">Purchase orders</button>
+        <button class="chip-tab" data-master="contracts">Contracts</button>
+      </div>
+      <div class="table-wrap" id="master-host"></div>
     </div>
   </section>
 

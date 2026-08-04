@@ -13,6 +13,9 @@ const state = {
   customRules: [],      // rules the user wrote
   recordSummary: null,  // ledger totals per record kind
   recordKind: null,     // which kind the records table is filtered to
+  insights: null,       // per-document-type reading quality
+  insightType: null,    // which document type the insight breakdowns describe
+  masterTab: 'vendors', // which master file is on screen
   draft: null,          // a compiled rule awaiting approval
   currentDoc: null,     // document being reviewed
   edits: {},            // pending reviewer edits
@@ -743,13 +746,12 @@ $('#records-table').addEventListener('click', async (event) => {
 /* -------------------------------------------------------------- insights */
 
 async function loadInsights() {
-  let metrics, vendors, orders;
+  let metrics, insights;
   try {
-    [metrics, vendors, orders] = await Promise.all([
-      api('/api/metrics'), api('/api/master/vendors'), api('/api/master/purchase-orders'),
-    ]);
+    [metrics, insights] = await Promise.all([api('/api/metrics'), api('/api/insights')]);
   } catch (error) { toast(error.message, 'error'); return; }
 
+  state.insights = insights;
   const decisions = metrics.by_decision || {};
   $('#metric-grid').innerHTML = `
     ${metric('Documents processed', metrics.total_documents, 'since the database was created')}
@@ -759,38 +761,177 @@ async function loadInsights() {
     ${metric('Average confidence', pct(metrics.average_confidence), 'across all documents')}
     ${metric('Reviewer corrections', metrics.corrections, 'field edits made by humans')}`;
 
-  const total = metrics.total_documents || 1;
-  const byType = Object.entries(metrics.by_type || {});
-  if (byType.length) {
-    $('#metric-grid').insertAdjacentHTML('afterend', '');
-  }
-
-  $('#vendors-table tbody').innerHTML = vendors.map((vendor) => `<tr>
-    <td>${esc(vendor.vendor_id)}</td><td>${esc(vendor.legal_name)}</td>
-    <td class="fval">${esc(vendor.tax_id || '—')}</td>
-    <td class="fval">${esc(vendor.bank_account || '—')}</td>
-    <td><span class="chip ${vendor.status === 'active' ? 'ok' : 'warn'}">${esc(vendor.status)}</span></td>
-  </tr>`).join('');
-
-  $('#po-table tbody').innerHTML = orders.map((order) => `<tr>
-    <td>${esc(order.po_number)}</td><td>${esc(order.vendor_id)}</td>
-    <td class="num">${money(order.amount, order.currency)}</td>
-    <td><span class="chip">${esc(order.status)}</span></td>
-  </tr>`).join('');
-
-  const hotspots = metrics.error_hotspots || [];
-  const max = Math.max(1, ...hotspots.map((h) => h.corrections));
-  $('#hotspots').innerHTML = hotspots.length
-    ? hotspots.map((spot) => `<div class="bar-row">
-        <span class="lbl">${esc(spot.doc_type)} · <b>${esc(spot.field_name)}</b></span>
-        <span class="track"><i style="width:${(spot.corrections / max) * 100}%"></i></span>
-        <span class="cnt">${spot.corrections}</span></div>`).join('')
-    : '<p class="muted">No corrections recorded yet — review a document and edit a field to populate this.</p>';
+  renderTypeCards(insights);
+  renderTypeDetail(insights);
+  loadMaster(state.masterTab);
 }
 
 const metric = (label, value, sub) => `<div class="metric">
   <div class="label">${esc(label)}</div><div class="value">${esc(value)}</div>
   <div class="sub">${esc(sub)}</div></div>`;
+
+/* One card per document type. The straight-through rate is the headline because
+   it is the number the whole system exists to move. */
+function renderTypeCards(insights) {
+  $('#type-grid').innerHTML = insights.types.map((type) => `
+    <button class="kind-card ${state.insightType === type.doc_type ? 'active' : ''}"
+            data-type="${esc(type.doc_type)}">
+      <div class="k-title">${esc(type.title)}</div>
+      <div class="k-count">${pct(type.auto_post_rate)}</div>
+      <div class="k-money">${type.auto_posted} of ${type.total} posted on their own</div>
+      <div class="k-blurb">${esc(heldNote(type))}</div>
+    </button>`).join('')
+    || '<p class="muted">No documents processed yet. Upload one to fill this in.</p>';
+}
+
+/* Held by a rule and held by low confidence are different problems with
+   different fixes, so the card says which one this type has. */
+function heldNote({ held, blocked }) {
+  if (!held) return 'Nothing held.';
+  if (!blocked) return `${held} held, none by a rule`;
+  if (blocked === held) return `${held} held, all by a blocking rule`;
+  return `${held} held, ${blocked} by a blocking rule`;
+}
+
+/* With a type selected the three breakdowns describe that type alone; with none
+   selected they describe everything, each row carrying the type it came from. */
+function renderTypeDetail(insights) {
+  const selected = insights.types.find((type) => type.doc_type === state.insightType) || null;
+  const scope = selected ? [selected] : insights.types;
+
+  $('#type-title').textContent = selected ? selected.title : 'All document types';
+  $('#type-blurb').textContent = selected
+    ? selected.blurb
+    : `${insights.total_documents} document(s) across ${insights.types.length} type(s)`;
+  $('#type-clear').hidden = !state.insightType;
+
+  $('#type-insight').innerHTML = selected ? `
+    <div class="insight-row">
+      ${insightItem('Processed', selected.total)}
+      ${insightItem('Posted automatically', `${selected.auto_posted} of ${selected.total}`)}
+      ${insightItem('Held for review', selected.held)}
+      ${insightItem('Blocked by a rule', selected.blocked)}
+      ${insightItem('Average confidence', pct(selected.average_confidence))}
+      ${insightItem('Period', `${selected.earliest || '—'} → ${selected.latest || '—'}`)}
+      ${insightItem('Posts into', selected.record_kind)}
+    </div>` : '';
+
+  // Failing rules, most-blocking first: a warning that fires often still matters
+  // less than a blocking rule that fires at all.
+  const rules = flatten(scope, 'failing_rules', (rule) => ({
+    label: rule.rule_id,
+    title: (insights.rules || {})[rule.rule_id] || '',
+    count: rule.documents,
+    severity: rule.severity,
+  })).sort((a, b) => (b.severity === 'blocking') - (a.severity === 'blocking') || b.count - a.count);
+
+  $('#type-rules').innerHTML = bars(rules, 'Nothing failed — every rule passed on these documents.',
+    (row) => `<span class="chip ${row.severity === 'blocking' ? 'bad' : 'warn'}">${esc(row.severity)}</span>`);
+
+  const fields = flatten(scope, 'field_gaps', (gap) => ({
+    label: gap.label || gap.field_name,
+    title: `${gap.missing} empty · ${gap.unverified} unverified of ${gap.seen} read`,
+    count: gap.missing + gap.unverified,
+    critical: gap.critical, required: gap.required,
+  })).sort((a, b) => (b.critical - a.critical) || (b.required - a.required) || b.count - a.count);
+
+  $('#type-fields').innerHTML = bars(fields, 'Every field came back filled and verified.',
+    (row) => row.critical ? '<span class="chip bad">critical</span>'
+      : row.required ? '<span class="chip warn">required</span>' : '');
+
+  const corrections = flatten(scope, 'corrections', (spot) => ({
+    label: spot.field_name, count: spot.corrections,
+  })).sort((a, b) => b.count - a.count);
+
+  $('#type-corrections').innerHTML = bars(corrections,
+    'No corrections recorded yet — review a document and edit a field to populate this.');
+}
+
+/* Pull one list off every type in scope, tagging each row with its type when
+   more than one is shown so an unlabelled row never means two different things. */
+function flatten(types, key, shape) {
+  return types.flatMap((type) => (type[key] || []).map((item) => ({
+    ...shape(item),
+    doc_type: types.length > 1 ? type.doc_type : '',
+  })));
+}
+
+function bars(rows, emptyMessage, chip = () => '') {
+  if (!rows.length) return `<p class="muted small">${esc(emptyMessage)}</p>`;
+  const max = Math.max(1, ...rows.map((row) => row.count));
+  return rows.slice(0, 10).map((row) => `<div class="bar-row" ${row.title ? `title="${esc(row.title)}"` : ''}>
+    <span class="lbl">${row.doc_type ? `<i class="dim">${esc(row.doc_type)}</i> ` : ''}<b>${esc(row.label)}</b>
+      ${chip(row)}</span>
+    <span class="track"><i style="width:${(row.count / max) * 100}%"></i></span>
+    <span class="cnt">${row.count}</span></div>`).join('');
+}
+
+$('#type-grid').addEventListener('click', (event) => {
+  const card = event.target.closest('button[data-type]');
+  if (!card) return;
+  state.insightType = state.insightType === card.dataset.type ? null : card.dataset.type;
+  renderTypeCards(state.insights);
+  renderTypeDetail(state.insights);
+});
+
+$('#type-clear').addEventListener('click', () => {
+  state.insightType = null;
+  renderTypeCards(state.insights);
+  renderTypeDetail(state.insights);
+});
+
+$('#insights-refresh').addEventListener('click', loadInsights);
+
+/* ------------------------------------------------------------ master data */
+
+/* Three different files with three different shapes, so each gets its own
+   columns rather than a lowest-common-denominator table. */
+const MASTER_VIEWS = {
+  'vendors': {
+    path: '/api/master/vendors',
+    empty: 'No vendors registered. Documents from any counterparty will be held as unknown.',
+    head: ['ID', 'Legal name', 'Tax ID', 'Bank account', 'Status'],
+    row: (v) => `<td>${esc(v.vendor_id)}</td><td>${esc(v.legal_name)}</td>
+      <td class="fval">${esc(v.tax_id || '—')}</td><td class="fval">${esc(v.bank_account || '—')}</td>
+      <td><span class="chip ${v.status === 'active' ? 'ok' : 'warn'}">${esc(v.status)}</span></td>`,
+  },
+  'purchase-orders': {
+    path: '/api/master/purchase-orders',
+    empty: 'No purchase orders on file. Invoices cannot be matched against one.',
+    head: ['PO', 'Vendor', 'Date', 'Amount', 'Status'],
+    row: (o) => `<td>${esc(o.po_number)}</td><td>${esc(o.vendor_id)}</td>
+      <td>${esc(o.po_date || '—')}</td><td class="num">${money(o.amount, o.currency)}</td>
+      <td><span class="chip ${o.status === 'open' ? 'ok' : ''}">${esc(o.status)}</span></td>`,
+  },
+  'contracts': {
+    path: '/api/master/contracts',
+    empty: 'No contracts on file.',
+    head: ['Contract', 'Vendor', 'Effective', 'Expires', 'Value'],
+    row: (c) => `<td>${esc(c.contract_number)}</td><td>${esc(c.vendor_id)}</td>
+      <td>${esc(c.effective_date || '—')}</td><td>${esc(c.expiry_date || '—')}</td>
+      <td class="num">${money(c.value, c.currency)}</td>`,
+  },
+};
+
+async function loadMaster(name) {
+  const view = MASTER_VIEWS[name];
+  if (!view) return;
+  state.masterTab = name;
+  $$('#master-tabs .chip-tab').forEach((tab) => tab.classList.toggle('active', tab.dataset.master === name));
+
+  let rows;
+  try { rows = await api(view.path); } catch (error) { toast(error.message, 'error'); return; }
+
+  $('#master-host').innerHTML = rows.length
+    ? `<table><thead><tr>${view.head.map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead>
+       <tbody>${rows.map((row) => `<tr>${view.row(row)}</tr>`).join('')}</tbody></table>`
+    : `<p class="muted">${esc(view.empty)}</p>`;
+}
+
+$('#master-tabs').addEventListener('click', (event) => {
+  const tab = event.target.closest('button[data-master]');
+  if (tab) loadMaster(tab.dataset.master);
+});
 
 /* -------------------------------------------------------------- settings */
 

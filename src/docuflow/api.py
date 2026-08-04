@@ -41,6 +41,7 @@ from docuflow.samples.catalog import SAMPLE_DOCUMENTS
 from docuflow.schemas.registry import DOCUMENT_SCHEMAS
 from docuflow.store.corrections import CorrectionStore
 from docuflow.store.documents import DocumentStore
+from docuflow.store.insights import InsightStore
 from docuflow.store.records import RecordStore
 from docuflow.warmup import warm_ollama_in_background
 
@@ -783,3 +784,30 @@ def metrics() -> dict[str, Any]:
         "corrections": corrections.total(),
         "error_hotspots": corrections.error_hotspots(),
     }
+
+
+@app.get("/api/insights")
+def insights() -> dict[str, Any]:
+    """The same numbers as `/api/metrics`, but split by document type.
+
+    An overall straight-through rate says whether the system is working; only
+    the per-type split says *what to fix next*, because the reason invoices are
+    held is rarely the reason contracts are.
+    """
+    types = InsightStore(settings.db_path).describe_types()
+    return {
+        "types": types,
+        "total_documents": sum(entry["total"] for entry in types),
+        # What each rule id means, so the page can say it rather than printing an
+        # identifier. Aliases are included: a rule may report under a name other
+        # than its own, and an unlabelled id on this page is a dead end.
+        "rules": _rule_summaries(),
+    }
+
+
+def _rule_summaries() -> dict[str, str]:
+    summaries: dict[str, str] = {}
+    for rule in describe_rules():
+        for name in [rule["rule_id"], *rule["aliases"]]:
+            summaries[str(name)] = str(rule["summary"])
+    return summaries

@@ -131,6 +131,8 @@ main { max-width: 1240px; margin: 0 auto; padding: 22px 24px 80px; }
 .card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 @media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
+.three-col { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; margin-top: 14px; }
+@media (max-width: 1100px) { .three-col { grid-template-columns: 1fr; } }
 
 /* ---------- ingest ---------- */
 .ingest-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
@@ -438,3 +440,20 @@ tbody tr:hover { background: var(--surface-2); }
 .insight-row .item .lbl { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
 .insight-row .item .val { font-family: var(--mono); font-size: 14px; margin-top: 3px; }
 .insight-row .party { font-size: 12.5px; }
+
+/* ---------- insights: per-type breakdowns ---------- */
+.sub-head { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.muted.small { font-size: 11.5px; margin: 4px 0 10px; line-height: 1.5; }
+/* The three breakdown columns are narrower than the hotspot list they replaced,
+   so the label stops taking a fixed 190px of it. */
+.three-col .bar-row .lbl { width: auto; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.three-col .bar-row .track { flex: 0 0 54px; }
+.bar-row .dim { color: var(--muted); font-style: normal; font-size: 11px; }
+
+.master-tabs { display: flex; gap: 7px; margin-bottom: 12px; flex-wrap: wrap; }
+.chip-tab {
+  padding: 5px 12px; border-radius: 999px; font-size: 12.5px; cursor: pointer;
+  background: var(--surface-2); border: 1px solid var(--border); color: var(--muted);
+}
+.chip-tab:hover { border-color: var(--accent); }
+.chip-tab.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
