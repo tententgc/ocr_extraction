@@ -303,7 +303,13 @@ class TestAgainstARealRule:
         assert fix.field == "total_amount"
         assert fix.suggested == 200_090.00
         assert fix.confidence >= 0.85
-        assert "transposed" in finding.message
+
+        # The message carries one clause and the suggestion carries the
+        # argument. Both carrying the argument means the reviewer sees the same
+        # three sentences twice and reads them neither time.
+        assert fix.headline in finding.message
+        assert "transposed" in fix.reason
+        assert "transposed" not in finding.message
 
     def test_the_commercial_allowance_is_not_lent_to_a_documents_own_arithmetic(
         self, master, make_run

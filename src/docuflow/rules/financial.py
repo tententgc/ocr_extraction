@@ -93,7 +93,9 @@ def totals_consistent(context: RuleContext) -> RuleFinding | None:
     # items and the tax rate are extra relations over the same numbers, so where
     # they exist they usually settle it.
     fixes = money_fixes(_money(context), MONEY_LABELS)
-    culprit = f" {fixes[0].reason}." if fixes else ""
+    # One clause, not the whole argument: the suggestion box below carries the
+    # reasoning, and printing it twice means the reviewer reads it neither time.
+    culprit = f" {fixes[0].headline}" if fixes else ""
 
     return failed(
         "invoice_totals_consistent",

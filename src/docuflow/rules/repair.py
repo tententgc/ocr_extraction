@@ -318,12 +318,20 @@ def money_fixes(money: Money, labels: dict[str, str] | None = None) -> tuple[Sug
     if slip:
         reason += f". Looking at the page: {slip}"
 
+    headline = (
+        f"{label.capitalize()} is the only value that explains it; "
+        f"{found.suggested:,.2f} would balance."
+        if standing
+        else f"{label.capitalize()} may be the misread value; {found.suggested:,.2f} would balance."
+    )
+
     return (
         SuggestedFix(
             field=found.field,
             current=found.current,
             suggested=found.suggested,
             reason=reason,
+            headline=headline,
             source="arithmetic",
             # A relation standing untouched is a different kind of evidence from
             # the mere absence of an alternative, and the confidence has to say

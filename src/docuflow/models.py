@@ -116,7 +116,12 @@ class SuggestedFix(Frozen):
     field: str
     current: Any = None
     suggested: Any = None
+    # The whole argument, shown inside the suggestion box.
     reason: str = ""
+    # One clause of it, for the failure message above the box. Without this the
+    # rule's message and the suggestion print the same three sentences one after
+    # the other, and the reviewer reads neither.
+    headline: str = ""
     # Where the replacement came from: arithmetic on the document's own numbers,
     # a record we already hold, something read off the page, or the agent.
     source: Literal["arithmetic", "master_data", "prior_record", "page", "policy", "agent"] = (
@@ -130,6 +135,7 @@ class SuggestedFix(Frozen):
             "current": self.current,
             "suggested": self.suggested,
             "reason": self.reason,
+            "headline": self.headline,
             "source": self.source,
             "confidence": round(self.confidence, 2),
         }
