@@ -236,6 +236,25 @@ class TestCorrecting:
         assert prep.after.illumination_spread < prep.before.illumination_spread
         assert abs(prep.after.skew_degrees) < 1.0
 
+    def test_the_lighting_is_fixed_before_the_angle_is_trusted(self):
+        """Found by running the corpus, and the reason the order is what it is.
+
+        Skew is estimated from a mask of where the ink is, thresholded against
+        the page's own mean brightness. On a page lit from one side that mask
+        marks the *shadow* rather than the text, so the angle describes the
+        gradient. Two corpus documents estimated -2.8 degrees, rotated, and
+        measured +2.8 - the same tilt mirrored, which is what rotating a
+        gradient does. The safety net reverted both and they stayed crooked.
+        """
+        photo = tilted(lit_from_one_side(page()), 3.0)
+        _, prep = prepare_image(photo)
+
+        assert prep.actions.index("evened out the lighting") < next(
+            index for index, action in enumerate(prep.actions) if "deskewed" in action
+        ), "the lighting has to be corrected before the angle is measured"
+        assert "deskew" not in prep.reverted
+        assert abs(prep.after.skew_degrees) < 1.0
+
     def test_the_prepared_page_is_written_beside_the_original(self, tmp_path):
         """OCR reads the clean copy; the reviewer still has the real one."""
         source = page_dir(tmp_path) / "page-001.jpg"

@@ -511,30 +511,42 @@ def prepare_image(image: Image.Image, quality: PageQuality | None = None) -> tup
         notes.append("page appears to be sideways; it was not turned, because which way is up "
                      "cannot be told from the layout alone")
 
-    if abs(before.skew_degrees) > MAX_SKEW_DEGREES:
-        notes.append(
-            f"page appears rotated by {before.skew_degrees:.1f}°, which is too far to be a "
-            f"crooked scan; left as it is"
-        )
-    elif before.is_skewed:
-        candidate = deskew(current, before.skew_degrees)
-        measured = _remeasure(candidate, state, skew=True)
-        # The test is whether the lines actually ended up straighter, not whether
-        # the estimate said they would.
-        if abs(measured.skew_degrees) < abs(state.skew_degrees):
-            current, state = candidate, measured
-            actions.append(f"deskewed {before.skew_degrees:+.1f}°")
-        else:
-            reverted.append("deskew")
-
+    # Lighting first, and this order is not arbitrary. Skew is estimated from a
+    # mask of where the ink is, and that mask is thresholded against the page's
+    # own mean brightness - so on a page lit from one side, the mask marks the
+    # *shadow* rather than the text, and the angle that comes back describes the
+    # gradient rather than the lines.
+    #
+    # Two documents in the corpus showed it plainly: estimated at -2.8 degrees,
+    # rotated, and the result measured +2.8 - the same tilt mirrored, which is
+    # what happens when you rotate a gradient instead of a paragraph. Both were
+    # correctly reverted by the safety net below and both stayed crooked.
+    # Flattening first, the same pages estimate -2.7 and correct to 0.0.
     if state.is_unevenly_lit:
         candidate = flatten_illumination(current)
-        measured = _remeasure(candidate, state)
+        measured = _remeasure(candidate, state, skew=True)
         if measured.illumination_spread < state.illumination_spread:
             current, state = candidate, measured
             actions.append("evened out the lighting")
         else:
             reverted.append("flatten")
+
+    if abs(state.skew_degrees) > MAX_SKEW_DEGREES:
+        notes.append(
+            f"page appears rotated by {state.skew_degrees:.1f}°, which is too far to be a "
+            f"crooked scan; left as it is"
+        )
+    elif state.is_skewed:
+        angle = state.skew_degrees
+        candidate = deskew(current, angle)
+        measured = _remeasure(candidate, state, skew=True)
+        # The test is whether the lines actually ended up straighter, not whether
+        # the estimate said they would.
+        if abs(measured.skew_degrees) < abs(state.skew_degrees):
+            current, state = candidate, measured
+            actions.append(f"deskewed {angle:+.1f}°")
+        else:
+            reverted.append("deskew")
 
     if state.is_flat:
         candidate = stretch_contrast(current)

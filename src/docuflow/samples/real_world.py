@@ -244,14 +244,18 @@ REAL_DOCUMENTS: tuple[tuple[str, Arrival, SampleDoc], ...] = (
             doc_id="4_invoice_vat_miscalculated",
             doc_type="invoice", layout="dense",
             title="Nakhon Chemicals invoice where the VAT does not match the rate",
-            demonstrates="States 7% but charges 5,355.00 on 76,500.00. The tax is the only value the arithmetic can blame, and the vendor is on hold as well.",
+            demonstrates="States 7% but charges 4,590.00 on 76,500.00, which is 6%. The tax is the only value the arithmetic can blame, and the vendor is on hold as well.",
             ground_truth={
                 "invoice_number": "NCC-30187", "invoice_date": "2026-07-20",
                 "due_date": "2026-08-19", "vendor_name": "Nakhon Chemicals Co., Ltd.",
                 "vendor_tax_id": "0105539000551", "buyer_name": BUYER,
                 "purchase_order_ref": "PO-2026-0556", "currency": "THB",
-                "subtotal": 76_500.00, "tax_rate": 7.0, "tax_amount": 5_355.00,
-                "total_amount": 81_855.00, "payment_terms": "Net 30",
+                # 7% of 76,500 is 5,355. The document charges 4,590, and the
+                # total it prints is consistent with the wrong tax rather than
+                # with the rate it states - so the tax is the single value that
+                # explains both failures, which is what the diagnosis should say.
+                "subtotal": 76_500.00, "tax_rate": 7.0, "tax_amount": 4_590.00,
+                "total_amount": 81_090.00, "payment_terms": "Net 30",
                 "bank_account": "6640077331",
             },
             line_items=(
@@ -420,6 +424,31 @@ REAL_DOCUMENTS: tuple[tuple[str, Arrival, SampleDoc], ...] = (
                 "effective_date": "2026-02-01", "expiry_date": "2026-09-30",
                 "auto_renew": "no", "contract_value": 1_250_000.00, "currency": "THB",
             },
+            body=(
+                "This Steel Supply Agreement (the \"Agreement\") is made and entered into as of "
+                "1 February 2026 (the \"Effective Date\") by and between Mirtphol Industries PCL, "
+                "a public company limited organised under the laws of Thailand (\"Party A\"), and "
+                "Rungruang Steel Works Co., Ltd., a company limited organised under the laws of "
+                "Thailand (\"Party B\").",
+                "1. SCOPE OF SUPPLY. Party B shall supply hot-rolled and cold-rolled steel plate, "
+                "angle bar and structural sections to Party A's Rayong fabrication yard, against "
+                "purchase orders raised from time to time under this Agreement.",
+                "2. TERM. This Agreement shall commence on the Effective Date and shall continue "
+                "in force until 30 September 2026. It shall NOT renew automatically. Any "
+                "continuation beyond the expiry date requires a new written agreement executed by "
+                "both parties.",
+                "3. CONTRACT VALUE. The total contract value for the term is THB 1,250,000.00 "
+                "(one million two hundred fifty thousand Baht), drawn down against purchase "
+                "orders and invoiced on delivery, with payment due within sixty (60) days of "
+                "receipt of a valid tax invoice.",
+                "4. PRICE ADJUSTMENT. Prices are fixed for the term save for movements in the "
+                "published mill base price exceeding five per cent (5%), in which case either "
+                "party may request a review on thirty (30) days' written notice.",
+                "5. QUALITY. All material shall be supplied with mill test certificates. Material "
+                "failing to conform shall be replaced at Party B's cost within fourteen (14) days.",
+                "6. GOVERNING LAW. This Agreement shall be governed by and construed in "
+                "accordance with the laws of the Kingdom of Thailand.",
+            ),
             expected_findings=("contract_expiring_soon",),
         ),
     ),
@@ -436,6 +465,29 @@ REAL_DOCUMENTS: tuple[tuple[str, Arrival, SampleDoc], ...] = (
                 "effective_date": "2025-01-01", "expiry_date": "2026-06-30",
                 "auto_renew": "no", "contract_value": 480_000.00, "currency": "THB",
             },
+            body=(
+                "This Electrical Maintenance Agreement (the \"Agreement\") is made and entered "
+                "into as of 1 January 2025 (the \"Effective Date\") by and between Mirtphol "
+                "Industries PCL, a public company limited organised under the laws of Thailand "
+                "(\"Party A\"), and Sunrise Electrical Co., Ltd., a company limited organised "
+                "under the laws of Thailand (\"Party B\").",
+                "1. SCOPE OF SERVICES. Party B shall provide scheduled preventive maintenance, "
+                "thermographic inspection and emergency call-out cover for all low-voltage "
+                "switchgear and distribution equipment at Party A's Bangkok headquarters.",
+                "2. TERM. This Agreement shall commence on the Effective Date and shall continue "
+                "in force until 30 June 2026. It shall NOT renew automatically and shall lapse on "
+                "the expiry date unless replaced by a new written agreement.",
+                "3. CONTRACT VALUE. The total contract value is THB 480,000.00 (four hundred "
+                "eighty thousand Baht) for the full term, invoiced quarterly in advance with "
+                "payment due within forty-five (45) days of receipt of a valid tax invoice.",
+                "4. RESPONSE TIMES. Party B shall attend site within four (4) hours of an "
+                "emergency call-out during business hours and within eight (8) hours otherwise.",
+                "5. SAFETY. Party B's personnel shall hold current electrical safety "
+                "certification and shall comply with Party A's permit-to-work procedures at all "
+                "times while on site.",
+                "6. GOVERNING LAW. This Agreement shall be governed by and construed in "
+                "accordance with the laws of the Kingdom of Thailand.",
+            ),
             expected_findings=("contract_expired",),
         ),
     ),

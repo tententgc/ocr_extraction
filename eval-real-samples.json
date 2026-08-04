@@ -1,0 +1,1127 @@
+{
+  "summary": {
+    "documents": 18,
+    "field_accuracy": 0.843,
+    "fields_correct": 182,
+    "fields_total": 216,
+    "auto_post_rate": 0.167,
+    "auto_posted": 3,
+    "silent_errors": 0,
+    "silent_error_rate": 0.0,
+    "planted_defects": 13,
+    "planted_defects_caught": 10,
+    "defect_recall": 0.769,
+    "wall_clock_seconds": 783.9
+  },
+  "effort": {
+    "documents": 18,
+    "manual_minutes": 135.0,
+    "assisted_minutes": 22.5,
+    "machine_minutes": 13.1,
+    "rework_minutes": 0.0,
+    "saved_minutes": 112.5,
+    "saved_share": 0.833,
+    "minutes_per_document": 1.25,
+    "days_per_thousand_documents": 2.8,
+    "manual_days_per_thousand_documents": 16.7,
+    "assumptions": {
+      "keying_minutes_per_document": 4.0,
+      "cross_check_minutes_per_document": 3.5,
+      "assisted_review_minutes_per_held_document": 1.5,
+      "minutes_to_clean_up_one_silent_error": 45.0
+    }
+  },
+  "documents": [
+    {
+      "file": "1_invoice_clean_matches_po.pdf",
+      "decision": "auto_post",
+      "confidence": 0.949,
+      "elapsed_s": 38.0,
+      "type": "invoice",
+      "fields_total": 14,
+      "fields_correct": 14,
+      "fields_wrong": [],
+      "fields_missing": [],
+      "critical_wrong": [],
+      "silent_error": false,
+      "expected": [],
+      "caught": [],
+      "failed": [],
+      "fixes": [],
+      "preprocess": {
+        "step": "preprocess",
+        "status": "ok",
+        "summary": "1 page(s) already clean",
+        "duration_ms": 152,
+        "detail": {
+          "enabled": true,
+          "pages": [
+            {
+              "page": 1,
+              "actions": [],
+              "reverted": [],
+              "notes": [],
+              "before": {
+                "skew_degrees": 0.0,
+                "sharpness": 0.01003,
+                "contrast": 0.331,
+                "illumination_spread": 0.0
+              },
+              "after": {
+                "skew_degrees": 0.0,
+                "sharpness": 0.01003,
+                "contrast": 0.331,
+                "illumination_spread": 0.0
+              }
+            }
+          ],
+          "corrected": 0,
+          "actions": [],
+          "summary": "1 page(s) already clean"
+        }
+      }
+    },
+    {
+      "file": "2_invoice_total_transposed.pdf",
+      "decision": "needs_review",
+      "confidence": 0.45,
+      "elapsed_s": 44.1,
+      "type": "invoice",
+      "fields_total": 14,
+      "fields_correct": 14,
+      "fields_wrong": [],
+      "fields_missing": [],
+      "critical_wrong": [],
+      "silent_error": false,
+      "expected": [
+        "invoice_totals_consistent"
+      ],
+      "caught": [
+        "invoice_totals_consistent"
+      ],
+      "failed": [
+        "invoice_totals_consistent"
+      ],
+      "fixes": [
+        {
+          "field": "total_amount",
+          "current": 49440.0,
+          "suggested": 44940.0,
+          "reason": "the total is the only value that explains it - the tax matches the stated rate and the line items add up to the subtotal, so those are right. the subtotal plus the tax gives 44,940.00. Looking at the page: two adjacent digits are transposed: '94' was read where '49' balances",
+          "source": "arithmetic",
+          "confidence": 0.92
+        }
+      ],
+      "preprocess": {
+        "step": "preprocess",
+        "status": "ok",
+        "summary": "1 page(s) already clean",
+        "duration_ms": 239,
+        "detail": {
+          "enabled": true,
+          "pages": [
+            {
+              "page": 1,
+              "actions": [],
+              "reverted": [],
+              "notes": [],
+              "before": {
+                "skew_degrees": 0.0,
+                "sharpness": 0.00862,
+                "contrast": 0.67,
+                "illumination_spread": 0.0
+              },
+              "after": {
+                "skew_degrees": 0.0,
+                "sharpness": 0.00862,
+                "contrast": 0.67,
+                "illumination_spread": 0.0
+              }
+            }
+          ],
+          "corrected": 0,
+          "actions": [],
+          "summary": "1 page(s) already clean"
+        }
+      }
+    },
+    {
+      "file": "3_invoice_photo_on_a_desk.jpg",
+      "decision": "needs_review",
+      "confidence": 0.45,
+      "elapsed_s": 45.9,
+      "type": "invoice",
+      "fields_total": 14,
+      "fields_correct": 14,
+      "fields_wrong": [],
+      "fields_missing": [],
+      "critical_wrong": [],
+      "silent_error": false,
+      "expected": [],
+      "caught": [],
+      "failed": [
+        "purchase_order_still_has_room"
+      ],
+      "fixes": [],
+      "preprocess": {
+        "step": "preprocess",
+        "status": "warning",
+        "summary": "1/1 page(s) corrected: evened out the lighting",
+        "duration_ms": 425,
+        "detail": {
+          "enabled": true,
+          "pages": [
+            {
+              "page": 1,
+              "actions": [
+                "evened out the lighting"
+              ],
+              "reverted": [
+                "deskew"
+              ],
+              "notes": [],
+              "before": {
+                "skew_degrees": -2.8,
+                "sharpness": 0.00414,
+                "contrast": 0.257,
+                "illumination_spread": 0.39
+              },
+              "after": {
+                "skew_degrees": -2.8,
+                "sharpness": 0.00737,
+                "contrast": 0.322,
+                "illumination_spread": 0.008
+              }
+            }
+          ],
+          "corrected": 1,
+          "actions": [
+            "evened out the lighting"
+          ],
+          "summary": "1/1 page(s) corrected: evened out the lighting"
+        }
+      }
+    },
+    {
+      "file": "4_invoice_vat_miscalculated.pdf",
+      "decision": "needs_review",
+      "confidence": 0.383,
+      "elapsed_s": 36.8,
+      "type": "invoice",
+      "fields_total": 14,
+      "fields_correct": 11,
+      "fields_wrong": [
+        "due_date",
+        "buyer_name"
+      ],
+      "fields_missing": [
+        "purchase_order_ref"
+      ],
+      "critical_wrong": [],
+      "silent_error": false,
+      "expected": [
+        "tax_rate_consistent",
+        "vendor_active"
+      ],
+      "caught": [
+        "vendor_active"
+      ],
+      "failed": [
+        "vendor_active",
+        "purchase_order_required",
+        "tax_id_belongs_to_this_vendor"
+      ],
+      "fixes": [],
+      "preprocess": {
+        "step": "preprocess",
+        "status": "ok",
+        "summary": "1 page(s) already clean",
+        "duration_ms": 137,
+        "detail": {
+          "enabled": true,
+          "pages": [
+            {
+              "page": 1,
+              "actions": [],
+              "reverted": [],
+              "notes": [],
+              "before": {
+                "skew_degrees": 0.0,
+                "sharpness": 0.00701,
+                "contrast": 0.338,
+                "illumination_spread": 0.0
+              },
+              "after": {
+                "skew_degrees": 0.0,
+                "sharpness": 0.00701,
+                "contrast": 0.338,
+                "illumination_spread": 0.0
+              }
+            }
+          ],
+          "corrected": 0,
+          "actions": [],
+          "summary": "1 page(s) already clean"
+        }
+      }
+    },
+    {
+      "file": "5_invoice_bank_account_changed.pdf",
+      "decision": "needs_review",
+      "confidence": 0.383,
+      "elapsed_s": 28.7,
+      "type": "invoice",
+      "fields_total": 13,
+      "fields_correct": 13,
+      "fields_wrong": [],
+      "fields_missing": [],
+      "critical_wrong": [],
+      "silent_error": false,
+      "expected": [
+        "bank_account_matches_vendor"
+      ],
+      "caught": [
+        "bank_account_matches_vendor"
+      ],
+      "failed": [
+        "bank_account_matches_vendor",
+        "purchase_order_required"
+      ],
+      "fixes": [
+        {
+          "field": "bank_account",
+          "current": "0455512399",
+          "suggested": "3120045678",
+          "reason": "Rungruang Steel Works Co., Ltd. is registered against 3120045678; confirm the change with the vendor by a channel you already had before accepting this",
+          "source": "master_data",
+          "confidence": 0.35
+        }
+      ],
+      "preprocess": {
+        "step": "preprocess",
+        "status": "ok",
+        "summary": "1 page(s) already clean",
+        "duration_ms": 144,
+        "detail": {
+          "enabled": true,
+          "pages": [
+            {
+              "page": 1,
+              "actions": [],
+              "reverted": [],
+              "notes": [],
+              "before": {
+                "skew_degrees": 0.0,
+                "sharpness": 0.00832,
+                "contrast": 0.318,
+                "illumination_spread": 0.0
+              },
+              "after": {
+                "skew_degrees": 0.0,
+                "sharpness": 0.00832,
+                "contrast": 0.318,
+                "illumination_spread": 0.0
+              }
+            }
+          ],
+          "corrected": 0,
+          "actions": [],
+          "summary": "1 page(s) already clean"
+        }
+      }
+    },
+    {
+      "file": "6_invoice_unknown_vendor.png",
+      "decision": "needs_review",
+      "confidence": 0.45,
+      "elapsed_s": 21.6,
+      "type": "invoice",
+      "fields_total": 12,
+      "fields_correct": 10,
+      "fields_wrong": [],
+      "fields_missing": [
+        "vendor_tax_id",
+        "payment_terms"
+      ],
+      "critical_wrong": [],
+      "silent_error": false,
+      "expected": [
+        "vendor_known"
+      ],
+      "caught": [
+        "vendor_known"
+      ],
+      "failed": [
+        "vendor_known",
+        "payment_terms_stated"
+      ],
+      "fixes": [],
+      "preprocess": {
+        "step": "preprocess",
+        "status": "ok",
+        "summary": "1 page(s) already clean",
+        "duration_ms": 138,
+        "detail": {
+          "enabled": true,
+          "pages": [
+            {
+              "page": 1,
+              "actions": [],
+              "reverted": [],
+              "notes": [],
+              "before": {
+                "skew_degrees": 0.0,
+                "sharpness": 0.00615,
+                "contrast": 0.399,
+                "illumination_spread": 0.0
+              },
+              "after": {
+                "skew_degrees": 0.0,
+                "sharpness": 0.00615,
+                "contrast": 0.399,
+                "illumination_spread": 0.0
+              }
+            }
+          ],
+          "corrected": 0,
+          "actions": [],
+          "summary": "1 page(s) already clean"
+        }
+      }
+    },
+    {
+      "file": "7_invoice_from_a_blocked_vendor.pdf",
+      "decision": "needs_review",
+      "confidence": 0.45,
+      "elapsed_s": 30.9,
+      "type": "invoice",
+      "fields_total": 13,
+      "fields_correct": 11,
+      "fields_wrong": [
+        "buyer_name"
+      ],
+      "fields_missing": [
+        "due_date"
+      ],
+      "critical_wrong": [],
+      "silent_error": false,
+      "expected": [
+        "vendor_active"
+      ],
+      "caught": [
+        "vendor_active"
+      ],
+      "failed": [
+        "vendor_active"
+      ],
+      "fixes": [],
+      "preprocess": {
+        "step": "preprocess",
+        "status": "ok",
+        "summary": "1 page(s) already clean",
+        "duration_ms": 153,
+        "detail": {
+          "enabled": true,
+          "pages": [
+            {
+              "page": 1,
+              "actions": [],
+              "reverted": [],
+              "notes": [],
+              "before": {
+                "skew_degrees": 0.0,
+                "sharpness": 0.00757,
+                "contrast": 0.224,
+                "illumination_spread": 0.0
+              },
+              "after": {
+                "skew_degrees": 0.0,
+                "sharpness": 0.00757,
+                "contrast": 0.224,
+                "illumination_spread": 0.0
+              }
+            }
+          ],
+          "corrected": 0,
+          "actions": [],
+          "summary": "1 page(s) already clean"
+        }
+      }
+    },
+    {
+      "file": "8_invoice_over_the_purchase_order.pdf",
+      "decision": "needs_review",
+      "confidence": 0.383,
+      "elapsed_s": 39.8,
+      "type": "invoice",
+      "fields_total": 14,
+      "fields_correct": 13,
+      "fields_wrong": [],
+      "fields_missing": [
+        "tax_rate"
+      ],
+      "critical_wrong": [],
+      "silent_error": false,
+      "expected": [
+        "po_amount_within_tolerance"
+      ],
+      "caught": [
+        "po_amount_within_tolerance"
+      ],
+      "failed": [
+        "po_amount_within_tolerance",
+        "purchase_order_still_has_room"
+      ],
+      "fixes": [],
+      "preprocess": {
+        "step": "preprocess",
+        "status": "ok",
+        "summary": "1 page(s) already clean",
+        "duration_ms": 147,
+        "detail": {
+          "enabled": true,
+          "pages": [
+            {
+              "page": 1,
+              "actions": [],
+              "reverted": [],
+              "notes": [],
+              "before": {
+                "skew_degrees": 0.0,
+                "sharpness": 0.0096,
+                "contrast": 0.325,
+                "illumination_spread": 0.0
+              },
+              "after": {
+                "skew_degrees": 0.0,
+                "sharpness": 0.0096,
+                "contrast": 0.325,
+                "illumination_spread": 0.0
+              }
+            }
+          ],
+          "corrected": 0,
+          "actions": [],
+          "summary": "1 page(s) already clean"
+        }
+      }
+    },
+    {
+      "file": "9_invoice_thai_buddhist_dates.png",
+      "decision": "auto_post",
+      "confidence": 0.842,
+      "elapsed_s": 37.9,
+      "type": "invoice",
+      "fields_total": 13,
+      "fields_correct": 13,
+      "fields_wrong": [],
+      "fields_missing": [],
+      "critical_wrong": [],
+      "silent_error": false,
+      "expected": [],
+      "caught": [],
+      "failed": [],
+      "fixes": [],
+      "preprocess": {
+        "step": "preprocess",
+        "status": "ok",
+        "summary": "1 page(s) already clean",
+        "duration_ms": 142,
+        "detail": {
+          "enabled": true,
+          "pages": [
+            {
+              "page": 1,
+              "actions": [],
+              "reverted": [],
+              "notes": [],
+              "before": {
+                "skew_degrees": 0.0,
+                "sharpness": 0.00746,
+                "contrast": 0.245,
+                "illumination_spread": 0.0
+              },
+              "after": {
+                "skew_degrees": 0.0,
+                "sharpness": 0.00746,
+                "contrast": 0.245,
+                "illumination_spread": 0.0
+              }
+            }
+          ],
+          "corrected": 0,
+          "actions": [],
+          "summary": "1 page(s) already clean"
+        }
+      }
+    },
+    {
+      "file": "10_invoice_no_po_above_threshold.pdf",
+      "decision": "needs_review",
+      "confidence": 0.45,
+      "elapsed_s": 35.7,
+      "type": "invoice",
+      "fields_total": 13,
+      "fields_correct": 10,
+      "fields_wrong": [
+        "vendor_tax_id"
+      ],
+      "fields_missing": [
+        "payment_terms",
+        "bank_account"
+      ],
+      "critical_wrong": [
+        "vendor_tax_id"
+      ],
+      "silent_error": false,
+      "expected": [
+        "purchase_order_required"
+      ],
+      "caught": [
+        "purchase_order_required"
+      ],
+      "failed": [
+        "purchase_order_required",
+        "payment_terms_stated",
+        "tax_id_belongs_to_this_vendor"
+      ],
+      "fixes": [],
+      "preprocess": {
+        "step": "preprocess",
+        "status": "ok",
+        "summary": "1 page(s) already clean",
+        "duration_ms": 188,
+        "detail": {
+          "enabled": true,
+          "pages": [
+            {
+              "page": 1,
+              "actions": [],
+              "reverted": [],
+              "notes": [],
+              "before": {
+                "skew_degrees": 0.0,
+                "sharpness": 0.00583,
+                "contrast": 0.38,
+                "illumination_spread": 0.0
+              },
+              "after": {
+                "skew_degrees": 0.0,
+                "sharpness": 0.00583,
+                "contrast": 0.38,
+                "illumination_spread": 0.0
+              }
+            }
+          ],
+          "corrected": 0,
+          "actions": [],
+          "summary": "1 page(s) already clean"
+        }
+      }
+    },
+    {
+      "file": "11_receipt_photographed.jpg",
+      "decision": "needs_review",
+      "confidence": 0.801,
+      "elapsed_s": 21.7,
+      "type": "receipt",
+      "fields_total": 9,
+      "fields_correct": 7,
+      "fields_wrong": [
+        "payment_method"
+      ],
+      "fields_missing": [
+        "tax_rate"
+      ],
+      "critical_wrong": [],
+      "silent_error": false,
+      "expected": [],
+      "caught": [],
+      "failed": [
+        "vendor_known"
+      ],
+      "fixes": [],
+      "preprocess": {
+        "step": "preprocess",
+        "status": "warning",
+        "summary": "1/1 page(s) corrected: evened out the lighting",
+        "duration_ms": 298,
+        "detail": {
+          "enabled": true,
+          "pages": [
+            {
+              "page": 1,
+              "actions": [
+                "evened out the lighting"
+              ],
+              "reverted": [
+                "deskew"
+              ],
+              "notes": [],
+              "before": {
+                "skew_degrees": 3.2,
+                "sharpness": 0.00765,
+                "contrast": 0.37,
+                "illumination_spread": 0.422
+              },
+              "after": {
+                "skew_degrees": 3.2,
+                "sharpness": 0.00943,
+                "contrast": 0.319,
+                "illumination_spread": 0.0
+              }
+            }
+          ],
+          "corrected": 1,
+          "actions": [
+            "evened out the lighting"
+          ],
+          "summary": "1/1 page(s) corrected: evened out the lighting"
+        }
+      }
+    },
+    {
+      "file": "12_contract_expiring_soon.pdf",
+      "decision": "needs_review",
+      "confidence": 0.612,
+      "elapsed_s": 51.0,
+      "type": "contract",
+      "fields_total": 8,
+      "fields_correct": 3,
+      "fields_wrong": [],
+      "fields_missing": [
+        "effective_date",
+        "expiry_date",
+        "auto_renew",
+        "contract_value",
+        "currency"
+      ],
+      "critical_wrong": [],
+      "silent_error": false,
+      "expected": [
+        "contract_expiring_soon"
+      ],
+      "caught": [],
+      "failed": [
+        "contract_value_present"
+      ],
+      "fixes": [],
+      "preprocess": {
+        "step": "preprocess",
+        "status": "ok",
+        "summary": "1 page(s) already clean",
+        "duration_ms": 141,
+        "detail": {
+          "enabled": true,
+          "pages": [
+            {
+              "page": 1,
+              "actions": [],
+              "reverted": [],
+              "notes": [],
+              "before": {
+                "skew_degrees": 0.0,
+                "sharpness": 0.00494,
+                "contrast": 0.282,
+                "illumination_spread": 0.0
+              },
+              "after": {
+                "skew_degrees": 0.0,
+                "sharpness": 0.00494,
+                "contrast": 0.282,
+                "illumination_spread": 0.0
+              }
+            }
+          ],
+          "corrected": 0,
+          "actions": [],
+          "summary": "1 page(s) already clean"
+        }
+      }
+    },
+    {
+      "file": "13_contract_already_expired.jpg",
+      "decision": "needs_review",
+      "confidence": 0.356,
+      "elapsed_s": 20.0,
+      "type": "contract",
+      "fields_total": 8,
+      "fields_correct": 1,
+      "fields_wrong": [
+        "party_a"
+      ],
+      "fields_missing": [
+        "contract_number",
+        "effective_date",
+        "expiry_date",
+        "auto_renew",
+        "contract_value",
+        "currency"
+      ],
+      "critical_wrong": [],
+      "silent_error": false,
+      "expected": [
+        "contract_expired"
+      ],
+      "caught": [],
+      "failed": [
+        "contract_value_present"
+      ],
+      "fixes": [],
+      "preprocess": {
+        "step": "preprocess",
+        "status": "warning",
+        "summary": "1/1 page(s) corrected: raised the contrast",
+        "duration_ms": 508,
+        "detail": {
+          "enabled": true,
+          "pages": [
+            {
+              "page": 1,
+              "actions": [
+                "raised the contrast"
+              ],
+              "reverted": [],
+              "notes": [],
+              "before": {
+                "skew_degrees": 0.0,
+                "sharpness": 0.00593,
+                "contrast": 0.056,
+                "illumination_spread": 0.004
+              },
+              "after": {
+                "skew_degrees": 0.0,
+                "sharpness": 0.08119,
+                "contrast": 0.211,
+                "illumination_spread": 0.012
+              }
+            }
+          ],
+          "corrected": 1,
+          "actions": [
+            "raised the contrast"
+          ],
+          "summary": "1/1 page(s) corrected: raised the contrast"
+        }
+      }
+    },
+    {
+      "file": "14_form_vendor_onboarding.png",
+      "decision": "auto_post",
+      "confidence": 0.888,
+      "elapsed_s": 24.7,
+      "type": "form",
+      "fields_total": 7,
+      "fields_correct": 7,
+      "fields_wrong": [],
+      "fields_missing": [],
+      "critical_wrong": [],
+      "silent_error": false,
+      "expected": [],
+      "caught": [],
+      "failed": [
+        "vendor_known"
+      ],
+      "fixes": [],
+      "preprocess": {
+        "step": "preprocess",
+        "status": "ok",
+        "summary": "1 page(s) already clean",
+        "duration_ms": 1571,
+        "detail": {
+          "enabled": true,
+          "pages": [
+            {
+              "page": 1,
+              "actions": [],
+              "reverted": [],
+              "notes": [],
+              "before": {
+                "skew_degrees": 0.0,
+                "sharpness": 0.01157,
+                "contrast": 0.287,
+                "illumination_spread": 0.0
+              },
+              "after": {
+                "skew_degrees": 0.0,
+                "sharpness": 0.01157,
+                "contrast": 0.287,
+                "illumination_spread": 0.0
+              }
+            }
+          ],
+          "corrected": 0,
+          "actions": [],
+          "summary": "1 page(s) already clean"
+        }
+      }
+    },
+    {
+      "file": "15_invoice_duplicate_submission.pdf",
+      "decision": "needs_review",
+      "confidence": 0.45,
+      "elapsed_s": 56.3,
+      "type": "invoice",
+      "fields_total": 14,
+      "fields_correct": 14,
+      "fields_wrong": [],
+      "fields_missing": [],
+      "critical_wrong": [],
+      "silent_error": false,
+      "expected": [
+        "duplicate_document"
+      ],
+      "caught": [
+        "duplicate_document"
+      ],
+      "failed": [
+        "duplicate_document"
+      ],
+      "fixes": [],
+      "preprocess": {
+        "step": "preprocess",
+        "status": "ok",
+        "summary": "1 page(s) already clean",
+        "duration_ms": 528,
+        "detail": {
+          "enabled": true,
+          "pages": [
+            {
+              "page": 1,
+              "actions": [],
+              "reverted": [],
+              "notes": [],
+              "before": {
+                "skew_degrees": 0.0,
+                "sharpness": 0.01003,
+                "contrast": 0.331,
+                "illumination_spread": 0.0
+              },
+              "after": {
+                "skew_degrees": 0.0,
+                "sharpness": 0.01003,
+                "contrast": 0.331,
+                "illumination_spread": 0.0
+              }
+            }
+          ],
+          "corrected": 0,
+          "actions": [],
+          "summary": "1 page(s) already clean"
+        }
+      }
+    },
+    {
+      "file": "16_invoice_line_items_do_not_sum.jpg",
+      "decision": "needs_review",
+      "confidence": 0.45,
+      "elapsed_s": 107.3,
+      "type": "invoice",
+      "fields_total": 13,
+      "fields_correct": 7,
+      "fields_wrong": [
+        "invoice_number",
+        "invoice_date",
+        "due_date",
+        "buyer_name",
+        "bank_account"
+      ],
+      "fields_missing": [
+        "purchase_order_ref"
+      ],
+      "critical_wrong": [
+        "invoice_number",
+        "bank_account"
+      ],
+      "silent_error": false,
+      "expected": [
+        "line_items_sum_to_subtotal"
+      ],
+      "caught": [
+        "line_items_sum_to_subtotal"
+      ],
+      "failed": [
+        "dates_not_in_future",
+        "line_items_sum_to_subtotal",
+        "bank_account_matches_vendor",
+        "tax_id_belongs_to_this_vendor"
+      ],
+      "fixes": [
+        {
+          "field": "bank_account",
+          "current": "SG21DBSMT207043",
+          "suggested": "SG21DBSS0110001234567",
+          "reason": "Pacific Rim Freight Pte. Ltd. is registered against SG21DBSS0110001234567; confirm the change with the vendor by a channel you already had before accepting this",
+          "source": "master_data",
+          "confidence": 0.35
+        }
+      ],
+      "preprocess": {
+        "step": "preprocess",
+        "status": "warning",
+        "summary": "1/1 page(s) corrected: deskewed -1.8°, raised the contrast",
+        "duration_ms": 617,
+        "detail": {
+          "enabled": true,
+          "pages": [
+            {
+              "page": 1,
+              "actions": [
+                "deskewed -1.8°",
+                "raised the contrast"
+              ],
+              "reverted": [],
+              "notes": [],
+              "before": {
+                "skew_degrees": -1.8,
+                "sharpness": 0.00586,
+                "contrast": 0.057,
+                "illumination_spread": 0.004
+              },
+              "after": {
+                "skew_degrees": 0.0,
+                "sharpness": 0.11249,
+                "contrast": 0.248,
+                "illumination_spread": 0.027
+              }
+            }
+          ],
+          "corrected": 1,
+          "actions": [
+            "deskewed -1.8°",
+            "raised the contrast"
+          ],
+          "summary": "1/1 page(s) corrected: deskewed -1.8°, raised the contrast"
+        }
+      }
+    },
+    {
+      "file": "17_invoice_currency_disagrees_with_po.pdf",
+      "decision": "needs_review",
+      "confidence": 0.383,
+      "elapsed_s": 69.9,
+      "type": "invoice",
+      "fields_total": 13,
+      "fields_correct": 12,
+      "fields_wrong": [],
+      "fields_missing": [
+        "tax_rate"
+      ],
+      "critical_wrong": [],
+      "silent_error": false,
+      "expected": [
+        "po_currency_matches"
+      ],
+      "caught": [
+        "po_currency_matches"
+      ],
+      "failed": [
+        "po_currency_matches",
+        "currency_matches_vendor_default",
+        "purchase_order_still_has_room"
+      ],
+      "fixes": [
+        {
+          "field": "currency",
+          "current": "USD",
+          "suggested": "SGD",
+          "reason": "purchase order PO-2026-0512 was raised in SGD",
+          "source": "master_data",
+          "confidence": 0.7
+        }
+      ],
+      "preprocess": {
+        "step": "preprocess",
+        "status": "ok",
+        "summary": "1 page(s) already clean",
+        "duration_ms": 139,
+        "detail": {
+          "enabled": true,
+          "pages": [
+            {
+              "page": 1,
+              "actions": [],
+              "reverted": [],
+              "notes": [],
+              "before": {
+                "skew_degrees": 0.0,
+                "sharpness": 0.00817,
+                "contrast": 0.673,
+                "illumination_spread": 0.0
+              },
+              "after": {
+                "skew_degrees": 0.0,
+                "sharpness": 0.00817,
+                "contrast": 0.673,
+                "illumination_spread": 0.0
+              }
+            }
+          ],
+          "corrected": 0,
+          "actions": [],
+          "summary": "1 page(s) already clean"
+        }
+      }
+    },
+    {
+      "file": "18_invoice_unlabelled_amounts.jpg",
+      "decision": "needs_review",
+      "confidence": 0.586,
+      "elapsed_s": 73.6,
+      "type": "invoice",
+      "fields_total": 10,
+      "fields_correct": 8,
+      "fields_wrong": [],
+      "fields_missing": [
+        "invoice_number",
+        "vendor_tax_id"
+      ],
+      "critical_wrong": [],
+      "silent_error": false,
+      "expected": [],
+      "caught": [],
+      "failed": [
+        "payment_terms_stated"
+      ],
+      "fixes": [],
+      "preprocess": {
+        "step": "preprocess",
+        "status": "warning",
+        "summary": "1/1 page(s) corrected: deskewed -2.9°, evened out the lighting",
+        "duration_ms": 587,
+        "detail": {
+          "enabled": true,
+          "pages": [
+            {
+              "page": 1,
+              "actions": [
+                "deskewed -2.9°",
+                "evened out the lighting"
+              ],
+              "reverted": [],
+              "notes": [],
+              "before": {
+                "skew_degrees": -2.9,
+                "sharpness": 0.00377,
+                "contrast": 0.334,
+                "illumination_spread": 0.406
+              },
+              "after": {
+                "skew_degrees": 0.0,
+                "sharpness": 0.00707,
+                "contrast": 0.514,
+                "illumination_spread": 0.004
+              }
+            }
+          ],
+          "corrected": 1,
+          "actions": [
+            "deskewed -2.9°",
+            "evened out the lighting"
+          ],
+          "summary": "1/1 page(s) corrected: deskewed -2.9°, evened out the lighting"
+        }
+      }
+    }
+  ]
+}
