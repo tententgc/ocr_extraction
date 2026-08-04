@@ -425,6 +425,64 @@ def cmd_reset(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_rules(args: argparse.Namespace) -> int:
+    """Load, list or remove the checks written here.
+
+    Rules are normally authored through the UI, where a sentence is compiled by
+    a model and shown back before it is saved. This loads the compiled form
+    directly, which is what makes a rule set reviewable in a diff and
+    reproducible on a fresh database.
+    """
+    from docuflow.rules.custom import CustomRuleError, build_rule
+    from docuflow.store.custom_rules import CustomRuleStore
+
+    settings = get_settings()
+    bootstrap(settings, with_samples=False)
+    store = CustomRuleStore(settings.db_path)
+
+    if args.rules_command == "list":
+        rules = store.list_rules()
+        if not rules:
+            print("No rules have been written here. The 26 built-in checks still run.")
+            return 0
+        for rule in rules:
+            state = "on " if rule.enabled else "off"
+            print(f"[{state}] {rule.rule_id}  ({rule.kind}, {rule.severity}, {', '.join(rule.doc_types)})")
+            print(f"        {rule.explanation}")
+        return 0
+
+    if args.rules_command == "clear":
+        removed = sum(1 for rule in store.list_rules() if store.delete(rule.rule_id))
+        print(f"Removed {removed} rule(s).")
+        return 0
+
+    path = Path(args.file)
+    if not path.exists():
+        print(f"error: {path} does not exist", file=sys.stderr)
+        return 1
+
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    entries = payload.get("rules") if isinstance(payload, dict) else payload
+    if not isinstance(entries, list):
+        print("error: expected a JSON list of rules, or an object with a 'rules' list", file=sys.stderr)
+        return 1
+
+    loaded = refused = 0
+    for entry in entries:
+        try:
+            rule = build_rule(entry, prompt=str(entry.get("prompt") or ""))
+            store.save(rule, replace=True)
+        except (CustomRuleError, ValueError) as exc:
+            print(f"  refused {entry.get('rule_id', '?')}: {exc}", file=sys.stderr)
+            refused += 1
+            continue
+        loaded += 1
+        print(f"  {rule.rule_id} ({rule.kind}): {rule.explanation}")
+
+    print(f"\n{loaded} rule(s) loaded" + (f", {refused} refused" if refused else "."))
+    return 1 if refused and not loaded else 0
+
+
 def cmd_real_samples(args: argparse.Namespace) -> int:
     """Render the working corpus and its master data."""
     from docuflow.samples.real_corpus import generate
@@ -566,6 +624,14 @@ def main(argv: list[str] | None = None) -> int:
     reset_parser.add_argument("--keep-master", action="store_true",
                               help="clear the documents and ledger but leave the master file loaded")
     reset_parser.set_defaults(func=cmd_reset)
+
+    rules_parser = subparsers.add_parser("rules", help="load or list the checks written here")
+    rules_sub = rules_parser.add_subparsers(dest="rules_command", required=True)
+    rules_load = rules_sub.add_parser("load", help="load compiled rules from a JSON file")
+    rules_load.add_argument("file", help="path to the rules JSON")
+    rules_sub.add_parser("list", help="show every rule written here")
+    rules_sub.add_parser("clear", help="remove every rule written here")
+    rules_parser.set_defaults(func=cmd_rules)
 
     real_parser = subparsers.add_parser(
         "real-samples", help="render the working corpus (mixed PDFs, scans and photographs)"
