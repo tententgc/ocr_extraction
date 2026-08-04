@@ -22,6 +22,7 @@ const state = {
   draft: null,          // a compiled rule awaiting approval
   currentDoc: null,     // document being reviewed
   edits: {},            // pending reviewer edits
+  autoOpen: null,       // job whose result should open itself when it lands
   page: 1,
 };
 
@@ -238,69 +239,46 @@ async function loadSamples() {
 
   $$('#sample-list button[data-sample]').forEach((button) => button.addEventListener('click', () => {
     const title = button.closest('.sample').querySelector('.grow').textContent.trim().split('\n')[0];
-    ingest(`/api/documents/sample/${button.dataset.sample}?format=${button.dataset.format}`,
-      { method: 'POST' }, `Processing sample (${button.dataset.format}): ${title}`);
+    ingest(`/api/documents/sample/${button.dataset.sample}?format=${button.dataset.format}&queue=true`,
+      { method: 'POST' }, `${title} (${button.dataset.format})`);
   }));
 }
 
 /* -------------------------------------------------------------- ingestion */
 
-let busy = false;
+/* Everything goes through the queue — one file, twenty files, a sample, a URL.
+   Processing one document inline read nicely until you dropped a second file
+   while the first was still going: the second was refused outright, and with a
+   local OCR model the queue's single worker is the only thing keeping two
+   documents from fighting over one resident model. */
 
 async function ingest(path, options, label) {
-  if (busy) { toast('Still processing the previous document.', 'error'); return; }
-  busy = true;
-  $('#progress-card').classList.remove('hidden');
-  $('#progress-title').textContent = label || 'Processing…';
-  $('#progress-detail').textContent = 'Reading the document with Typhoon OCR, then extracting and validating.';
-  $('#result-host').innerHTML = '';
-
-  try {
-    const data = await api(path, options);
-    renderResult(data, $('#result-host'), false);
-    const decision = data.document.decision;
-    toast(`${DECISION[decision].label} — ${pct(data.document.confidence)} confidence`,
-      decision === 'auto_post' ? 'success' : decision === 'rejected' ? 'error' : '');
-    loadStatus();
-  } catch (error) {
-    $('#result-host').innerHTML = `<div class="card"><h3>Could not process this document</h3>
-      <p class="muted" style="margin-top:6px">${esc(error.message)}</p></div>`;
-    toast(error.message, 'error');
-  } finally {
-    busy = false;
-    $('#progress-card').classList.add('hidden');
-  }
-}
-
-function uploadFile(file) {
-  const form = new FormData();
-  form.append('file', file);
-  ingest('/api/documents/upload', { method: 'POST', body: form }, `Processing ${file.name}`);
-}
-
-/** One file runs inline so the result appears; several go through the queue. */
-function handleFiles(files) {
-  const list = [...(files || [])];
-  if (!list.length) return;
-  if (list.length === 1) { uploadFile(list[0]); return; }
-  uploadBatch(list);
-}
-
-async function uploadBatch(files) {
-  const form = new FormData();
-  files.forEach((file) => form.append('files', file));
   let result;
   try {
-    result = await api('/api/documents/batch', { method: 'POST', body: form });
+    result = await api(path, options);
   } catch (error) {
     toast(error.message, 'error');
     return;
   }
-  result.rejected.forEach((row) => toast(`${row.filename}: ${row.reason}`, 'error'));
-  if (result.queued.length) {
-    toast(`Queued ${result.queued.length} document(s).`);
-    startJobPolling();
-  }
+  (result.rejected || []).forEach((row) => toast(`${row.filename}: ${row.reason}`, 'error'));
+  const queued = result.queued || [];
+  if (!queued.length) return;
+
+  // A single document is usually something you want to look at, so its result
+  // opens by itself when it lands. A batch does not: twenty cards fighting over
+  // one panel helps nobody, and the queue list is the view of a batch.
+  state.autoOpen = queued.length === 1 ? queued[0].job_id : null;
+  toast(queued.length === 1 ? `Queued ${label || queued[0].filename}.`
+                            : `Queued ${queued.length} documents.`);
+  startJobPolling();
+}
+
+function handleFiles(files) {
+  const list = [...(files || [])];
+  if (!list.length) return;
+  const form = new FormData();
+  list.forEach((file) => form.append('files', file));
+  ingest('/api/documents/batch', { method: 'POST', body: form }, list[0].name);
 }
 
 $('#file-input').addEventListener('change', (event) => {
@@ -321,11 +299,11 @@ $('#url-form').addEventListener('submit', (event) => {
   event.preventDefault();
   const url = $('#url-input').value.trim();
   if (!url) return;
-  ingest('/api/documents/url', {
+  ingest('/api/documents/url?queue=true', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ url }),
-  }, 'Fetching document from URL');
+  }, url);
 });
 
 /* ---------------------------------------------------------------- result */
@@ -1751,11 +1729,38 @@ async function refreshJobs() {
       </div>`).join('')
     : '<p class="muted">Nothing queued.</p>';
 
+  await openWhenReady(jobs);
+
   // Stop polling once the queue drains; the list stays until it is cleared.
   if (summary.active === 0 && jobTimer) {
     clearInterval(jobTimer); jobTimer = null;
     loadStatus();
   }
+}
+
+/* One document submitted on its own opens by itself when it finishes — the
+   thing a single upload used to do by holding the request open. Dropping a
+   second file while the first is reading replaces the target, because the one
+   you just dropped is the one you are waiting to see. */
+async function openWhenReady(jobs) {
+  const job = state.autoOpen && jobs.find((row) => row.job_id === state.autoOpen);
+  if (!job || job.status === 'queued' || job.status === 'running') return;
+  state.autoOpen = null;
+
+  if (job.status === 'failed' || !job.document_id) {
+    $('#result-host').innerHTML = `<div class="card"><h3>Could not process this document</h3>
+      <p class="muted" style="margin-top:6px">${esc(job.error || 'Processing failed.')}</p></div>`;
+    return;
+  }
+  try {
+    renderResult(await api(`/api/documents/${encodeURIComponent(job.document_id)}`),
+      $('#result-host'), false);
+  } catch (error) {
+    toast(error.message, 'error');
+    return;
+  }
+  toast(`${DECISION[job.decision]?.label || job.decision} — ${pct(job.confidence)} confidence`,
+    job.decision === 'auto_post' ? 'success' : job.decision === 'rejected' ? 'error' : '');
 }
 
 function jobDetail(job) {

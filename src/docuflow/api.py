@@ -533,8 +533,26 @@ def upload_document(file: UploadFile = File(...)) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# Batch upload
+# The queue
+#
+# Everything the browser ingests goes through here. Processing one document
+# inline was pleasant until you dropped a second file while the first was still
+# reading, at which point it was refused outright - and with a local OCR model
+# the queue's single worker is the only thing stopping two documents from
+# fighting over one resident model.
 # ---------------------------------------------------------------------------
+
+
+def _stage(content: bytes, name: str) -> Path:
+    """Write an incoming file to the inbox under a name that cannot collide.
+
+    Two files called "invoice.pdf" in one batch are two different documents.
+    """
+    inbox = settings.data_dir / "inbox"
+    inbox.mkdir(parents=True, exist_ok=True)
+    staged = inbox / f"{uuid.uuid4().hex[:8]}-{Path(name).name}"
+    staged.write_bytes(content)
+    return staged
 
 
 @app.post("/api/documents/batch")
@@ -556,8 +574,6 @@ def upload_batch(files: list[UploadFile] = File(...)) -> dict[str, Any]:
     queue = active_queue()
     accepted: list[dict[str, Any]] = []
     rejected: list[dict[str, str]] = []
-    inbox = settings.data_dir / "inbox"
-    inbox.mkdir(parents=True, exist_ok=True)
 
     for upload in files:
         name = upload.filename or "upload"
@@ -576,11 +592,7 @@ def upload_batch(files: list[UploadFile] = File(...)) -> dict[str, Any]:
             rejected.append({"filename": name, "reason": "unsupported file type"})
             continue
 
-        # Written under a unique name: two files called "invoice.pdf" in one
-        # batch are two different documents.
-        staged = inbox / f"{uuid.uuid4().hex[:8]}-{Path(name).name}"
-        staged.write_bytes(content)
-        accepted.append(queue.submit(staged, name).to_json())
+        accepted.append(queue.submit(_stage(content, name), name).to_json())
 
     if not accepted and rejected:
         raise HTTPException(status_code=400, detail=rejected[0]["reason"])
@@ -604,13 +616,22 @@ def clear_jobs() -> dict[str, Any]:
 
 
 @app.post("/api/documents/url")
-def ingest_url(request: UrlIngestRequest) -> dict[str, Any]:
+def ingest_url(request: UrlIngestRequest, queue: bool = Query(default=False)) -> dict[str, Any]:
     if not settings.allow_url_fetch:
         raise HTTPException(status_code=403, detail="URL ingestion is disabled by configuration.")
+    # The fetch stays synchronous either way: a bad URL is the user's typo and
+    # belongs in the reply to the request that made it, not in a failed job.
     try:
         fetched = fetch_url(request.url, settings.max_document_bytes)
     except FetchError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    if queue:
+        staged = _stage(fetched.content, fetched.filename)
+        job = active_queue().submit(
+            staged, fetched.filename, source_kind="url", origin=fetched.final_url
+        )
+        return {"queued": [job.to_json()], "rejected": [], "summary": active_queue().summary()}
 
     result = _pipeline().process_bytes(
         fetched.content,
@@ -633,12 +654,22 @@ def _sample_path(doc_id: str, fmt: str = "pdf") -> Path | None:
 
 @app.post("/api/documents/sample/{doc_id}")
 def ingest_sample(
-    doc_id: str, fmt: str = Query(default="pdf", pattern="^(pdf|image)$", alias="format")
+    doc_id: str,
+    fmt: str = Query(default="pdf", pattern="^(pdf|image)$", alias="format"),
+    queue: bool = Query(default=False),
 ) -> dict[str, Any]:
-    """Process a bundled sample, as its PDF or as a photograph of it."""
+    """Process a bundled sample, as its PDF or as a photograph of it.
+
+    `queue=true` returns a job instead of waiting for the result, which is what
+    the browser asks for: clicking two samples in a row should queue two, not
+    refuse the second.
+    """
     path = _sample_path(doc_id, fmt)
     if path is None:
         raise HTTPException(status_code=404, detail=f"Sample '{doc_id}' has not been generated.")
+    if queue:
+        job = active_queue().submit(path, path.name, source_kind="sample")
+        return {"queued": [job.to_json()], "rejected": [], "summary": active_queue().summary()}
     return _serialize_result(_pipeline().process_file(path, source_kind="sample"))
 
 

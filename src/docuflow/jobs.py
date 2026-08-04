@@ -104,28 +104,60 @@ class JobQueue:
         self._lock = threading.Lock()
         self._workers = workers
         self._pool: ThreadPoolExecutor | None = None
+        self._pool_size = 0
 
     # --- lifecycle ---------------------------------------------------------
     def _executor(self) -> ThreadPoolExecutor:
         if self._pool is None:
-            count = self._workers or worker_count(self._settings_factory())
-            self._pool = ThreadPoolExecutor(max_workers=count, thread_name_prefix="docuflow-job")
-            logger.info("document queue started with %s worker(s)", count)
+            self._pool_size = self._workers or worker_count(self._settings_factory())
+            self._pool = ThreadPoolExecutor(
+                max_workers=self._pool_size, thread_name_prefix="docuflow-job"
+            )
+            logger.info("document queue started with %s worker(s)", self._pool_size)
         return self._pool
+
+    def _resize_if_idle(self) -> None:
+        """Adopt a new worker count when the engine changed between batches.
+
+        The engine is chosen from the screen, so the pool sized for a local model
+        outlives the decision to use a cloud one - and a cloud batch would then
+        run one document at a time until someone restarted the server. A pool
+        cannot be resized, so it is replaced, and only while nothing is running.
+        """
+        if self._workers is not None or self._pool is None or self.summary()["active"]:
+            return
+        wanted = worker_count(self._settings_factory())
+        if wanted != self._pool_size:
+            logger.info("resizing document queue: %s -> %s worker(s)", self._pool_size, wanted)
+            self._pool.shutdown(wait=False)
+            self._pool = None
 
     def shutdown(self) -> None:
         if self._pool is not None:
             self._pool.shutdown(wait=False, cancel_futures=True)
             self._pool = None
+            self._pool_size = 0
 
     # --- submission --------------------------------------------------------
-    def submit(self, path: Path, filename: str) -> Job:
-        """Queue one already-saved file. Returns immediately."""
+    def submit(
+        self,
+        path: Path,
+        filename: str,
+        source_kind: str = "upload",
+        origin: str | None = None,
+    ) -> Job:
+        """Queue one already-saved file. Returns immediately.
+
+        `source_kind` and `origin` travel with the job so a sample or a fetched
+        URL is still recorded as what it was, rather than as an upload because
+        that is how it reached the disk.
+        """
+        self._resize_if_idle()
         job = Job(job_id=f"JOB-{uuid.uuid4().hex[:8].upper()}", filename=filename, queued_at=_now())
         with self._lock:
             self._jobs[job.job_id] = job
             self._order.append(job.job_id)
-        self._executor().submit(self._run, job.job_id, path)
+        self._executor().submit(self._run, job.job_id, path, filename, source_kind, origin)
         return job
 
     def _update(self, job_id: str, **changes: Any) -> None:
@@ -134,7 +166,14 @@ class JobQueue:
             if existing is not None:
                 self._jobs[job_id] = replace(existing, **changes)
 
-    def _run(self, job_id: str, path: Path) -> None:
+    def _run(
+        self,
+        job_id: str,
+        path: Path,
+        filename: str = "",
+        source_kind: str = "upload",
+        origin: str | None = None,
+    ) -> None:
         """Process one document. Never raises - a failure belongs to its job."""
         from docuflow.pipeline import Pipeline
 
@@ -146,7 +185,13 @@ class JobQueue:
             def progress(stage: str, message: str) -> None:
                 self._update(job_id, stage=stage, detail=message)
 
-            result = pipeline.process_file(path, source_kind="upload", on_progress=progress)
+            result = pipeline.process_file(
+                path,
+                source_kind=source_kind,
+                on_progress=progress,
+                filename=filename or path.name,
+                origin=origin,
+            )
         except Exception as exc:  # noqa: BLE001 - one bad file must not stop the batch
             logger.exception("job %s failed", job_id)
             self._update(job_id, status="failed", finished_at=_now(), stage="", error=str(exc))

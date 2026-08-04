@@ -100,10 +100,25 @@ class Pipeline:
         return self._run(blob, source, on_progress)
 
     def process_file(
-        self, path: Path, source_kind: str = "path", on_progress: ProgressCallback | None = None
+        self,
+        path: Path,
+        source_kind: str = "path",
+        on_progress: ProgressCallback | None = None,
+        filename: str | None = None,
+        origin: str | None = None,
     ) -> PipelineResult:
+        """Process a file on disk.
+
+        `filename` and `origin` exist for files that were staged on their way
+        here: a queued upload is written under a unique name, and the document
+        should still carry the name the person chose and where it came from.
+        """
         return self.process_bytes(
-            path.read_bytes(), path.name, source_kind=source_kind, origin=str(path), on_progress=on_progress
+            path.read_bytes(),
+            filename or path.name,
+            source_kind=source_kind,
+            origin=origin or str(path),
+            on_progress=on_progress,
         )
 
     # --- the pipeline ------------------------------------------------------

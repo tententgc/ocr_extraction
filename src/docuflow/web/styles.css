@@ -190,14 +190,6 @@ main { max-width: 1240px; margin: 0 auto; padding: 22px 24px 80px; }
 .pager .grow { flex: 1; }
 .pager .btn[disabled] { opacity: .4; cursor: default; }
 
-/* ---------- progress ---------- */
-.progress-card { display: flex; align-items: center; gap: 14px; }
-.spinner {
-  width: 22px; height: 22px; border: 2.5px solid var(--border); border-top-color: var(--accent);
-  border-radius: 50%; animation: spin .8s linear infinite; flex-shrink: 0;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-
 /* ---------- result ---------- */
 .verdict {
   display: flex; align-items: center; gap: 14px; padding: 14px 18px;
