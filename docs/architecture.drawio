@@ -1,340 +1,334 @@
 <mxfile host="app.diagrams.net" version="24.0.0" type="device">
 
-  <diagram id="llm-map" name="1 · LLM call map">
-    <mxGraphModel dx="1600" dy="1100" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1400" math="0" shadow="0">
+  <diagram id="calls" name="1 · Where a model is called">
+    <mxGraphModel dx="1400" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1500" pageHeight="1150" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
 
-        <mxCell id="t1" value="DocuFlow — where a model is called, and what it is allowed to decide" style="text;html=1;fontSize=22;fontStyle=1;align=left;verticalAlign=middle;" vertex="1" parent="1">
-          <mxGeometry x="40" y="20" width="1100" height="34" as="geometry" />
+        <mxCell id="ttl" value="Where a model is called" style="text;html=1;fontSize=22;fontStyle=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="500" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="t1b" value="Six model calls. Four of them cannot change a value: two only read, one only ranks facts computed before it was asked, one compiles a rule once and is never consulted again.&#10;Everything between the reading and the ledger — merging, grounding, validation, routing, posting — is deterministic code." style="text;html=1;fontSize=13;align=left;verticalAlign=top;spacingLeft=2;" vertex="1" parent="1">
-          <mxGeometry x="40" y="56" width="1180" height="46" as="geometry" />
+        <mxCell id="sub" value="Six calls. Everything after step 4 is deterministic code." style="text;html=1;fontSize=13;align=left;fontColor=#555555;" vertex="1" parent="1">
+          <mxGeometry x="40" y="50" width="600" height="22" as="geometry" />
         </mxCell>
-
-        <mxCell id="legend" value="LEGEND" style="swimlane;html=1;startSize=24;fillColor=#f8f9fb;strokeColor=#c9d1dc;fontSize=11;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="1250" y="56" width="300" height="150" as="geometry" />
+        <mxCell id="k1" value="model" style="rounded=1;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1130" y="24" width="70" height="24" as="geometry" />
         </mxCell>
-        <mxCell id="lg1" value="model call" style="rounded=1;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="legend">
-          <mxGeometry x="12" y="34" width="120" height="26" as="geometry" />
+        <mxCell id="k2" value="code" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1210" y="24" width="70" height="24" as="geometry" />
         </mxCell>
-        <mxCell id="lg2" value="deterministic code" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="legend">
-          <mxGeometry x="150" y="34" width="130" height="26" as="geometry" />
-        </mxCell>
-        <mxCell id="lg3" value="tool the agent may call" style="rounded=1;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="legend">
-          <mxGeometry x="12" y="70" width="140" height="26" as="geometry" />
-        </mxCell>
-        <mxCell id="lg4" value="guard / refusal" style="rounded=0;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="legend">
-          <mxGeometry x="160" y="70" width="120" height="26" as="geometry" />
-        </mxCell>
-        <mxCell id="lg5" value="Solid arrow = data flow.  Dashed = a constraint on the call." style="text;html=1;fontSize=10;align=left;verticalAlign=top;" vertex="1" parent="legend">
-          <mxGeometry x="12" y="104" width="270" height="36" as="geometry" />
+        <mxCell id="k3" value="guard" style="rounded=0;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1290" y="24" width="70" height="24" as="geometry" />
         </mxCell>
 
-        <!-- ============ 1. OCR ============ -->
-        <mxCell id="ocrlane" value="1 · READ THE PAGE" style="swimlane;html=1;startSize=28;fillColor=#ffffff;strokeColor=#9673a6;fontSize=13;fontStyle=1;align=left;spacingLeft=12;" vertex="1" parent="1">
-          <mxGeometry x="40" y="130" width="1180" height="180" as="geometry" />
+        <!-- 1 OCR -->
+        <mxCell id="s1" value="1 · OCR" style="text;html=1;fontSize=14;fontStyle=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="40" y="90" width="200" height="20" as="geometry" />
         </mxCell>
-        <mxCell id="ocrin" value="Rendered page images&#10;PDF → 1800px, max 8 pages&#10;(PDFium, behind a process lock)" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="ocrlane">
-          <mxGeometry x="20" y="44" width="200" height="70" as="geometry" />
+        <mxCell id="o1" value="&lt;b&gt;Vision model&lt;/b&gt;&#10;prompt · v15_prompt()&#10;&quot;transcribe, don't interpret&quot;&#10;tables as HTML&#10;in · page images 1800px, ≤ 8&#10;out · text + table markup" style="rounded=1;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="115" width="240" height="115" as="geometry" />
         </mxCell>
-        <mxCell id="ocrcall" value="&lt;b&gt;OCR — vision model&lt;/b&gt;&#10;prompt: ocr/prompts.py v15_prompt(figure_language)&#10;&quot;Return the page as Markdown. Tables as HTML.&#10;Transcribe, do not summarise or interpret.&quot;&#10;&#10;output: page text + table markup, per page" style="rounded=1;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="ocrlane">
-          <mxGeometry x="260" y="40" width="330" height="110" as="geometry" />
+        <mxCell id="o2" value="&lt;b&gt;Engine&lt;/b&gt; · switchable live&#10;ollama · Typhoon OCR 1.5 3B&#10;typhoon_api · cloud&#10;openai · claude · vision&#10;pdftext · text layer, no model&#10;tesseract · fallback" style="rounded=0;html=1;fillColor=#f5f5f5;strokeColor=#999999;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="310" y="115" width="230" height="115" as="geometry" />
         </mxCell>
-        <mxCell id="ocrprov" value="&lt;b&gt;Engine, picked at runtime&lt;/b&gt;&#10;ollama · Typhoon OCR 1.5 3B — native /api/generate,&#10;   keep_alive 30m, num_ctx 8192 (the OpenAI-compatible&#10;   endpoint silently ignores both)&#10;typhoon_api · Typhoon Cloud OCR v1.5&#10;openai · gpt-5.1 vision  ·  claude · sonnet-5 vision&#10;pdftext · text layer only, no model&#10;tesseract · offline last resort" style="rounded=0;html=1;fillColor=#f5f5f5;strokeColor=#999999;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="ocrlane">
-          <mxGeometry x="620" y="40" width="330" height="120" as="geometry" />
+        <mxCell id="o3" value="&lt;b&gt;Quality score&lt;/b&gt;&#10;character mix · line shape&#10;→ every field's confidence&#10;→ marks the run degraded" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="570" y="115" width="220" height="85" as="geometry" />
         </mxCell>
-        <mxCell id="ocrq" value="&lt;b&gt;Quality score&lt;/b&gt; (deterministic)&#10;character mix, line shape, gibberish ratio&#10;→ feeds every field's confidence&#10;→ marks the run degraded" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="ocrlane">
-          <mxGeometry x="980" y="40" width="180" height="90" as="geometry" />
+        <mxCell id="o4" value="Local Ollama runs on its native API — the OpenAI-compatible one ignores keep_alive and num_ctx, and a 4k window makes the model transcribe a page it can no longer see." style="text;html=1;fontSize=10;fontStyle=2;align=left;verticalAlign=top;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="820" y="115" width="280" height="70" as="geometry" />
         </mxCell>
-        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="ocrlane" source="ocrin" target="ocrcall"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;dashed=1;" edge="1" parent="ocrlane" source="ocrprov" target="ocrcall"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="ocrlane" source="ocrcall" target="ocrq"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="1" source="o1" target="o3"><mxGeometry relative="1" as="geometry" /></mxCell>
 
-        <!-- ============ 2. CLASSIFY ============ -->
-        <mxCell id="cllane" value="2 · WHAT KIND OF DOCUMENT IS THIS" style="swimlane;html=1;startSize=28;fillColor=#ffffff;strokeColor=#9673a6;fontSize=13;fontStyle=1;align=left;spacingLeft=12;" vertex="1" parent="1">
-          <mxGeometry x="40" y="330" width="1180" height="130" as="geometry" />
+        <!-- 2 classify -->
+        <mxCell id="s2" value="2 · Classify" style="text;html=1;fontSize=14;fontStyle=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="40" y="255" width="200" height="20" as="geometry" />
         </mxCell>
-        <mxCell id="clkw" value="&lt;b&gt;Keyword pre-classifier&lt;/b&gt; (deterministic, first)&#10;distinctive words per schema — &quot;ใบกำกับภาษี&quot;, &quot;PURCHASE ORDER&quot;&#10;confident → the model is never called" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="cllane">
-          <mxGeometry x="20" y="42" width="330" height="70" as="geometry" />
+        <mxCell id="c1" value="&lt;b&gt;Keywords first&lt;/b&gt; · code&#10;distinctive words per type&#10;confident → no model call" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="280" width="240" height="70" as="geometry" />
         </mxCell>
-        <mxCell id="clllm" value="&lt;b&gt;Classifier — LLM, only when unsure&lt;/b&gt;&#10;system: CLASSIFIER_SYSTEM · &quot;Output JSON only.&quot;&#10;user: classification_prompt(first ~2k chars)&#10;→ {doc_type, confidence, reason}" style="rounded=1;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="cllane">
-          <mxGeometry x="400" y="42" width="330" height="80" as="geometry" />
+        <mxCell id="c2" value="&lt;b&gt;Classifier&lt;/b&gt; · only when unsure&#10;CLASSIFIER_SYSTEM&#10;in · first ~2k characters&#10;out · {doc_type, confidence}" style="rounded=1;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="310" y="280" width="230" height="70" as="geometry" />
         </mxCell>
-        <mxCell id="clout" value="&lt;b&gt;DocumentSchema&lt;/b&gt; from the registry&#10;invoice · receipt · purchase_order · contract · form · unknown&#10;fields, aliases, choices, required / critical flags,&#10;the record kind it posts into" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="cllane">
-          <mxGeometry x="780" y="42" width="370" height="80" as="geometry" />
+        <mxCell id="c3" value="&lt;b&gt;→ DocumentSchema&lt;/b&gt;&#10;invoice · receipt · PO · contract · form&#10;fields, aliases, choices&#10;required / critical flags" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="570" y="280" width="230" height="70" as="geometry" />
         </mxCell>
-        <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="cllane" source="clkw" target="clllm"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="cllane" source="clllm" target="clout"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="1" source="c1" target="c2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="1" source="c2" target="c3"><mxGeometry relative="1" as="geometry" /></mxCell>
 
-        <!-- ============ 3. TWO CHANNELS ============ -->
-        <mxCell id="exlane" value="3 · READ THE FIELDS — TWICE, INDEPENDENTLY" style="swimlane;html=1;startSize=28;fillColor=#ffffff;strokeColor=#9673a6;fontSize=13;fontStyle=1;align=left;spacingLeft=12;" vertex="1" parent="1">
-          <mxGeometry x="40" y="480" width="1180" height="290" as="geometry" />
+        <!-- 3 extract -->
+        <mxCell id="s3" value="3 · Extract — twice, blind to each other" style="text;html=1;fontSize=14;fontStyle=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="40" y="375" width="400" height="20" as="geometry" />
         </mxCell>
-        <mxCell id="ch1" value="&lt;b&gt;Channel 1 — field-first&lt;/b&gt;   agents/llm_extractor.py&#10;&#10;system: EXTRACTION_SYSTEM&#10;  &quot;Copy values exactly as printed. Never calculate,&#10;   never convert, never infer. Not found → null.&#10;   Every value needs the verbatim line it came from.&quot;&#10;user: extraction_prompt(schema, document_text)&#10;  one line per field: name (type) — description, aliases&#10;&#10;→ {field: {raw_value, evidence}}" style="rounded=1;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="exlane">
-          <mxGeometry x="20" y="42" width="360" height="180" as="geometry" />
+        <mxCell id="x1" value="&lt;b&gt;Channel 1 · field-first&lt;/b&gt;&#10;EXTRACTION_SYSTEM&#10;&quot;copy exactly · never calculate&#10;never infer · not found → null&#10;every value needs its quote&quot;&#10;in · schema + OCR text&#10;out · {field: value, evidence}" style="rounded=1;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="400" width="240" height="130" as="geometry" />
         </mxCell>
-        <mxCell id="ch2" value="&lt;b&gt;Channel 2 — label-first&lt;/b&gt;   agents/verify_extractor.py&#10;&#10;system: VERIFY_SYSTEM&#10;  &quot;Find the label on the page, then take what sits&#10;   beside it. Work from the page, not from what an&#10;   invoice usually says.&quot;&#10;user: verification_prompt(schema, document_text)&#10;&#10;→ the same shape, reached a different way" style="rounded=1;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="exlane">
-          <mxGeometry x="410" y="42" width="360" height="180" as="geometry" />
+        <mxCell id="x2" value="&lt;b&gt;Channel 2 · label-first&lt;/b&gt;&#10;VERIFY_SYSTEM&#10;&quot;find the label, take what&#10;sits beside it&quot;&#10;same shape, different route&#10;in · schema + OCR text&#10;out · {field: value, evidence}" style="rounded=1;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="310" y="400" width="230" height="130" as="geometry" />
         </mxCell>
-        <mxCell id="ch2rule" value="&lt;b&gt;Constraints on channel 2&lt;/b&gt;   llm/factory.resolve_verify_llm&#10;&#10;• a &lt;i&gt;different&lt;/i&gt; backend from channel 1 — two runs of one&#10;  model repeat the same mistake, and the agreement signal&#10;  is then worth nothing&#10;• never the backend hosting OCR: it evicts the vision model&#10;  and a document went from 40s to over 10 minutes&#10;• LLM_VERIFY_TIMEOUT_SECONDS = 90&#10;• on timeout or no second model → fall back to the&#10;  deterministic label matcher, so a keyless run still&#10;  gets a cross-check rather than dropping to one channel" style="rounded=0;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="exlane">
-          <mxGeometry x="800" y="42" width="360" height="180" as="geometry" />
+        <mxCell id="x3" value="&lt;b&gt;Rules for channel 2&lt;/b&gt;&#10;· a different backend from ch1&#10;· never the one hosting OCR&#10;· 90 second budget&#10;· timeout → deterministic&#10;  label matcher instead" style="rounded=0;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="570" y="400" width="230" height="115" as="geometry" />
         </mxCell>
-        <mxCell id="exnote" value="Neither channel sees the other's answer. That is the entire point: agreement between two blind readings is evidence, agreement after seeing the first answer is an echo." style="text;html=1;fontSize=11;fontStyle=2;align=left;" vertex="1" parent="exlane">
-          <mxGeometry x="20" y="236" width="1140" height="30" as="geometry" />
+        <mxCell id="x4" value="Two runs of one model repeat the same mistake — the agreement signal is then worth nothing. Sharing a backend with OCR evicts the vision model: 40s became 10 minutes." style="text;html=1;fontSize=10;fontStyle=2;align=left;verticalAlign=top;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="820" y="400" width="280" height="70" as="geometry" />
         </mxCell>
-        <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;dashed=1;" edge="1" parent="exlane" source="ch2rule" target="ch2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;dashed=1;" edge="1" parent="1" source="x3" target="x2"><mxGeometry relative="1" as="geometry" /></mxCell>
 
-        <!-- ============ 4. MERGE (NO MODEL) ============ -->
-        <mxCell id="mglane" value="4 · MERGE AND GROUND — NO MODEL PAST THIS LINE" style="swimlane;html=1;startSize=28;fillColor=#ffffff;strokeColor=#82b366;fontSize=13;fontStyle=1;align=left;spacingLeft=12;" vertex="1" parent="1">
-          <mxGeometry x="40" y="790" width="1180" height="250" as="geometry" />
+        <!-- divider -->
+        <mxCell id="div" value="" style="line;strokeWidth=2;html=1;strokeColor=#b85450;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="550" width="1060" height="10" as="geometry" />
         </mxCell>
-        <mxCell id="mg1" value="&lt;b&gt;Normalise&lt;/b&gt;   normalize/*&#10;dates → YYYY-MM-DD (Buddhist era, Thai digits,&#10;   day-first detected from components &gt; 12,&#10;   re-read from the evidence quote)&#10;money → float · tax IDs → checksum&#10;enums → schema choice_aliases&#10;  (&quot;PAID BY VISA ****4412&quot; → credit_card)" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="mglane">
-          <mxGeometry x="20" y="42" width="280" height="120" as="geometry" />
-        </mxCell>
-        <mxCell id="mg2" value="&lt;b&gt;Ground the evidence&lt;/b&gt;   agents/grounding.py&#10;1. is the quote really on the page?&#10;   fuzzy match ≥ 88 (OCR noise is not a lie)&#10;2. does the quote actually state the value?&#10;   type-aware: dates compared as dates,&#10;   amounts as numbers, enums exempt&#10;   (a schema word never appears on a page)" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="mglane">
-          <mxGeometry x="320" y="42" width="290" height="120" as="geometry" />
-        </mxCell>
-        <mxCell id="mg3" value="&lt;b&gt;Score the field&lt;/b&gt;   confidence.py&#10;both channels agree     → 0.97&#10;one channel, grounded   → 0.86&#10;channels disagree       → 0.45&#10;one channel, ungrounded → 0.30&#10;× OCR quality, × critical-field penalty&#10;&#10;&lt;b&gt;Corroboration:&lt;/b&gt; two channels agreeing and both&#10;quotes real on the page ⇒ grounded, even if&#10;neither quote passes the strict value test." style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="mglane">
-          <mxGeometry x="630" y="42" width="300" height="150" as="geometry" />
-        </mxCell>
-        <mxCell id="mg4" value="&lt;b&gt;Derive currency&lt;/b&gt;   normalize/locale.py&#10;symbol or code on the page → &lt;b&gt;grounded&lt;/b&gt;&#10;   (&quot;$154.06&quot; states its currency)&#10;else vendor's registered currency&#10;else the country the document is from&#10;   (earliest marker wins — the issuer is at&#10;   the top, the ship-to below)&#10;→ inferred, never grounded, cannot auto-post" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="mglane">
-          <mxGeometry x="950" y="42" width="210" height="150" as="geometry" />
-        </mxCell>
-        <mxCell id="mgnote" value="An ungrounded critical field can never post on its own, whatever the model claimed." style="text;html=1;fontSize=11;fontStyle=2;align=left;" vertex="1" parent="mglane">
-          <mxGeometry x="20" y="206" width="900" height="24" as="geometry" />
+        <mxCell id="divl" value="no model below this line" style="text;html=1;fontSize=11;fontStyle=2;fontColor=#b85450;align=left;" vertex="1" parent="1">
+          <mxGeometry x="900" y="528" width="200" height="20" as="geometry" />
         </mxCell>
 
-        <!-- ============ 5. VALIDATE ============ -->
-        <mxCell id="vlane" value="5 · VALIDATE — DETERMINISTIC, NEVER MODEL-JUDGED" style="swimlane;html=1;startSize=28;fillColor=#ffffff;strokeColor=#82b366;fontSize=13;fontStyle=1;align=left;spacingLeft=12;" vertex="1" parent="1">
-          <mxGeometry x="40" y="1060" width="1180" height="200" as="geometry" />
+        <!-- 4 merge -->
+        <mxCell id="s4" value="4 · Merge and ground" style="text;html=1;fontSize=14;fontStyle=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="40" y="575" width="300" height="20" as="geometry" />
         </mxCell>
-        <mxCell id="v1" value="&lt;b&gt;26 built-in rules&lt;/b&gt;   rules/*.py&#10;arithmetic · dates · master data · duplicates&#10;three-way match · tax IDs · bank accounts&#10;each declares doc types, severity and aliases" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="vlane">
-          <mxGeometry x="20" y="42" width="300" height="90" as="geometry" />
+        <mxCell id="m1" value="&lt;b&gt;Normalise&lt;/b&gt;&#10;dates → YYYY-MM-DD&#10;  Buddhist era, Thai digits&#10;  day-first from parts &gt; 12&#10;money → float&#10;enums → schema aliases" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="600" width="240" height="115" as="geometry" />
         </mxCell>
-        <mxCell id="v2" value="&lt;b&gt;Rules the user wrote&lt;/b&gt;   rules/custom.py&#10;stored as a condition tree, evaluated by&#10;rules/expressions.py — no eval, depth ≤ 8,&#10;≤ 12 branches. A model compiled it once;&#10;a model never runs it." style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="vlane">
-          <mxGeometry x="340" y="42" width="300" height="90" as="geometry" />
+        <mxCell id="m2" value="&lt;b&gt;Ground the quote&lt;/b&gt;&#10;1 · is it on the page?&#10;  fuzzy ≥ 88 — OCR noise&#10;  is not a lie&#10;2 · does it state the value?&#10;  dates as dates, sums as sums" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="310" y="600" width="230" height="115" as="geometry" />
         </mxCell>
-        <mxCell id="v3" value="&lt;b&gt;Execution policy&lt;/b&gt;   policy.py (persisted)&#10;rules_free_mode → nothing runs at all&#10;builtin_rules_disabled → ours off, yours on&#10;disabled_rules → individual ids&#10;rule_severity → re-grade without silencing&#10;&#10;Each mode emits its own marker finding, so a&#10;record that was not checked never looks like&#10;one that was." style="rounded=0;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="vlane">
-          <mxGeometry x="660" y="42" width="290" height="145" as="geometry" />
+        <mxCell id="m3" value="&lt;b&gt;Score the field&lt;/b&gt;&#10;both agree 0.97&#10;one channel, grounded 0.86&#10;disagree 0.45&#10;one channel, ungrounded 0.30&#10;× OCR quality" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="570" y="600" width="230" height="115" as="geometry" />
         </mxCell>
-        <mxCell id="v4" value="&lt;b&gt;Isolation&lt;/b&gt;&#10;a rule that raises becomes a&#10;warning finding — one broken&#10;rule cannot stop validation" style="rounded=0;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="vlane">
-          <mxGeometry x="970" y="42" width="190" height="90" as="geometry" />
+        <mxCell id="m4" value="&lt;b&gt;Currency, if unstated&lt;/b&gt;&#10;symbol on the page → grounded&#10;else vendor's default&#10;else the issuing country&#10;inferred → cannot auto-post" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="830" y="600" width="230" height="100" as="geometry" />
         </mxCell>
-
-        <!-- ============ 6. RECONCILER ============ -->
-        <mxCell id="rlane" value="6 · EXPLAIN THE FAILURE — TOOL-CALLING AGENT (only when a check already failed)" style="swimlane;html=1;startSize=28;fillColor=#ffffff;strokeColor=#9673a6;fontSize=13;fontStyle=1;align=left;spacingLeft=12;" vertex="1" parent="1">
-          <mxGeometry x="40" y="1280" width="1180" height="90" as="geometry" />
-        </mxCell>
-        <mxCell id="r1" value="See page 3 — the reconciler's tool loop, its seven tools, and the vetting step that refuses a correction the page does not support." style="text;html=1;fontSize=12;align=left;" vertex="1" parent="rlane">
-          <mxGeometry x="20" y="44" width="1000" height="24" as="geometry" />
+        <mxCell id="m5" value="&lt;b&gt;Corroboration&lt;/b&gt; · two channels agreeing, both quotes real on the page ⇒ grounded.  ·  An ungrounded critical field never auto-posts." style="text;html=1;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="40" y="722" width="1020" height="20" as="geometry" />
         </mxCell>
 
-        <mxCell id="ee1" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=2;" edge="1" parent="1" source="ocrlane" target="cllane"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="ee2" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=2;" edge="1" parent="1" source="cllane" target="exlane"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="ee3" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=2;" edge="1" parent="1" source="exlane" target="mglane"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="ee4" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=2;" edge="1" parent="1" source="mglane" target="vlane"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="ee5" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeWidth=2;" edge="1" parent="1" source="vlane" target="rlane"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <!-- 5 validate -->
+        <mxCell id="s5" value="5 · Validate" style="text;html=1;fontSize=14;fontStyle=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="40" y="765" width="300" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="v1" value="&lt;b&gt;26 built-in rules&lt;/b&gt;&#10;arithmetic · dates&#10;master data · duplicates&#10;three-way match&#10;tax IDs · bank accounts" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="790" width="240" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="v2" value="&lt;b&gt;Your rules&lt;/b&gt;&#10;compiled once from a prompt&#10;stored as a condition tree&#10;evaluated by code, no eval&#10;a model never runs them" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="310" y="790" width="230" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="v3" value="&lt;b&gt;Four switches&lt;/b&gt; · persisted&#10;free mode → nothing runs&#10;built-ins off → yours only&#10;disabled_rules → by id&#10;severity → re-grade, not silence" style="rounded=0;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="570" y="790" width="230" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="v4" value="&lt;b&gt;Each switch leaves a mark&lt;/b&gt;&#10;a record that was not checked&#10;must not look like one that was&#10;&#10;a rule that raises → a warning,&#10;never a stopped validation" style="rounded=0;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="830" y="790" width="230" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- 6 route -->
+        <mxCell id="s6" value="6 · Route" style="text;html=1;fontSize=14;fontStyle=1;align=left;" vertex="1" parent="1">
+          <mxGeometry x="40" y="915" width="300" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="r1" value="&lt;b&gt;Auto-post needs all four&lt;/b&gt;&#10;· no blocking rule failed&#10;· confidence ≥ threshold&#10;· every required field present&#10;· every critical field grounded" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="940" width="240" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="r2" value="&lt;b&gt;Reconciler&lt;/b&gt; · model, page 3&#10;runs only when a check failed&#10;— nothing on the happy path&#10;explains, never edits" style="rounded=1;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="310" y="940" width="230" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="r3" value="&lt;b&gt;Post&lt;/b&gt; · the only write to the ledger&#10;refuses anything not cleared,&#10;unless a reviewer approved it" style="rounded=0;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="570" y="940" width="230" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="1" source="r1" target="r3"><mxGeometry relative="1" as="geometry" /></mxCell>
       </root>
     </mxGraphModel>
   </diagram>
 
-  <diagram id="pipeline" name="2 · Pipeline end to end">
-    <mxGraphModel dx="1600" dy="1100" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200" math="0" shadow="0">
+  <diagram id="pipeline" name="2 · Pipeline and the human loop">
+    <mxGraphModel dx="1400" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1000" math="0" shadow="0">
       <root>
         <mxCell id="p0" />
         <mxCell id="p1" parent="p0" />
 
-        <mxCell id="pt" value="Pipeline — bytes in, a validated ledger entry out" style="text;html=1;fontSize=22;fontStyle=1;align=left;" vertex="1" parent="p1">
-          <mxGeometry x="40" y="20" width="900" height="34" as="geometry" />
+        <mxCell id="pt" value="Pipeline" style="text;html=1;fontSize=22;fontStyle=1;align=left;" vertex="1" parent="p1">
+          <mxGeometry x="40" y="20" width="400" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="ptb" value="Every stage appends to the run's trace, and every stage is defensive: a failure degrades the run and routes it to a person rather than raising." style="text;html=1;fontSize=13;align=left;" vertex="1" parent="p1">
-          <mxGeometry x="40" y="54" width="1000" height="24" as="geometry" />
-        </mxCell>
-
-        <mxCell id="s0" value="&lt;b&gt;Ingest&lt;/b&gt;&#10;upload · URL fetch (private ranges blocked) · sample&#10;content-addressed blob, SHA-256" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="p1">
-          <mxGeometry x="60" y="110" width="300" height="70" as="geometry" />
-        </mxCell>
-        <mxCell id="s1" value="&lt;b&gt;render&lt;/b&gt;  PDFium → images&#10;module-level lock: two workers rendering at once&#10;segfaulted the interpreter" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="p1">
-          <mxGeometry x="60" y="200" width="300" height="70" as="geometry" />
-        </mxCell>
-        <mxCell id="s2" value="&lt;b&gt;ocr&lt;/b&gt;  vision model  &lt;i&gt;(model)&lt;/i&gt;" style="rounded=1;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;align=left;spacingLeft=8;" vertex="1" parent="p1">
-          <mxGeometry x="60" y="290" width="300" height="40" as="geometry" />
-        </mxCell>
-        <mxCell id="s3" value="&lt;b&gt;classify&lt;/b&gt;  keywords, then model if unsure  &lt;i&gt;(model)&lt;/i&gt;" style="rounded=1;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;align=left;spacingLeft=8;" vertex="1" parent="p1">
-          <mxGeometry x="60" y="350" width="300" height="40" as="geometry" />
-        </mxCell>
-        <mxCell id="s4" value="&lt;b&gt;extract&lt;/b&gt;  channel 1 + channel 2  &lt;i&gt;(2 models)&lt;/i&gt;&#10;then merge, ground, score — no model" style="rounded=1;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="p1">
-          <mxGeometry x="60" y="410" width="300" height="60" as="geometry" />
-        </mxCell>
-        <mxCell id="s5" value="&lt;b&gt;line_items&lt;/b&gt;  table rows from HTML markup or text&#10;a line that parses as a date is not a line item" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="p1">
-          <mxGeometry x="60" y="490" width="300" height="60" as="geometry" />
-        </mxCell>
-        <mxCell id="s6" value="&lt;b&gt;validate&lt;/b&gt;  master data + rules&#10;vendor match: tax ID → exact name → alias →&#10;core name → fuzzy ≥ 86" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="p1">
-          <mxGeometry x="60" y="570" width="300" height="70" as="geometry" />
-        </mxCell>
-        <mxCell id="s7" value="&lt;b&gt;route&lt;/b&gt;  routing.decide()&#10;auto_post needs ALL of: no blocking failure,&#10;confidence ≥ threshold, every required field&#10;present, every critical field grounded" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="p1">
-          <mxGeometry x="60" y="660" width="300" height="80" as="geometry" />
-        </mxCell>
-        <mxCell id="s8" value="&lt;b&gt;reconcile&lt;/b&gt;  tool-calling agent  &lt;i&gt;(model)&lt;/i&gt;&#10;runs only if something failed — nothing on the&#10;happy path" style="rounded=1;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="p1">
-          <mxGeometry x="60" y="760" width="300" height="60" as="geometry" />
-        </mxCell>
-        <mxCell id="s9" value="&lt;b&gt;archive&lt;/b&gt;  hard link into&#10;data/archive/&lt;type&gt;/&lt;YYYY-MM&gt;/" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="p1">
-          <mxGeometry x="60" y="840" width="300" height="55" as="geometry" />
-        </mxCell>
-        <mxCell id="s10" value="&lt;b&gt;post&lt;/b&gt;  the only write into the ledger&#10;refuses anything not cleared for auto_post&#10;unless a reviewer forced it" style="rounded=0;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="p1">
-          <mxGeometry x="60" y="915" width="300" height="70" as="geometry" />
+        <mxCell id="psub" value="Every stage writes to the run's trace. A failure degrades the run and sends it to a person — it never raises." style="text;html=1;fontSize=13;align=left;fontColor=#555555;" vertex="1" parent="p1">
+          <mxGeometry x="40" y="50" width="800" height="22" as="geometry" />
         </mxCell>
 
-        <mxCell id="pe1" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="p1" source="s0" target="s1"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="pe2" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="p1" source="s1" target="s2"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="pe3" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="p1" source="s2" target="s3"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="pe4" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="p1" source="s3" target="s4"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="pe5" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="p1" source="s4" target="s5"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="pe6" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="p1" source="s5" target="s6"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="pe7" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="p1" source="s6" target="s7"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="pe8" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="p1" source="s7" target="s8"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="pe9" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="p1" source="s8" target="s9"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="pe10" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="p1" source="s9" target="s10"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="q" value="&lt;b&gt;Batch queue&lt;/b&gt;&#10;1 worker on a local engine, 4 on cloud&#10;≤ 50 files per batch" style="rounded=0;html=1;fillColor=#f5f5f5;strokeColor=#999999;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="p1">
+          <mxGeometry x="440" y="90" width="280" height="65" as="geometry" />
+        </mxCell>
 
-        <!-- right column: the human loop and the re-judgement path -->
-        <mxCell id="h1" value="&lt;b&gt;Review queue&lt;/b&gt;&#10;a person sees the page beside every field, its evidence&#10;quote, every rule that ran and the agent's account" style="rounded=0;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="p1">
-          <mxGeometry x="470" y="660" width="340" height="70" as="geometry" />
+        <mxCell id="g0" value="&lt;b&gt;ingest&lt;/b&gt; · upload, URL or sample → content-addressed blob" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;verticalAlign=middle;spacingLeft=8;" vertex="1" parent="p1">
+          <mxGeometry x="40" y="100" width="360" height="42" as="geometry" />
         </mxCell>
-        <mxCell id="h2" value="&lt;b&gt;Save&lt;/b&gt;  keeps the corrected values, re-runs the rules,&#10;and leaves the routing decision exactly where it was.&#10;A save is an edit, not a verdict." style="rounded=0;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="p1">
-          <mxGeometry x="470" y="750" width="340" height="70" as="geometry" />
+        <mxCell id="g1" value="&lt;b&gt;render&lt;/b&gt; · PDFium → images (single-threaded: two at once segfaults)" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;verticalAlign=middle;spacingLeft=8;" vertex="1" parent="p1">
+          <mxGeometry x="40" y="155" width="360" height="42" as="geometry" />
         </mxCell>
-        <mxCell id="h3" value="&lt;b&gt;Re-check&lt;/b&gt;  revalidate.py&#10;replays master data → rules → confidence → routing&#10;against the stored run. No render, no OCR, no model:&#10;the values did not change, the policy did.&#10;Seven documents re-judged in 25 ms." style="rounded=0;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="p1">
-          <mxGeometry x="470" y="840" width="340" height="95" as="geometry" />
+        <mxCell id="g2" value="&lt;b&gt;ocr&lt;/b&gt; · vision model" style="rounded=1;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;align=left;verticalAlign=middle;spacingLeft=8;" vertex="1" parent="p1">
+          <mxGeometry x="40" y="210" width="360" height="36" as="geometry" />
         </mxCell>
-        <mxCell id="h4" value="&lt;b&gt;Approve &amp; post&lt;/b&gt;  refused while a blocking rule still fails.&#10;The reviewer corrects the values or rejects the document —&#10;there is no way to approve past a failing check." style="rounded=0;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="p1">
-          <mxGeometry x="470" y="950" width="340" height="70" as="geometry" />
+        <mxCell id="g3" value="&lt;b&gt;classify&lt;/b&gt; · keywords, then a model if unsure" style="rounded=1;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;align=left;verticalAlign=middle;spacingLeft=8;" vertex="1" parent="p1">
+          <mxGeometry x="40" y="259" width="360" height="36" as="geometry" />
         </mxCell>
-        <mxCell id="h5" value="&lt;b&gt;Two refusals that shape re-checking&lt;/b&gt;&#10;• a document a &lt;i&gt;person&lt;/i&gt; rejected is never posted by a&#10;  re-evaluation — a policy change is not consent to&#10;  overturn someone's decision&#10;• a posted document is refused outright: a posted record&#10;  is corrected downstream, not by re-running a check" style="rounded=0;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="p1">
-          <mxGeometry x="850" y="840" width="330" height="110" as="geometry" />
+        <mxCell id="g4" value="&lt;b&gt;extract&lt;/b&gt; · two channels, then merge and ground (code)" style="rounded=1;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;align=left;verticalAlign=middle;spacingLeft=8;" vertex="1" parent="p1">
+          <mxGeometry x="40" y="308" width="360" height="36" as="geometry" />
         </mxCell>
-        <mxCell id="pe11" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;dashed=1;" edge="1" parent="p1" source="s7" target="h1"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="pe12" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="p1" source="h1" target="h2"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="pe13" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="p1" source="h2" target="h3"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="pe14" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="p1" source="h3" target="h4"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="pe15" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="p1" source="h4" target="s10"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="g5" value="&lt;b&gt;line_items&lt;/b&gt; · table rows from HTML or plain text" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;verticalAlign=middle;spacingLeft=8;" vertex="1" parent="p1">
+          <mxGeometry x="40" y="357" width="360" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="g6" value="&lt;b&gt;validate&lt;/b&gt; · master data + rules&#10;vendor match: tax ID → name → alias → fuzzy ≥ 86" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;spacingTop=5;" vertex="1" parent="p1">
+          <mxGeometry x="40" y="406" width="360" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="g7" value="&lt;b&gt;route&lt;/b&gt; · post, hold, or refuse" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;verticalAlign=middle;spacingLeft=8;" vertex="1" parent="p1">
+          <mxGeometry x="40" y="471" width="360" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="g8" value="&lt;b&gt;reconcile&lt;/b&gt; · agent, only if something failed" style="rounded=1;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;align=left;verticalAlign=middle;spacingLeft=8;" vertex="1" parent="p1">
+          <mxGeometry x="40" y="520" width="360" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="g9" value="&lt;b&gt;archive&lt;/b&gt; · hard link into archive/&lt;type&gt;/&lt;month&gt;/" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;verticalAlign=middle;spacingLeft=8;" vertex="1" parent="p1">
+          <mxGeometry x="40" y="569" width="360" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="g10" value="&lt;b&gt;post&lt;/b&gt; · the ledger" style="rounded=0;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=left;verticalAlign=middle;spacingLeft=8;fontStyle=1;" vertex="1" parent="p1">
+          <mxGeometry x="40" y="618" width="360" height="36" as="geometry" />
+        </mxCell>
 
-        <!-- queue -->
-        <mxCell id="q1" value="&lt;b&gt;Batch queue&lt;/b&gt;  jobs.py&#10;ThreadPoolExecutor, worker count by engine:&#10;local engine → 1 worker (one model, one GPU)&#10;cloud engine → 4 workers&#10;max 50 files per batch" style="rounded=0;html=1;fillColor=#f5f5f5;strokeColor=#999999;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="p1">
-          <mxGeometry x="470" y="110" width="340" height="90" as="geometry" />
+        <mxCell id="pe0" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="p1" source="g0" target="g1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="pe1" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="p1" source="g1" target="g2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="pe2" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="p1" source="g2" target="g3"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="pe3" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="p1" source="g3" target="g4"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="pe4" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="p1" source="g4" target="g5"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="pe5" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="p1" source="g5" target="g6"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="pe6" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="p1" source="g6" target="g7"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="pe7" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="p1" source="g7" target="g8"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="pe8" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="p1" source="g8" target="g9"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="pe9" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="p1" source="g9" target="g10"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="pe10" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;dashed=1;" edge="1" parent="p1" source="q" target="g0"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- human loop -->
+        <mxCell id="hl" value="The human loop" style="text;html=1;fontSize=14;fontStyle=1;align=left;" vertex="1" parent="p1">
+          <mxGeometry x="500" y="200" width="300" height="20" as="geometry" />
         </mxCell>
-        <mxCell id="pe16" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;dashed=1;" edge="1" parent="p1" source="q1" target="s0"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="h1" value="&lt;b&gt;Review queue&lt;/b&gt;&#10;the page beside every field, its quote,&#10;every rule that ran, the agent's account" style="rounded=0;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="p1">
+          <mxGeometry x="500" y="228" width="330" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="h2" value="&lt;b&gt;Save&lt;/b&gt; · keeps the values, re-runs the rules,&#10;leaves the decision where it was.&#10;An edit, not a verdict." style="rounded=0;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="p1">
+          <mxGeometry x="500" y="305" width="330" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="h3" value="&lt;b&gt;Re-check&lt;/b&gt; · re-judges under today's policy&#10;no render, no OCR, no model call&#10;7 documents in 25 ms" style="rounded=0;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="p1">
+          <mxGeometry x="500" y="382" width="330" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="h4" value="&lt;b&gt;Approve &amp; post&lt;/b&gt; · refused while a blocking&#10;rule still fails. Fix the value or reject —&#10;there is no way past a failing check." style="rounded=0;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="p1">
+          <mxGeometry x="500" y="459" width="330" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="h5" value="&lt;b&gt;Re-check refuses two things&lt;/b&gt;&#10;· a document a person rejected — a policy&#10;  change is not consent to overturn them&#10;· a posted document — that is a credit note,&#10;  not a re-run" style="rounded=0;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="p1">
+          <mxGeometry x="880" y="382" width="300" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="ph1" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;dashed=1;" edge="1" parent="p1" source="g7" target="h1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ph2" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="p1" source="h1" target="h2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ph3" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="p1" source="h2" target="h3"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ph4" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="p1" source="h3" target="h4"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ph5" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="p1" source="h4" target="g10"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="store" value="&lt;b&gt;What is kept&lt;/b&gt; · the whole run, as JSON&#10;OCR text · every field with its quote and confidence&#10;every rule result · every stage and how long it took&#10;&#10;→ any decision reconstructable months later&#10;→ re-judged without reading the page again" style="rounded=0;html=1;fillColor=#f5f5f5;strokeColor=#999999;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="p1">
+          <mxGeometry x="40" y="690" width="420" height="110" as="geometry" />
+        </mxCell>
       </root>
     </mxGraphModel>
   </diagram>
 
-  <diagram id="agents" name="3 · Agents, tools and prompts">
-    <mxGraphModel dx="1600" dy="1100" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200" math="0" shadow="0">
+  <diagram id="agents" name="3 · Agents and tools">
+    <mxGraphModel dx="1400" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
       <root>
         <mxCell id="a0" />
         <mxCell id="a1" parent="a0" />
 
-        <mxCell id="at" value="The three agents that use tools or write prose — and what each is prevented from doing" style="text;html=1;fontSize=22;fontStyle=1;align=left;" vertex="1" parent="a1">
-          <mxGeometry x="40" y="20" width="1100" height="34" as="geometry" />
+        <mxCell id="at" value="Agents" style="text;html=1;fontSize=22;fontStyle=1;align=left;" vertex="1" parent="a1">
+          <mxGeometry x="40" y="20" width="400" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="asb" value="Three places a model does more than read. None of them can change a stored value." style="text;html=1;fontSize=13;align=left;fontColor=#555555;" vertex="1" parent="a1">
+          <mxGeometry x="40" y="50" width="700" height="22" as="geometry" />
         </mxCell>
 
         <!-- reconciler -->
-        <mxCell id="rec" value="RECONCILER — agents/reconciler.py" style="swimlane;html=1;startSize=28;fillColor=#ffffff;strokeColor=#9673a6;fontSize=13;fontStyle=1;align=left;spacingLeft=12;" vertex="1" parent="a1">
-          <mxGeometry x="40" y="80" width="740" height="620" as="geometry" />
+        <mxCell id="r0" value="RECONCILER · runs only after a check has failed" style="text;html=1;fontSize=14;fontStyle=1;align=left;" vertex="1" parent="a1">
+          <mxGeometry x="40" y="90" width="500" height="20" as="geometry" />
         </mxCell>
-        <mxCell id="rec0" value="&lt;b&gt;Runs only when a check has already failed.&lt;/b&gt; Nothing on the happy path." style="text;html=1;fontSize=11;fontStyle=2;align=left;" vertex="1" parent="rec">
-          <mxGeometry x="16" y="34" width="700" height="20" as="geometry" />
-        </mxCell>
-        <mxCell id="rec1" value="&lt;b&gt;system: RECONCILER_SYSTEM&lt;/b&gt;&#10;&quot;You are an accounts-payable analyst reviewing an automated&#10;extraction before it posts to the ledger.&#10;&#10;Verify with tools before you conclude.&#10;Never assert a value you have not confirmed with a tool.&#10;Propose a correction only when read_document shows that exact&#10;value on the page; if the correct value is not printed, say so&#10;and recommend review instead.&#10;&#10;Finish with JSON only.&quot;" style="rounded=1;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="rec">
-          <mxGeometry x="16" y="60" width="360" height="160" as="geometry" />
-        </mxCell>
-        <mxCell id="rec2" value="&lt;b&gt;user: reconciliation_prompt(...)&lt;/b&gt;&#10;doc_type&#10;every populated field, its value and confidence,&#10;  marked [UNVERIFIED] where ungrounded&#10;the fields that came back empty&#10;every failed check, with severity and message&#10;+ the exact JSON shape to answer in&#10;&#10;&lt;b&gt;loop:&lt;/b&gt; MAX_ITERATIONS 6 · max_tokens 3000&#10;temperature 0 · history trimmed to 40 messages&#10;tool results truncated to 2,500 chars" style="rounded=1;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="rec">
-          <mxGeometry x="392" y="60" width="330" height="160" as="geometry" />
+        <mxCell id="r1" value="&lt;b&gt;Prompt&lt;/b&gt; · RECONCILER_SYSTEM&#10;&quot;verify with tools before you conclude&#10;never assert what a tool has not confirmed&#10;propose a correction only if the page shows it&#10;otherwise say so and recommend review&quot;&#10;&#10;&lt;b&gt;Given&lt;/b&gt; · doc type · every field with its&#10;confidence, ungrounded ones marked&#10;· every failed check and its message&#10;&#10;&lt;b&gt;Loop&lt;/b&gt; · ≤ 6 rounds · temperature 0" style="rounded=1;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="a1">
+          <mxGeometry x="40" y="115" width="300" height="200" as="geometry" />
         </mxCell>
 
-        <mxCell id="tools" value="THE SEVEN TOOLS — agents/tools.py" style="swimlane;html=1;startSize=24;fillColor=#f8fbff;strokeColor=#6c8ebf;fontSize=11;fontStyle=1;" vertex="1" parent="rec">
-          <mxGeometry x="16" y="240" width="706" height="230" as="geometry" />
+        <mxCell id="t0" value="&lt;b&gt;Seven tools · all read-only&lt;/b&gt;" style="text;html=1;fontSize=11;fontStyle=1;align=left;" vertex="1" parent="a1">
+          <mxGeometry x="370" y="115" width="260" height="18" as="geometry" />
         </mxCell>
-        <mxCell id="tl1" value="&lt;b&gt;read_document&lt;/b&gt;&#10;what the page actually says — the only&#10;source a correction may come from" style="rounded=1;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;align=left;spacingLeft=6;verticalAlign=top;spacingTop=4;" vertex="1" parent="tools">
-          <mxGeometry x="12" y="32" width="220" height="60" as="geometry" />
+        <mxCell id="t1" value="read_document · what the page says" style="rounded=1;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=8;" vertex="1" parent="a1">
+          <mxGeometry x="370" y="137" width="290" height="26" as="geometry" />
         </mxCell>
-        <mxCell id="tl2" value="&lt;b&gt;lookup_vendor&lt;/b&gt;&#10;the vendor master file" style="rounded=1;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;align=left;spacingLeft=6;verticalAlign=top;spacingTop=4;" vertex="1" parent="tools">
-          <mxGeometry x="244" y="32" width="220" height="60" as="geometry" />
+        <mxCell id="t2" value="lookup_vendor" style="rounded=1;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=8;" vertex="1" parent="a1">
+          <mxGeometry x="370" y="167" width="290" height="26" as="geometry" />
         </mxCell>
-        <mxCell id="tl3" value="&lt;b&gt;lookup_purchase_order&lt;/b&gt;&#10;the PO register" style="rounded=1;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;align=left;spacingLeft=6;verticalAlign=top;spacingTop=4;" vertex="1" parent="tools">
-          <mxGeometry x="476" y="32" width="218" height="60" as="geometry" />
+        <mxCell id="t3" value="lookup_purchase_order" style="rounded=1;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=8;" vertex="1" parent="a1">
+          <mxGeometry x="370" y="197" width="290" height="26" as="geometry" />
         </mxCell>
-        <mxCell id="tl4" value="&lt;b&gt;lookup_contract&lt;/b&gt;&#10;the contract register" style="rounded=1;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;align=left;spacingLeft=6;verticalAlign=top;spacingTop=4;" vertex="1" parent="tools">
-          <mxGeometry x="12" y="102" width="220" height="55" as="geometry" />
+        <mxCell id="t4" value="lookup_contract" style="rounded=1;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=8;" vertex="1" parent="a1">
+          <mxGeometry x="370" y="227" width="290" height="26" as="geometry" />
         </mxCell>
-        <mxCell id="tl5" value="&lt;b&gt;find_posted_records&lt;/b&gt;&#10;confirm a suspected duplicate" style="rounded=1;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;align=left;spacingLeft=6;verticalAlign=top;spacingTop=4;" vertex="1" parent="tools">
-          <mxGeometry x="244" y="102" width="220" height="55" as="geometry" />
+        <mxCell id="t5" value="find_posted_records · confirm a duplicate" style="rounded=1;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=8;" vertex="1" parent="a1">
+          <mxGeometry x="370" y="257" width="290" height="26" as="geometry" />
         </mxCell>
-        <mxCell id="tl6" value="&lt;b&gt;check_arithmetic&lt;/b&gt;&#10;any sum — the model never adds up itself" style="rounded=1;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;align=left;spacingLeft=6;verticalAlign=top;spacingTop=4;" vertex="1" parent="tools">
-          <mxGeometry x="476" y="102" width="218" height="55" as="geometry" />
+        <mxCell id="t6" value="check_arithmetic · it never adds up itself" style="rounded=1;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=8;" vertex="1" parent="a1">
+          <mxGeometry x="370" y="287" width="290" height="26" as="geometry" />
         </mxCell>
-        <mxCell id="tl7" value="&lt;b&gt;validate_tax_id&lt;/b&gt;  Thai check digit" style="rounded=1;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;align=left;spacingLeft=6;" vertex="1" parent="tools">
-          <mxGeometry x="12" y="167" width="220" height="40" as="geometry" />
-        </mxCell>
-        <mxCell id="tl8" value="Every tool is read-only. None of them can write a field, a record or a master row." style="text;html=1;fontSize=10;fontStyle=2;align=left;" vertex="1" parent="tools">
-          <mxGeometry x="244" y="170" width="450" height="34" as="geometry" />
+        <mxCell id="t7" value="validate_tax_id" style="rounded=1;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=8;" vertex="1" parent="a1">
+          <mxGeometry x="370" y="317" width="290" height="26" as="geometry" />
         </mxCell>
 
-        <mxCell id="recv" value="&lt;b&gt;VETTING — the corrections are re-grounded before a human sees them&lt;/b&gt;&#10;for each proposed correction:  field must exist in the schema  ·  the quoted evidence must be&#10;findable on the page (fuzzy ≥ 88)  ·  the quote must actually state the proposed value&#10;&#10;A correction that fails any of these is shown as ungrounded and cannot be applied.&#10;Measured on a real document: the agent proposed replacing the subtotal — the one change that&#10;would have made the arithmetic check pass — and the guard refused it, because two channels had&#10;already read and agreed that number." style="rounded=0;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="rec">
-          <mxGeometry x="16" y="484" width="706" height="120" as="geometry" />
+        <mxCell id="rg" value="&lt;b&gt;Every suggestion is re-grounded&lt;/b&gt;&#10;· the field must exist in the schema&#10;· the quote must be on the page (≥ 88)&#10;· the quote must state the proposed value&#10;&#10;Fails any → shown unverified, cannot apply.&#10;&#10;Seen on a real invoice: it proposed replacing&#10;the subtotal — the one change that would have&#10;made the arithmetic pass — and was refused." style="rounded=0;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="a1">
+          <mxGeometry x="700" y="115" width="320" height="185" as="geometry" />
         </mxCell>
-        <mxCell id="ae1" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="rec" source="rec2" target="tools"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="ae2" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="rec" source="tools" target="recv"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ae1" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;startArrow=block;" edge="1" parent="a1" source="r1" target="t3"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ae2" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="a1" source="t1" target="rg"><mxGeometry relative="1" as="geometry" /></mxCell>
 
-        <!-- rule authoring -->
-        <mxCell id="auth" value="RULE AUTHORING — rules/authoring.py" style="swimlane;html=1;startSize=28;fillColor=#ffffff;strokeColor=#9673a6;fontSize=13;fontStyle=1;align=left;spacingLeft=12;" vertex="1" parent="a1">
-          <mxGeometry x="820" y="80" width="740" height="330" as="geometry" />
+        <!-- authoring -->
+        <mxCell id="w0" value="RULE AUTHORING · the model compiles a rule once, then never runs it" style="text;html=1;fontSize=14;fontStyle=1;align=left;" vertex="1" parent="a1">
+          <mxGeometry x="40" y="380" width="700" height="20" as="geometry" />
         </mxCell>
-        <mxCell id="au0" value="&lt;b&gt;The model runs once, at authoring time. It never runs the rule.&lt;/b&gt;" style="text;html=1;fontSize=11;fontStyle=2;align=left;" vertex="1" parent="auth">
-          <mxGeometry x="16" y="34" width="700" height="20" as="geometry" />
+        <mxCell id="w1" value="&lt;b&gt;1 · plain language&lt;/b&gt;&#10;&quot;invoices over 100,000 must&#10;quote a purchase order&quot;" style="rounded=0;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="a1">
+          <mxGeometry x="40" y="405" width="220" height="70" as="geometry" />
         </mxCell>
-        <mxCell id="au1" value="&lt;b&gt;1. a person types plain language&lt;/b&gt;&#10;&quot;Invoices over 100,000 baht must quote a purchase order&quot;" style="rounded=0;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="auth">
-          <mxGeometry x="16" y="60" width="340" height="50" as="geometry" />
+        <mxCell id="w2" value="&lt;b&gt;2 · compiled to JSON&lt;/b&gt;&#10;{when, assert, severity}&#10;`assert` = what must be true&#10;retried once with the&#10;validator's own error" style="rounded=1;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="a1">
+          <mxGeometry x="290" y="405" width="220" height="90" as="geometry" />
         </mxCell>
-        <mxCell id="au2" value="&lt;b&gt;2. AUTHORING_SYSTEM compiles it to one JSON rule&lt;/b&gt;&#10;{rule_id, message, doc_types, severity, when, assert}&#10;explicit polarity: `assert` is what must be TRUE&#10;MAX_ATTEMPTS 2 — a rejected draft is retried with the&#10;validator's own error message fed back in" style="rounded=1;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="auth">
-          <mxGeometry x="376" y="60" width="340" height="90" as="geometry" />
+        <mxCell id="w3" value="&lt;b&gt;3 · validated&lt;/b&gt;&#10;no eval · depth ≤ 8&#10;known fields only&#10;a test that can never fail&#10;is refused" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="a1">
+          <mxGeometry x="540" y="405" width="220" height="90" as="geometry" />
         </mxCell>
-        <mxCell id="au3" value="&lt;b&gt;3. validated as an expression tree&lt;/b&gt;  rules/expressions.py&#10;no eval, no code execution · depth ≤ 8 · ≤ 12 branches&#10;only known fields and operators&#10;a test that can never fail is refused&#10;(&quot;vendor_matched present&quot; is true even when it is False)" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="auth">
-          <mxGeometry x="16" y="170" width="340" height="90" as="geometry" />
+        <mxCell id="w4" value="&lt;b&gt;4 · previewed&lt;/b&gt;&#10;replayed over documents&#10;already processed, before&#10;it is saved" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="a1">
+          <mxGeometry x="790" y="405" width="220" height="90" as="geometry" />
         </mxCell>
-        <mxCell id="au4" value="&lt;b&gt;4. previewed against documents already processed&lt;/b&gt;&#10;the author sees which of their real documents it would&#10;have failed, &lt;i&gt;before&lt;/i&gt; saving it" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="auth">
-          <mxGeometry x="376" y="170" width="340" height="70" as="geometry" />
+        <mxCell id="w5" value="&lt;b&gt;5 · saved · plain code from here on&lt;/b&gt;&#10;always answers to exactly what the author approved, and keeps running when the built-in rules are switched off" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="a1">
+          <mxGeometry x="1040" y="405" width="300" height="90" as="geometry" />
         </mxCell>
-        <mxCell id="au5" value="&lt;b&gt;5. saved — and from here it is plain code&lt;/b&gt;&#10;evaluated by the expression engine on every document, for ever. It always answers to exactly what the author approved,&#10;and it keeps running when the built-in rules are switched off." style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="auth">
-          <mxGeometry x="16" y="270" width="700" height="50" as="geometry" />
-        </mxCell>
-        <mxCell id="ae3" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="auth" source="au1" target="au2"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="ae4" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="auth" source="au2" target="au3"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="ae5" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="auth" source="au3" target="au4"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="ae6" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="auth" source="au4" target="au5"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="we1" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="a1" source="w1" target="w2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="we2" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="a1" source="w2" target="w3"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="we3" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="a1" source="w3" target="w4"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="we4" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="a1" source="w4" target="w5"><mxGeometry relative="1" as="geometry" /></mxCell>
 
         <!-- briefing -->
-        <mxCell id="brief" value="BRIEFING — agents/briefing.py" style="swimlane;html=1;startSize=28;fillColor=#ffffff;strokeColor=#9673a6;fontSize=13;fontStyle=1;align=left;spacingLeft=12;" vertex="1" parent="a1">
-          <mxGeometry x="820" y="430" width="740" height="270" as="geometry" />
+        <mxCell id="b0" value="BRIEFING · the model writes the note, never the facts" style="text;html=1;fontSize=14;fontStyle=1;align=left;" vertex="1" parent="a1">
+          <mxGeometry x="40" y="550" width="600" height="20" as="geometry" />
         </mxCell>
-        <mxCell id="br0" value="&lt;b&gt;The model writes the covering note. It never supplies the facts.&lt;/b&gt;" style="text;html=1;fontSize=11;fontStyle=2;align=left;" vertex="1" parent="brief">
-          <mxGeometry x="16" y="34" width="700" height="20" as="geometry" />
+        <mxCell id="b1" value="&lt;b&gt;1 · the agenda is computed&lt;/b&gt; · SQL&#10;payments due · contracts expiring&#10;purchase orders never billed&#10;counterparties whose documents stick" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="a1">
+          <mxGeometry x="40" y="575" width="300" height="85" as="geometry" />
         </mxCell>
-        <mxCell id="br1" value="&lt;b&gt;1. the agenda is computed first&lt;/b&gt;  store/attention.py&#10;payments due · contracts expiring · purchase orders&#10;committed and never billed · counterparties whose&#10;documents keep being held, and the rules holding them&#10;Every date, amount and count is SQL, not a model." style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="brief">
-          <mxGeometry x="16" y="60" width="340" height="90" as="geometry" />
+        <mxCell id="b2" value="&lt;b&gt;2 · the model ranks it&lt;/b&gt; · no tools&#10;&quot;never state a number, name or date&#10;that is not in the items given to you&#10;cite ids in square brackets&quot;" style="rounded=1;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="a1">
+          <mxGeometry x="370" y="575" width="300" height="85" as="geometry" />
         </mxCell>
-        <mxCell id="br2" value="&lt;b&gt;2. BRIEFING_SYSTEM ranks it&lt;/b&gt;  no tools&#10;&quot;You are given items that are already true.&#10;Never state a number, name or date that is not in&#10;the items given to you. Cite item ids in square&#10;brackets. Lead with what is late, then what is stuck.&quot;&#10;max_tokens 1200" style="rounded=1;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="brief">
-          <mxGeometry x="376" y="60" width="340" height="100" as="geometry" />
+        <mxCell id="b3" value="&lt;b&gt;3 · citations checked back&lt;/b&gt;&#10;an id not on the agenda is dropped&#10;and the drop reported&#10;every item links to its document" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="a1">
+          <mxGeometry x="700" y="575" width="300" height="85" as="geometry" />
         </mxCell>
-        <mxCell id="br3" value="&lt;b&gt;3. every citation is checked back against the agenda&lt;/b&gt;&#10;an id that is not on it is dropped and the drop reported. Brackets are stripped before matching — the prompt shows&#10;ids as [CTR-2025-018] and rejecting that form would be the check enforcing punctuation rather than truth.&#10;&#10;&lt;b&gt;What this cannot catch:&lt;/b&gt; real ids in a wrong relationship. Observed once — two purchase orders grouped under one&#10;supplier when they belong to two. The highlights carry computed headlines beside every claim, so the page contradicts&#10;the prose where it matters. Without a model the page still works, in duller words." style="rounded=0;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="brief">
-          <mxGeometry x="16" y="170" width="700" height="90" as="geometry" />
+        <mxCell id="b4" value="&lt;b&gt;What this cannot catch&lt;/b&gt;&#10;real ids in a wrong relationship.&#10;Seen once: two POs grouped under&#10;one supplier when they belong to two.&#10;The computed facts sit beside the prose,&#10;so the page contradicts it where it matters." style="rounded=0;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;spacingTop=6;" vertex="1" parent="a1">
+          <mxGeometry x="1030" y="575" width="310" height="110" as="geometry" />
         </mxCell>
-        <mxCell id="ae7" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="brief" source="br1" target="br2"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="ae8" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="brief" source="br2" target="br3"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="be1" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="a1" source="b1" target="b2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="be2" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="a1" source="b2" target="b3"><mxGeometry relative="1" as="geometry" /></mxCell>
 
-        <mxCell id="foot" value="One rule holds across all three: a model may read, look up, propose and explain. It may never be the thing that decides a value is correct." style="text;html=1;fontSize=13;fontStyle=1;align=left;" vertex="1" parent="a1">
-          <mxGeometry x="40" y="720" width="1200" height="26" as="geometry" />
+        <mxCell id="foot" value="A model may read, look up, propose and explain. It is never the thing that decides a value is correct." style="text;html=1;fontSize=13;fontStyle=1;align=left;" vertex="1" parent="a1">
+          <mxGeometry x="40" y="720" width="900" height="24" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
