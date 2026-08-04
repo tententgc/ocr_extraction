@@ -451,6 +451,34 @@ tbody tr:hover { background: var(--surface-2); }
 .three-col .bar-row .track { flex: 0 0 54px; }
 .bar-row .dim { color: var(--muted); font-style: normal; font-size: 11px; }
 
+/* ---------- insights: needs attention ---------- */
+.attn {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+  padding: 11px 0; border-bottom: 1px solid var(--border);
+}
+.attn:last-child { border-bottom: 0; }
+.attn-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13.5px; }
+.attn-detail { font-size: 12.5px; color: var(--text); margin-top: 4px; line-height: 1.5; }
+.attn-detail code { font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
+.attn-source { font-size: 11.5px; color: var(--muted); margin-top: 3px; font-family: var(--mono); }
+.attn-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.attn-days { font: 600 12px/1 var(--mono); color: var(--muted); white-space: nowrap; }
+.attn.overdue .attn-days { color: var(--danger); }
+.attn.soon .attn-days { color: var(--warn); }
+
+.briefing {
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 14px 16px; margin-bottom: 14px;
+}
+.briefing-head { display: flex; align-items: center; gap: 9px; margin-bottom: 8px; flex-wrap: wrap; }
+.briefing-text { font-size: 13.5px; line-height: 1.6; }
+.briefing-list { margin: 10px 0 8px; padding-left: 18px; font-size: 12.5px; line-height: 1.65; }
+.briefing-list li { margin-bottom: 3px; }
+.linkish {
+  background: none; border: 0; padding: 0 0 0 4px; color: var(--accent);
+  font-size: 12px; cursor: pointer; text-decoration: underline;
+}
+
 .master-tabs { display: flex; gap: 7px; margin-bottom: 12px; flex-wrap: wrap; }
 .chip-tab {
   padding: 5px 12px; border-radius: 999px; font-size: 12.5px; cursor: pointer;

@@ -131,3 +131,43 @@ Investigate with the tools, then return exactly this JSON shape:
 {RECONCILER_SCHEMA}
 
 Leave "corrections" empty when the page does not show a different value."""
+
+
+BRIEFING_SYSTEM = """You are the finance lead's morning briefing. You are given a \
+list of items that are already true - dates, amounts and counts computed from the \
+ledger. Your job is to say what matters and in what order, not to compute anything.
+
+Rules:
+- Never state a number, name or date that is not in the items given to you.
+- Cite item ids in square brackets, like [PAY-REC-1234], both in the summary and \
+in highlights. Each one becomes a link the reader clicks to open the document \
+behind it; a sentence about an item they cannot open is worthless.
+- Lead with what is late or closest, then what is stuck. Skip anything routine.
+- Write for someone with two minutes. Plain business English, no headings, no \
+bullet symbols, no filler like "it is important to note".
+- If nothing is urgent, say so in one sentence rather than inventing concern.
+
+Finish with JSON only."""
+
+
+BRIEFING_SCHEMA = """{
+  "summary": "<2-4 sentences: what needs doing today and why, in priority order>",
+  "highlights": [{"item_id": "<exact id from the list>", "note": "<one short sentence on why this one>"}],
+  "watch": "<one sentence on a pattern worth noticing, or empty>"
+}"""
+
+
+def briefing_prompt(as_of: str, items_summary: str, parties_summary: str) -> str:
+    """Hand over the facts and ask only for judgement about them."""
+    return f"""Today is {as_of}.
+
+Items needing attention:
+{items_summary}
+
+Counterparties whose documents are held:
+{parties_summary}
+
+Return exactly this JSON shape:
+{BRIEFING_SCHEMA}
+
+Use only the item ids listed above. Order "highlights" by what should be done first."""

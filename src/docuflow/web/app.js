@@ -15,6 +15,7 @@ const state = {
   recordKind: null,     // which kind the records table is filtered to
   insights: null,       // per-document-type reading quality
   insightType: null,    // which document type the insight breakdowns describe
+  agenda: null,         // dated items and stuck counterparties needing attention
   masterTab: 'vendors', // which master file is on screen
   draft: null,          // a compiled rule awaiting approval
   currentDoc: null,     // document being reviewed
@@ -38,6 +39,17 @@ const DECISION = {
   needs_review: { label: 'Needs human review', icon: '⚑', chip: 'warn' },
   rejected: { label: 'Rejected', icon: '✕', chip: 'bad' },
 };
+
+/* Saving a correction re-runs the rules, so a document can clear every check
+   without being posted - "save" deliberately stops short of the ledger. Calling
+   that "Posted automatically" claims something that has not happened; the
+   document is cleared and waiting for someone to approve it. */
+function decisionOf(doc) {
+  if (doc.decision === 'auto_post' && !doc.record_id) {
+    return { label: 'Cleared — ready to post', icon: '✓', chip: 'ok' };
+  }
+  return DECISION[doc.decision] || { label: doc.decision, icon: '•', chip: '' };
+}
 
 function toast(message, kind = '') {
   const node = document.createElement('div');
@@ -63,14 +75,18 @@ function confClass(value) {
 
 /* ------------------------------------------------------------------ tabs */
 
-$$('.tab').forEach((tab) => tab.addEventListener('click', () => {
-  $$('.tab').forEach((t) => t.classList.toggle('active', t === tab));
-  $$('.view').forEach((v) => v.classList.toggle('active', v.id === `view-${tab.dataset.view}`));
-  if (tab.dataset.view === 'queue') loadQueue();
-  if (tab.dataset.view === 'records') loadRecords();
-  if (tab.dataset.view === 'insights') loadInsights();
-  if (tab.dataset.view === 'settings') { loadSettings(); loadCustomRules(); }
-}));
+/* Named so that a link on one page can send the reader to another - following an
+   insight to the document it came from is a normal move here, not an edge case. */
+function showView(name) {
+  $$('.tab').forEach((tab) => tab.classList.toggle('active', tab.dataset.view === name));
+  $$('.view').forEach((view) => view.classList.toggle('active', view.id === `view-${name}`));
+  if (name === 'queue') loadQueue();
+  if (name === 'records') loadRecords();
+  if (name === 'insights') loadInsights();
+  if (name === 'settings') { loadSettings(); loadCustomRules(); }
+}
+
+$$('.tab').forEach((tab) => tab.addEventListener('click', () => showView(tab.dataset.view)));
 
 /* ---------------------------------------------------------------- status */
 
@@ -269,7 +285,7 @@ function renderResult(data, host, editable) {
   state.edits = {};
   state.page = 1;
 
-  const decision = DECISION[doc.decision];
+  const decision = decisionOf(doc);
   const schema = state.schemas[doc.doc_type] || { fields: [], display_name: doc.doc_type };
 
   host.innerHTML = `
@@ -595,7 +611,7 @@ async function loadQueue() {
     <td>${esc(row.doc_type.replace('_', ' '))}</td>
     <td>${esc(row.source_kind)}</td>
     <td>${pct(row.confidence)}</td>
-    <td><span class="chip ${DECISION[row.decision]?.chip || ''}">${DECISION[row.decision]?.label || row.decision}</span></td>
+    <td><span class="chip ${decisionOf(row).chip}">${esc(decisionOf(row).label)}</span></td>
     <td>${row.record_id ? esc(row.record_id) : '—'}</td>
     <td class="row-actions">
       <button class="btn small" data-open="${esc(row.document_id)}">Open</button>
@@ -658,7 +674,10 @@ $('#queue-recheck').addEventListener('click', async () => {
 async function openDocument(documentId) {
   try {
     const data = await api(`/api/documents/${encodeURIComponent(documentId)}`);
-    const editable = data.document.decision !== 'auto_post' && !data.document.record_id;
+    // Posted is what closes a document to editing, not the routing decision.
+    // Judging by decision hid the Approve button on exactly the documents a save
+    // had just cleared, leaving them stuck: cleared, unposted, unapprovable.
+    const editable = !data.document.record_id;
     renderResult({ ...data, reconciliation: extractReconciliation(data.document) },
       $('#review-host'), editable);
     $('#review-host').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -818,12 +837,15 @@ $('#records-table').addEventListener('click', async (event) => {
 /* -------------------------------------------------------------- insights */
 
 async function loadInsights() {
-  let metrics, insights;
+  let metrics, insights, agenda;
   try {
-    [metrics, insights] = await Promise.all([api('/api/metrics'), api('/api/insights')]);
+    [metrics, insights, agenda] = await Promise.all([
+      api('/api/metrics'), api('/api/insights'), api('/api/attention'),
+    ]);
   } catch (error) { toast(error.message, 'error'); return; }
 
   state.insights = insights;
+  renderAttention(agenda);
   const decisions = metrics.by_decision || {};
   $('#metric-grid').innerHTML = `
     ${metric('Documents processed', metrics.total_documents, 'since the database was created')}
@@ -841,6 +863,136 @@ async function loadInsights() {
 const metric = (label, value, sub) => `<div class="metric">
   <div class="label">${esc(label)}</div><div class="value">${esc(value)}</div>
   <div class="sub">${esc(sub)}</div></div>`;
+
+/* ------------------------------------------------------------- attention */
+
+/* Every line says where it came from and opens that document. A dashboard
+   figure nobody can trace back to a page is just a confident guess. */
+const URGENCY = {
+  overdue: { chip: 'bad', label: 'overdue' },
+  soon: { chip: 'warn', label: 'due soon' },
+  watch: { chip: '', label: 'watch' },
+};
+
+function renderAttention(agenda) {
+  state.agenda = agenda;
+  $('#attention-asof').textContent = `as of ${agenda.as_of}`;
+
+  const { overdue = 0, soon = 0, stuck_parties = 0 } = agenda.counts || {};
+  if (!agenda.items.length && !agenda.parties.length) {
+    $('#attention-list').innerHTML =
+      '<p class="muted">Nothing is due and nothing is held. Process a document to fill this in.</p>';
+    $('#stuck-parties').innerHTML = '';
+    return;
+  }
+
+  $('#attention-list').innerHTML = agenda.items.map((item) => {
+    const urgency = URGENCY[item.urgency] || URGENCY.watch;
+    return `<div class="attn ${esc(item.urgency)}">
+      <div class="attn-main">
+        <div class="attn-head">
+          <span class="chip ${urgency.chip}">${esc(urgency.label)}</span>
+          <b>${esc(item.headline)}</b>
+        </div>
+        <div class="attn-detail">${esc(item.detail)}</div>
+        <div class="attn-source">from ${esc(item.source)}</div>
+      </div>
+      <div class="attn-actions">
+        ${item.days_left === null ? '' : `<div class="attn-days">${daysLabel(item.days_left)}</div>`}
+        ${item.document_id
+          ? `<button class="btn small" data-open-source="${esc(item.document_id)}">Read it</button>`
+          : '<span class="muted small">no document on file</span>'}
+      </div>
+    </div>`;
+  }).join('');
+
+  $('#stuck-parties').innerHTML = agenda.parties.length ? `
+    <h4 class="sub-head" style="margin-top:16px">Who is stuck</h4>
+    <p class="muted small">One held document is an incident. The same counterparty held
+      repeatedly for the same rule is a problem with the record, the policy or how they
+      issue documents.</p>
+    ${agenda.parties.map((party) => `<div class="attn">
+      <div class="attn-main">
+        <div class="attn-head"><b>${esc(party.counterparty)}</b>
+          <span class="chip">${party.documents} held</span></div>
+        <div class="attn-detail">${party.rules.length
+          ? `Held by ${party.rules.map((rule) => `<code>${esc(rule)}</code>`).join(', ')}.`
+          : 'No rule failed — held on confidence alone.'}
+          Oldest has waited ${party.oldest_days} day(s).</div>
+      </div>
+      <div class="attn-actions">${party.document_ids.slice(0, 3).map((id) =>
+        `<button class="btn small" data-open-source="${esc(id)}">${esc(id.slice(-6))}</button>`).join('')}</div>
+    </div>`).join('')}` : '';
+}
+
+const daysLabel = (days) => days < 0 ? `${Math.abs(days)}d late` : days === 0 ? 'today' : `in ${days}d`;
+
+/* The agent writes "[CTR-2025-018]" the way a person writes a reference number.
+   Turn each one into the thing it refers to: the counterparty's name, clickable
+   through to the document. An id printed raw is a worse sentence and a dead end.
+   Escaping happens first, so nothing from the model reaches the DOM as markup. */
+function citeLinks(text) {
+  const items = state.agenda?.items || [];
+  return esc(text).replace(/\[([A-Za-z0-9][\w.\-]*)\]/g, (whole, id) => {
+    const item = items.find((candidate) => candidate.item_id === id);
+    if (!item) return whole;
+    const label = esc(item.label || item.headline);
+    return item.document_id
+      ? `<button class="linkish" data-open-source="${esc(item.document_id)}">${label}</button>`
+      : `<b>${label}</b>`;
+  });
+}
+
+/* The agent's note. It ranks and explains; it never supplies a number, and any
+   item id it cited that is not on the agenda was dropped before this rendered. */
+function renderBriefing(briefing) {
+  if (!briefing) { $('#briefing').innerHTML = ''; return; }
+  const highlights = (briefing.highlights || []).map((highlight) => {
+    const item = (state.agenda?.items || []).find((i) => i.item_id === highlight.item_id);
+    if (!item) return '';
+    return `<li><b>${esc(item.headline)}</b> — ${esc(highlight.note)}
+      ${item.document_id ? `<button class="linkish" data-open-source="${esc(item.document_id)}">read it</button>` : ''}</li>`;
+  }).join('');
+
+  $('#briefing').innerHTML = `<div class="briefing">
+    <div class="briefing-head">
+      <span class="chip accent">agent</span>
+      <span class="muted small">written by ${esc(briefing.written_by)} over ${
+        state.agenda?.items.length || 0} computed item(s) — it ranks them, it does not compute them</span>
+    </div>
+    <p class="briefing-text">${citeLinks(briefing.summary)}</p>
+    ${highlights ? `<ul class="briefing-list">${highlights}</ul>` : ''}
+    ${briefing.watch ? `<p class="muted small">Worth noticing: ${esc(briefing.watch)}</p>` : ''}
+    ${briefing.dropped?.length
+      ? `<p class="muted small">Dropped ${briefing.dropped.length} reference(s) to items that are not on the
+         agenda: ${esc(briefing.dropped.join(', '))}.</p>` : ''}
+    ${briefing.note ? `<p class="muted small">${esc(briefing.note)}</p>` : ''}
+  </div>`;
+}
+
+$('#attention-brief').addEventListener('click', async () => {
+  const button = $('#attention-brief');
+  button.disabled = true;
+  button.textContent = 'Reading the agenda…';
+  try {
+    const payload = await api('/api/attention/briefing', { method: 'POST' });
+    renderAttention(payload);
+    renderBriefing(payload.briefing);
+  } catch (error) {
+    toast(error.message, 'error');
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Summarise with the agent';
+  }
+});
+
+/* One handler for every "open the source" control on this page. */
+$('#attention-card').addEventListener('click', async (event) => {
+  const button = event.target.closest('[data-open-source]');
+  if (!button) return;
+  showView('queue');
+  await openDocument(button.dataset.openSource);
+});
 
 /* One card per document type. The straight-through rate is the headline because
    it is the number the whole system exists to move. */

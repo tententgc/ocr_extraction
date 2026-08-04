@@ -36,11 +36,13 @@ from docuflow.rules.authoring import available_fields, compile_rule
 from docuflow.rules.custom import CustomRuleError, build_rule
 from docuflow.rules.preview import preview_rule
 from docuflow.store.custom_rules import CustomRuleStore
+from docuflow.agents.briefing import write_briefing
 from docuflow.deletion import DeletionError, delete_document
 from docuflow.revalidate import DEFAULT_SCOPE, RevalidationError, reevaluate, reevaluate_many
 from docuflow.review import ReviewError, apply_review
 from docuflow.samples.catalog import SAMPLE_DOCUMENTS
 from docuflow.schemas.registry import DOCUMENT_SCHEMAS
+from docuflow.store.attention import AttentionStore
 from docuflow.store.corrections import CorrectionStore
 from docuflow.store.documents import DocumentStore
 from docuflow.store.insights import InsightStore
@@ -841,6 +843,28 @@ def insights() -> dict[str, Any]:
         # identifier. Aliases are included: a rule may report under a name other
         # than its own, and an unlabelled id on this page is a dead end.
         "rules": _rule_summaries(),
+    }
+
+
+@app.get("/api/attention")
+def attention() -> dict[str, Any]:
+    """What needs doing, computed from the ledger. No model involved."""
+    return AttentionStore(settings.db_path).agenda().to_json()
+
+
+@app.post("/api/attention/briefing")
+def attention_briefing() -> dict[str, Any]:
+    """The same agenda with a model's covering note over the top.
+
+    A POST because it costs a model call, and because the page should ask for it
+    rather than spend one on every visit.
+    """
+    agenda = AttentionStore(settings.db_path).agenda()
+    llm, note = resolve_llm(active_settings())
+    briefing = write_briefing(agenda, llm)
+    return {
+        **agenda.to_json(),
+        "briefing": {**briefing.to_json(), "note": briefing.note or note},
     }
 
 
