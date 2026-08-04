@@ -26,6 +26,12 @@ logger = logging.getLogger(__name__)
 # A value a human typed and confirmed is the most reliable source available.
 HUMAN_CONFIDENCE = 1.0
 
+# Shown when an edit clears every check but nobody has approved the document.
+READY_TO_POST = (
+    "Every check passes with the corrected values. The document stays here until "
+    "someone approves it, or until it is re-checked against the current policy."
+)
+
 
 class ReviewError(RuntimeError):
     """The review could not be applied."""
@@ -87,6 +93,68 @@ def _apply_edits(
     return run.with_fields(tuple(fields)), applied, rejected, history
 
 
+def _save(
+    run: DocumentRun,
+    schema,
+    settings: Settings,
+    documents: DocumentStore,
+    records: RecordStore,
+    applied: list[str],
+    rejected_edits: list[str],
+    reviewer: str,
+    document_id: str,
+) -> ReviewOutcome:
+    """Keep the corrected values. Do not move the document.
+
+    Saving is an edit, not a verdict. The rules re-run so the reviewer can see
+    what their correction fixed - that is the point of saving before deciding -
+    but the routing decision is left exactly where it was.
+
+    Recomputing it here was the older behaviour and it was wrong in a specific
+    way: a correction that cleared every check silently moved the document out
+    of "needs review" and labelled it as posted, without anybody approving
+    anything and without a record existing. A save that changes a document's
+    disposition is not a save.
+    """
+    outcome = decide(
+        run, schema, settings.auto_post_min_confidence, rules_evaluated=not settings.rules_free_mode
+    )
+    cleared = outcome.decision == "auto_post"
+
+    # The stored reasons must describe the state the document is actually in.
+    # When the edit fixed everything, the routing reasons would read like an
+    # approval, so say what is true instead: it is ready, and waiting.
+    reasons = (READY_TO_POST,) if cleared else outcome.reasons
+    # What still holds it comes from routing, not from a rule count: a document
+    # can be held with every rule passing - a required field missing, a critical
+    # value unverified, confidence short of the threshold - and "0 checks
+    # failing" next to a held document reads like a contradiction.
+    still = outcome.reasons[0] if outcome.reasons else "still held"
+    summary = (
+        f"{len(applied)} correction(s) saved by {reviewer}; "
+        + ("every check now passes" if cleared else f"still held — {still[:120]}")
+        + f" (confidence {run.confidence:.0%})"
+    )
+
+    run = run.evolve(decision_reasons=reasons).with_step(
+        TraceStep(
+            step="review",
+            status="ok" if cleared else "warning",
+            summary=summary,
+            detail={"corrections": applied, "would_route_to": outcome.decision},
+        )
+    )
+    documents.save(run)
+    records.log("review_saved", actor=reviewer, document_id=document_id, edits=applied)
+    return ReviewOutcome(
+        run,
+        None,
+        tuple(applied),
+        tuple(rejected_edits),
+        "Saved. Every check now passes — approve it to post." if cleared else "Saved.",
+    )
+
+
 def apply_review(
     settings: Settings,
     document_id: str,
@@ -141,18 +209,7 @@ def apply_review(
         return ReviewOutcome(run, None, tuple(applied), tuple(rejected_edits), "Document rejected.")
 
     if action == "save":
-        outcome = decide(
-            run,
-            schema,
-            settings.auto_post_min_confidence,
-            rules_evaluated=not settings.rules_free_mode,
-        )
-        run = run.evolve(decision=outcome.decision, decision_reasons=outcome.reasons).with_step(
-            TraceStep(step="review", summary=f"{len(applied)} correction(s) saved by {reviewer}")
-        )
-        documents.save(run)
-        records.log("review_saved", actor=reviewer, document_id=document_id, edits=applied)
-        return ReviewOutcome(run, None, tuple(applied), tuple(rejected_edits), "Corrections saved.")
+        return _save(run, schema, settings, documents, records, applied, rejected_edits, reviewer, document_id)
 
     # approve -> post, but never past a blocking rule that is still failing
     still_blocking = [finding for finding in findings if finding.is_blocking]

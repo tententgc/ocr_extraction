@@ -511,7 +511,7 @@ function renderReviewActions(doc) {
   return `<div class="review-actions">
     <span class="grow muted" id="edit-summary">No changes yet.</span>
     <button class="btn" id="btn-recheck" title="Apply the current rules and threshold to this document without reading it again">Re-check</button>
-    <button class="btn" id="btn-save">Save corrections</button>
+    <button class="btn" id="btn-save" title="Keep the corrected values. The document stays where it is until you approve or re-check it">Save</button>
     <button class="btn danger" id="btn-reject">Reject</button>
     <button class="btn primary" id="btn-approve">Approve &amp; post</button>
   </div>`;

@@ -128,6 +128,56 @@ class TestReviewWorkflow:
         assert outcome.applied == ()
         assert any("total_amount" in message for message in outcome.rejected_edits)
 
+    def test_saving_keeps_the_document_where_it_is(self, settings, master, make_run):
+        """A save is an edit, not a verdict.
+
+        Correcting the total here clears every check. The document must still be
+        in the queue afterwards: nobody approved it and no record exists, so
+        moving it out would be the system deciding on the reviewer's behalf.
+        """
+        run = self._store(settings, master, make_run, {**GOOD_INVOICE, "total_amount": 86_480.00})
+
+        outcome = apply_review(
+            settings, run.document_id, edits={"total_amount": "200090.00"}, action="save"
+        )
+
+        assert outcome.run.decision == "needs_review"
+        assert outcome.run.record_id is None
+        assert RecordStore(settings.db_path).list() == []
+        assert DocumentStore(settings.db_path).get(run.document_id).decision == "needs_review"
+
+    def test_saving_says_the_edit_worked(self, settings, master, make_run):
+        """Without re-routing, the reviewer still has to be told what changed."""
+        run = self._store(settings, master, make_run, {**GOOD_INVOICE, "total_amount": 86_480.00})
+
+        outcome = apply_review(
+            settings, run.document_id, edits={"total_amount": "200090.00"}, action="save"
+        )
+
+        assert "approve" in outcome.message.lower()
+        step = next(s for s in outcome.run.trace if s.step == "review")
+        assert "every check now passes" in step.summary
+        assert step.detail["would_route_to"] == "auto_post"
+
+    def test_saving_an_edit_that_does_not_fix_it_says_why(self, settings, master, make_run):
+        """And says it in routing's words, not as a count of failed rules.
+
+        A document can be held with every rule passing - a required field
+        missing, confidence short of the threshold - so "0 checks failing" next
+        to a held document would read as a contradiction.
+        """
+        run = self._store(settings, master, make_run, {**GOOD_INVOICE, "total_amount": 86_480.00})
+
+        outcome = apply_review(
+            settings, run.document_id, edits={"payment_terms": "Net 45"}, action="save"
+        )
+
+        step = next(s for s in outcome.run.trace if s.step == "review")
+        assert step.summary.startswith("1 correction(s) saved")
+        assert "still held —" in step.summary
+        assert outcome.run.decision == "needs_review"
+        assert any("total" in reason.lower() for reason in outcome.run.decision_reasons)
+
     def test_rejecting_marks_the_document_and_posts_nothing(self, settings, master, make_run):
         run = self._store(settings, master, make_run, GOOD_INVOICE)
         outcome = apply_review(settings, run.document_id, action="reject", note="duplicate of INV-1")
