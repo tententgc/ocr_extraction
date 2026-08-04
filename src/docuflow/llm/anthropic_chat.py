@@ -82,6 +82,15 @@ class AnthropicChat(LlmProvider):
             payload = dict(kwargs)
             if not self._send_temperature:
                 payload.pop("temperature", None)
+            # A system prompt is optional; sending an empty one is not. Messages
+            # rejects `system=None` with "system: Input should be a valid array"
+            # rather than treating it as absent, so the key has to go entirely.
+            # Only the paths that build their own turn list hit this - every
+            # prompt in the pipeline carries a system message - but the failure
+            # is a 400 that reads like a credit or auth problem, which is an
+            # expensive way to find out.
+            if payload.get("system") is None:
+                payload.pop("system", None)
             try:
                 return self._get_client().messages.create(**payload)
             except anthropic.BadRequestError as exc:
