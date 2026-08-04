@@ -355,6 +355,94 @@ def cmd_master(args: argparse.Namespace) -> int:
     return 1 if report.imported == 0 else 0
 
 
+def cmd_master_dir(args: argparse.Namespace) -> int:
+    """Load a whole directory of master-data exports.
+
+    Order matters and is not the alphabetical one: purchase orders and contracts
+    name a vendor, and a row pointing at a vendor who is not loaded yet is
+    refused. Importing them by hand in the wrong order is a mistake worth making
+    impossible rather than documenting.
+    """
+    settings = get_settings()
+    bootstrap(settings, with_samples=False)
+    master = MasterDataRepository(settings.db_path)
+
+    directory = Path(args.directory)
+    if not directory.is_dir():
+        print(f"error: {directory} is not a directory", file=sys.stderr)
+        return 1
+
+    loaded = failed = 0
+    for kind in ("vendors", "purchase_orders", "contracts"):
+        path = directory / f"{kind}.csv"
+        if not path.exists():
+            print(f"  {kind}: no {path.name} in this directory, skipped")
+            continue
+        try:
+            report = import_csv(master, kind, path.read_bytes())
+        except MasterImportError as exc:
+            print(f"error: {path.name}: {exc}", file=sys.stderr)
+            failed += 1
+            continue
+        print(f"  {report.summary}")
+        for error in report.errors:
+            print(f"    row {error.row}: {error.message}", file=sys.stderr)
+        loaded += report.imported
+        failed += len(report.errors)
+
+    print(f"\n{loaded} record(s) loaded" + (f", {failed} refused" if failed else "."))
+    return 1 if failed and not loaded else 0
+
+
+def cmd_reset(args: argparse.Namespace) -> int:
+    """Empty everything, so a test run starts from a known state.
+
+    Deliberately not the default of any other command. Wiping the ledger is the
+    kind of thing that should take a flag saying you meant it.
+    """
+    from docuflow.deletion import wipe_documents
+
+    if not args.confirm:
+        print(
+            "This removes every processed document, every posted record and the\n"
+            "master file. Re-run with --confirm if that is what you want.",
+            file=sys.stderr,
+        )
+        return 1
+
+    settings = get_settings()
+    bootstrap(settings, with_samples=False)
+
+    wiped = wipe_documents(settings, actor="cli")
+    print(wiped.message)
+    if not args.keep_master:
+        cleared = MasterDataRepository(settings.db_path).clear()
+        print(
+            "Master file emptied: "
+            + ", ".join(f"{count} {name}" for name, count in cleared.items())
+            + "."
+        )
+    return 0
+
+
+def cmd_real_samples(args: argparse.Namespace) -> int:
+    """Render the working corpus and its master data."""
+    from docuflow.samples.real_corpus import generate
+
+    out_dir = Path(args.out)
+    manifest = generate(out_dir)
+    by_arrival: dict[str, int] = {}
+    for entry in manifest:
+        by_arrival[entry["arrival"]] = by_arrival.get(entry["arrival"], 0) + 1
+
+    print(f"Wrote {len(manifest)} document(s) to {out_dir}:")
+    for arrival, count in sorted(by_arrival.items()):
+        print(f"  {count:2} × {arrival}")
+    print(f"  master data: {out_dir / 'master'}")
+    print(f"\nLoad it with:\n  docuflow reset --confirm\n  docuflow master load {out_dir / 'master'}")
+    return 0
+
+
 def cmd_models(args: argparse.Namespace) -> int:
     from docuflow.models_registry import list_models
 
@@ -465,6 +553,25 @@ def main(argv: list[str] | None = None) -> int:
     master_sub.add_parser("show", help="print the master file")
     master_sub.add_parser("clear", help="empty the master file")
     master_parser.set_defaults(func=cmd_master)
+
+    # A directory load is its own command rather than a flag on `import`,
+    # because it does something `import` cannot: it orders the files so that
+    # vendors exist before the rows that reference them.
+    master_load = master_sub.add_parser("load", help="load vendors, purchase orders and contracts from a directory")
+    master_load.add_argument("directory", help="directory holding vendors.csv, purchase_orders.csv, contracts.csv")
+    master_load.set_defaults(func=cmd_master_dir)
+
+    reset_parser = subparsers.add_parser("reset", help="empty every document, record and master row")
+    reset_parser.add_argument("--confirm", action="store_true", help="required; this cannot be undone")
+    reset_parser.add_argument("--keep-master", action="store_true",
+                              help="clear the documents and ledger but leave the master file loaded")
+    reset_parser.set_defaults(func=cmd_reset)
+
+    real_parser = subparsers.add_parser(
+        "real-samples", help="render the working corpus (mixed PDFs, scans and photographs)"
+    )
+    real_parser.add_argument("--out", default="real_samples", help="where to write it")
+    real_parser.set_defaults(func=cmd_real_samples)
 
     models_parser = subparsers.add_parser("models", help="list selectable OCR and agent models")
     models_parser.set_defaults(func=cmd_models)

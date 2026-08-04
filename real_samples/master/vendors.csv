@@ -1,0 +1,13 @@
+vendor_id,legal_name,aliases,tax_id,bank_account,status,payment_terms,currency
+V-1001,"Siam Tech Supply Co., Ltd.",Siam Tech;Siam Tech Supply;บริษัท สยามเทค ซัพพลาย จำกัด,0105543000129,1234567890,active,Net 30,THB
+V-1002,Northwind Logistics Ltd.,Northwind;Northwind Logistics,0105561071237,9876543210,active,Net 45,THB
+V-1003,Bluepeak Software GmbH,Bluepeak;Bluepeak Software,DE811907980,DE89370400440532013000,active,Net 30,EUR
+V-1004,"Chao Phraya Facility Services Co., Ltd.",Chao Phraya Facility;CPFS;บริษัท เจ้าพระยา แฟซิลิตี้ จำกัด,0994000165111,5550001111,active,Net 15,THB
+V-1005,"Orient Paper & Print Co., Ltd.",Orient Paper;Orient Print,0105539000117,4440002222,on_hold,Net 30,THB
+V-1006,"Rungruang Steel Works Co., Ltd.",Rungruang Steel;RSW;บริษัท รุ่งเรือง สตีล เวิร์ค จำกัด,0105552000110,3120045678,active,Net 60,THB
+V-1007,Pacific Rim Freight Pte. Ltd.,Pacific Rim;PRF Singapore,SG198800123K,SG21DBSS0110001234567,active,Net 30,SGD
+V-1008,"Thai Beverage Supply Co., Ltd.",Thai Beverage Supply;TBS;บริษัท ไทยเบเวอเรจ ซัพพลาย จำกัด,0105563000221,7710028899,active,Net 15,THB
+V-1009,Meridian Consulting LLP,Meridian;Meridian Consulting,GB428765190,GB29NWBK60161331926819,active,Net 30,USD
+V-1010,"Krungthep Print House Co., Ltd.",Krungthep Print;KPH,0105547000336,2260031122,blocked,Net 30,THB
+V-1011,"Sunrise Electrical Co., Ltd.",Sunrise Electrical;บริษัท ซันไรส์ อิเล็คทริคอล จำกัด,0105571000448,8890014455,active,Net 45,THB
+V-1012,"Nakhon Chemicals Co., Ltd.",Nakhon Chemicals;NCC,0105539000551,6640077331,on_hold,Net 30,THB
