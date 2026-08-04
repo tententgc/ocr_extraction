@@ -148,6 +148,7 @@ def _serialize_result(result: PipelineResult) -> dict[str, Any]:
             "root_cause": result.reconciliation.root_cause,
             "recommended_action": result.reconciliation.recommended_action,
             "reviewer_note": result.reconciliation.reviewer_note,
+            "unreliable": result.reconciliation.unreliable,
             "corrections": [
                 {
                     "field": correction.field,
@@ -155,6 +156,7 @@ def _serialize_result(result: PipelineResult) -> dict[str, Any]:
                     "evidence": correction.evidence,
                     "reason": correction.reason,
                     "grounded": correction.grounded,
+                    "contradicts_evidence": correction.contradicts_evidence,
                 }
                 for correction in result.reconciliation.corrections
             ],

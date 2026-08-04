@@ -208,12 +208,29 @@ class TestContractRules:
     }
 
     def test_expired_contract_warns(self, master, make_run):
+        """Under its own id: an agreement that ended last week is not "expiring"."""
+        findings = run_rules(build_context(master, self.CONTRACT, doc_type="contract",
+                                           make_run=make_run))
+        finding = result_for(findings, "contract_expired")
+        assert finding.passed is False
+        assert finding.detail["days_remaining"] < 0
+        assert "expired" in finding.message
+        assert result_for(findings, "contract_expiring_soon") is None
+
+    def test_a_contract_nearing_its_end_still_reports_as_expiring(self, master, make_run):
+        fields = {**self.CONTRACT, "expiry_date": "2026-09-15"}   # today is 2026-08-03
         finding = result_for(
-            run_rules(build_context(master, self.CONTRACT, doc_type="contract", make_run=make_run)),
+            run_rules(build_context(master, fields, doc_type="contract", make_run=make_run)),
             "contract_expiring_soon",
         )
         assert finding.passed is False
-        assert finding.detail["days_remaining"] < 0
+        assert finding.detail["days_remaining"] > 0
+
+    def test_switching_the_check_off_silences_both_of_its_ids(self, master, make_run):
+        """One function, two ids; the catalogue entry has to turn off all of it."""
+        context = build_context(master, self.CONTRACT, doc_type="contract", make_run=make_run)
+        findings = run_rules(context, skip={"contract_expiring_soon"})
+        assert result_for(findings, "contract_expired") is None
 
     def test_reversed_dates_block(self, master, make_run):
         fields = {**self.CONTRACT, "effective_date": "2026-07-31", "expiry_date": "2025-08-01"}

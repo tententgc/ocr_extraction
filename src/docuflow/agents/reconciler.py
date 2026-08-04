@@ -27,6 +27,7 @@ VALID_ROOT_CAUSES = frozenset({"ocr_error", "document_error", "master_data_gap",
 MAX_CORRECTIONS = 6
 # Generous, because reasoning models spend part of this budget thinking.
 MAX_TOKENS = 3000
+EVIDENCE_CHARS = 160
 
 
 @dataclass(frozen=True)
@@ -36,6 +37,10 @@ class SuggestedCorrection:
     evidence: str
     reason: str
     grounded: bool
+    # The value already on the field is itself quoted from the page. Proposing a
+    # different one is not an ungrounded guess, it is an argument with proof, and
+    # it reads differently to a reviewer.
+    contradicts_evidence: bool = False
 
 
 @dataclass(frozen=True)
@@ -53,14 +58,35 @@ class Reconciliation:
     def tools_used(self) -> list[str]:
         return [call.name for call in self.tool_calls]
 
+    @property
+    def unreliable(self) -> bool:
+        """Every correction it offered was refused by the page.
+
+        The assessment is prose and cannot be checked the way a value can. The
+        corrections can, and when none of them survive that check, the reasoning
+        that produced them is the same reasoning that produced the paragraph
+        above them - which should not then be read as a finding.
+        """
+        return bool(self.corrections) and not any(item.grounded for item in self.corrections)
+
 
 def _fields_summary(run: DocumentRun) -> str:
+    """What was read, and for the grounded ones, the line of the page proving it.
+
+    Without the quote the agent is told only that a value exists, and an agent
+    that cannot see the proof will decide there is none: one run announced that
+    a contract "contains no mention of renewal" about a field quoting the clause
+    that renews it. The evidence is already stored, having been matched against
+    the page - withholding it bought nothing.
+    """
     lines = []
     for item in run.fields:
         if item.is_empty:
             continue
-        flag = "" if item.grounded else "  [UNVERIFIED]"
-        lines.append(f"- {item.name} = {item.value!r} ({item.confidence:.0%}){flag}")
+        lines.append(f"- {item.name} = {item.value!r} ({item.confidence:.0%})"
+                     f"{'' if item.grounded else '  [UNVERIFIED]'}")
+        if item.grounded and item.evidence:
+            lines.append(f"    page says: \"{str(item.evidence)[:EVIDENCE_CHARS]}\"")
     missing = [item.name for item in run.fields if item.is_empty]
     if missing:
         lines.append(f"- not found: {', '.join(missing)}")
@@ -112,13 +138,23 @@ def _parse(result: AgentResult, run: DocumentRun) -> Reconciliation:
         grounded = find_evidence(evidence, pages).grounded and value_supported_by_evidence(
             str(value), evidence
         )
+        current = next((item for item in run.fields if item.name == name), None)
+        contradicts = bool(
+            current
+            and current.grounded
+            and not current.is_empty
+            and str(current.value).strip().casefold() != str(value).strip().casefold()
+        )
         corrections.append(
             SuggestedCorrection(
                 field=name,
                 suggested_value=str(value),
                 evidence=evidence,
                 reason=str(entry.get("reason", ""))[:300],
-                grounded=grounded,
+                # A value the page already proves is not overturned by an agent
+                # that failed to find the proof.
+                grounded=grounded and not contradicts,
+                contradicts_evidence=contradicts,
             )
         )
 

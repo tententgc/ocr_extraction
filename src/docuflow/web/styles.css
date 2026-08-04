@@ -280,6 +280,10 @@ tbody tr:hover { background: var(--surface-2); }
 
 .analyst { background: var(--accent-soft); border: 1px solid var(--accent); }
 .analyst h3 { font-size: 14px; margin-bottom: 6px; }
+/* An analyst whose every suggestion the page refused should not look like one
+   whose suggestions held. */
+.analyst.doubted { background: var(--warn-soft); border-color: var(--warn); }
+.analyst .doubt { font-size: 13px; font-weight: 600; color: var(--warn); margin-bottom: 8px; }
 .suggestion {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
   padding: 9px 11px; margin-top: 7px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px;

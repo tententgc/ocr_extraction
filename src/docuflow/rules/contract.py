@@ -48,7 +48,7 @@ def contract_dates_ordered(context: RuleContext) -> RuleFinding | None:
     return passed("contract_dates_ordered", f"Term runs {start.isoformat()} to {end.isoformat()} ({years:.1f} years).")
 
 
-@rule("contract")
+@rule("contract", emits=("contract_expiring_soon", "contract_expired"))
 def contract_expiring_soon(context: RuleContext) -> RuleFinding | None:
     """Surface contracts that are expiring or already expired."""
     end = _iso(context.value("expiry_date"))
@@ -57,8 +57,12 @@ def contract_expiring_soon(context: RuleContext) -> RuleFinding | None:
 
     days = (end - context.today).days
     if days < 0:
+        # Reported under its own id. An agreement that ended last week is not
+        # "expiring soon", and an id that says otherwise gets argued with - one
+        # run spent its assessment correcting the label rather than reading the
+        # message beside it, which said exactly the right thing.
         return failed(
-            "contract_expiring_soon",
+            "contract_expired",
             f"This agreement expired {abs(days)} days ago ({end.isoformat()}).",
             severity="warning",
             fields=["expiry_date"],

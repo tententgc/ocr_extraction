@@ -389,7 +389,7 @@ SAMPLE_DOCUMENTS: tuple[SampleDoc, ...] = (
             "the laws of Thailand, and the parties submit to the exclusive jurisdiction of the courts "
             "of Bangkok.",
         ),
-        expected_findings=("contract_expiring_soon",),
+        expected_findings=("contract_expired",),
     ),
     # ---- 8. Vendor onboarding form -----------------------------------------
     SampleDoc(

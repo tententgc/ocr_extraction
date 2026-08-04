@@ -117,6 +117,9 @@ function confClass(value) {
 function showView(name) {
   $$('.tab').forEach((tab) => tab.classList.toggle('active', tab.dataset.view === name));
   $$('.view').forEach((view) => view.classList.toggle('active', view.id === `view-${name}`));
+  // Each view reloads its own list, so the counts on the tabs beside it must not
+  // be left showing what was true when the page was opened.
+  loadStatus();
   if (name === 'queue') loadQueue();
   if (name === 'records') loadRecords();
   if (name === 'insights') loadInsights();
@@ -502,8 +505,16 @@ async function submitRegistration(documentId, kind, host) {
 function renderAnalyst(data) {
   const rec = data.reconciliation;
   if (!rec || (!rec.assessment && !rec.corrections?.length)) return '';
-  return `<div class="card analyst">
+  // Prose cannot be checked the way a value can, so when every value it offered
+  // was refused by the page, the paragraph gets the same warning rather than
+  // being read as a finding.
+  const label = (c) => c.contradicts_evidence ? 'the page says otherwise'
+    : c.grounded ? 'verified on page' : 'not on page';
+
+  return `<div class="card analyst${rec.unreliable ? ' doubted' : ''}">
     <h3>Discrepancy analyst</h3>
+    ${rec.unreliable ? `<p class="doubt">⚠ Nothing this agent proposed held up against the page.
+      Read the note below as a suggestion to check, not as a finding.</p>` : ''}
     <p style="font-size:13px">${esc(rec.assessment)}</p>
     ${rec.reviewer_note ? `<p class="muted" style="margin-top:6px"><b>Reviewer:</b> ${esc(rec.reviewer_note)}</p>` : ''}
     ${rec.root_cause && rec.root_cause !== 'none'
@@ -511,7 +522,7 @@ function renderAnalyst(data) {
     ${renderToolCalls(rec.tool_calls)}
     ${(rec.corrections || []).map((c) => `
       <div class="suggestion">
-        <span class="chip ${c.grounded ? 'ok' : 'bad'}">${c.grounded ? 'verified on page' : 'not on page'}</span>
+        <span class="chip ${c.grounded ? 'ok' : 'bad'}">${label(c)}</span>
         <span><b>${esc(c.field)}</b> → <code>${esc(c.suggested_value)}</code></span>
         <span class="muted" style="flex:1 1 100%">${esc(c.reason)}</span>
         ${c.grounded ? `<button class="btn small" data-apply="${esc(c.field)}"
@@ -1631,11 +1642,19 @@ $('#settings-reset').addEventListener('click', async () => {
 });
 
 $('#wipe-documents').addEventListener('click', async () => {
-  const held = await heldCount();
-  const total = state.status?.stats?.total_documents ?? 0;
+  // Asked fresh, not read from the copy of /api/status taken at page load. That
+  // copy goes stale the moment anything is processed, and gating a button on it
+  // meant the button did nothing at all while the page still showed data.
+  let stats;
+  try { stats = (await api('/api/status')).stats; }
+  catch (error) { toast(error.message, 'error'); return; }
+  const total = stats.total_documents ?? 0;
   if (!total) { toast('There is nothing to remove.'); return; }
+
   // Naming the numbers, because "are you sure?" is a question nobody reads.
-  if (!confirm(`Delete all ${total} document(s) and every ledger entry?\n\n` +
+  const held = stats.by_decision?.needs_review ?? 0;
+  if (!confirm(`Delete all ${total} document(s) and ${stats.posted_records ?? 0} ledger entr` +
+      `${stats.posted_records === 1 ? 'y' : 'ies'}?\n\n` +
       `${held} of them are still waiting for review. Page images and archived copies go too. ` +
       `Master data and the audit log are kept.\n\nThis cannot be undone.`)) return;
 
