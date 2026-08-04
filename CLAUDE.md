@@ -134,17 +134,23 @@ code, not about one machine's `.env`.
 
 Branch `chore/eval-and-fixes`, based on `main` after PR #1. Pushed.
 
-**In flight (this session):** three evaluations the user asked for —
-1. OCR accuracy (CER/WER against `reference_text`, plus recall of the values that matter)
-2. Per-rule precision/recall: does each blocking rule fire on the documents that
-   have its defect, and stay quiet on the ones that do not
-3. Decision accuracy from the `_True`/`_False` labels, with false alarms and
-   silent errors counted separately
+Three evaluations beyond field accuracy, each answering something the others
+cannot:
 
-The corpus has just been restructured for this: expectation in the filename,
-`reference_text` in the manifest, six `VARIED_DOCUMENTS` added. **The corpus has
-not been regenerated yet** — run `docuflow real-samples --out real_samples`, then
-reset, reload master and rules, and re-run.
+| Module | Question |
+|---|---|
+| `evaluation/ocr_accuracy.py` | Was the page read? CER against `reference_text`, plus recall of the values that become a payment. Both, because they disagree — a page can score 95% characters while losing the total. |
+| `evaluation/gatekeeping.py` | Did the gate open correctly, and did each rule fire for the reason it exists? Per-rule confusion matrix; a rule no document exercises is **untested**, not passing. |
+| `evaluation/effort.py` | Time saved. Modelled, not measured — assumptions print with the answer. |
+
+Scoring gotchas already fixed: strip HTML/markup before comparing characters
+(the OCR returns tables on purpose and every `<td>` would score as error), and
+judge a value's length on its compact form (`7.0` prints as `"7.00"`, four
+characters and none of them distinguishing).
+
+Never sum missed defects and false alarms. Each gets its own rate over its own
+population — a missed-defect rate over the whole corpus falls simply by adding
+documents that were never going to be held.
 
 **Standing instruction from the user:** commit after every completed feature; run
 only small/fast tests — they run the long suites themselves.
