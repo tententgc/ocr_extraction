@@ -201,7 +201,10 @@ $('#llm-picker').addEventListener('change', (event) => selectModel('llm', event.
 function updateBadges(stats) {
   if (!stats) return;
   $('#queue-badge').textContent = stats.by_decision?.needs_review ?? 0;
-  $('#records-badge').textContent = (stats.by_decision?.auto_post ?? 0);
+  // Entries in the ledger, not documents that once produced one. Deleting a
+  // record leaves its document behind on purpose, and counting those here made
+  // the tab claim 15 records over an empty page.
+  $('#records-badge').textContent = stats.posted_records ?? 0;
 }
 
 /* --------------------------------------------------------------- samples */
@@ -1647,6 +1650,33 @@ $('#settings-reset').addEventListener('click', async () => {
   renderSettings();
   loadStatus();
   toast('Back to the configured defaults.');
+});
+
+$('#wipe-documents').addEventListener('click', async () => {
+  const held = await heldCount();
+  const total = state.status?.stats?.total_documents ?? 0;
+  if (!total) { toast('There is nothing to remove.'); return; }
+  // Naming the numbers, because "are you sure?" is a question nobody reads.
+  if (!confirm(`Delete all ${total} document(s) and every ledger entry?\n\n` +
+      `${held} of them are still waiting for review. Page images and archived copies go too. ` +
+      `Master data and the audit log are kept.\n\nThis cannot be undone.`)) return;
+
+  const button = $('#wipe-documents');
+  button.disabled = true;
+  button.textContent = 'Deleting…';
+  let result;
+  try {
+    result = await api('/api/documents/wipe?confirm=true', { method: 'POST' });
+  } catch (error) {
+    toast(error.message, 'error');
+    return;
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Delete all documents & records';
+  }
+  $('#wipe-summary').textContent = result.message;
+  loadStatus();
+  toast(result.message);
 });
 
 $('#rule-list').addEventListener('change', (event) => {

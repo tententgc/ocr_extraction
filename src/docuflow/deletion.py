@@ -100,6 +100,139 @@ def _remove(path: Path) -> bool:
     return False
 
 
+@dataclass(frozen=True)
+class Wiped:
+    """What a clear-out removed."""
+
+    documents: int
+    records: int
+    corrections: int
+    files: int
+    failed: tuple[str, ...] = field(default_factory=tuple)
+
+    def to_json(self) -> dict[str, Any]:
+        return {
+            "documents": self.documents,
+            "records": self.records,
+            "corrections": self.corrections,
+            "files": self.files,
+            "failed": list(self.failed),
+            "message": self.message,
+        }
+
+    @property
+    def message(self) -> str:
+        if not self.documents and not self.records:
+            # The sweep still runs when the database is already empty, and it is
+            # usually the run where it finds the most.
+            return (
+                f"No documents or ledger entries; cleared {self.files} leftover file(s)."
+                if self.files else "There was nothing to remove."
+            )
+        parts = [f"Removed {self.documents} document(s)"]
+        if self.records:
+            parts.append(f"{self.records} ledger entr{'y' if self.records == 1 else 'ies'}")
+        if self.files:
+            parts.append(f"{self.files} file(s)")
+        message = ", ".join(parts) + ". The audit log and your master data are untouched."
+        if self.failed:
+            message += f" {len(self.failed)} could not be removed."
+        return message
+
+
+def wipe_documents(settings: Settings, actor: str = "reviewer") -> Wiped:
+    """Remove every processed document and every ledger entry.
+
+    Clearing a test run one row at a time is not a workflow, and deleting a
+    ledger entry leaves the document that produced it behind - correctly, since
+    a page is the evidence for the entry, but with nothing left pointing at it.
+    Doing both together is the only way to actually get back to empty.
+
+    Master data is *not* touched. Vendors and purchase orders are a copy of what
+    another system holds, not something this run produced; `master clear` exists
+    separately for that. Nor is the audit log: it is the record that any of this
+    happened.
+    """
+    documents = DocumentStore(settings.db_path)
+    records = RecordStore(settings.db_path)
+
+    posted = records.list(limit=10_000)
+    for record in posted:
+        records.delete(record["record_id"], actor=actor)
+
+    removed: list[Deleted] = []
+    failed: list[str] = []
+    # Paged listing would shift under its own deletions, so take the ids first.
+    for row in documents.list(limit=10_000):
+        try:
+            removed.append(delete_document(settings, row["document_id"], actor=actor))
+        except DeletionError as exc:  # a document that reappeared, or a locked file
+            logger.warning("could not delete %s: %s", row["document_id"], exc)
+            failed.append(row["document_id"])
+
+    wiped = Wiped(
+        documents=len(removed),
+        records=len(posted),
+        corrections=sum(item.corrections for item in removed),
+        files=sum(len(item.files) for item in removed) + _sweep_orphans(settings),
+        failed=tuple(failed),
+    )
+    records.log("documents_wiped", actor=actor, **{
+        k: v for k, v in wiped.to_json().items() if k != "message"
+    })
+    return wiped
+
+
+def _files_in(directory: Path) -> list[Path]:
+    return [path for path in directory.iterdir() if path.is_file()] if directory.exists() else []
+
+
+def _sweep_orphans(settings: Settings) -> int:
+    """Remove page images and archive shelves nothing refers to any more.
+
+    Deleting a document takes its own files with it, so this only ever finds what
+    an earlier interruption left behind - a run that failed after rendering, a
+    row removed by hand. Rare, but "start over" that leaves 80K of pages for a
+    document id you cannot look up is not starting over.
+    """
+    # The blob path is part of the stored run rather than a column of its own.
+    rows = connect(settings.db_path).execute(
+        "SELECT document_id, origin, json_extract(payload, '$.blob_path') AS blob FROM documents"
+    ).fetchall()
+    live = {row["document_id"] for row in rows}
+    referenced = {row["origin"] for row in rows} | {row["blob"] for row in rows}
+
+    removed = 0
+    if settings.page_dir.exists():
+        for pages in settings.page_dir.iterdir():
+            if pages.is_dir() and pages.name not in live and _remove(pages):
+                removed += 1
+                logger.info("removed orphaned page images for %s", pages.name)
+
+    # An upload is staged in the inbox before it is processed and nothing has
+    # ever cleared it, so every file ever uploaded is still sitting there. The
+    # staged copy is ours; the file the user chose is still wherever they got it.
+    for staged in _files_in(settings.data_dir / "inbox"):
+        if str(staged) not in referenced and _remove(staged):
+            removed += 1
+
+    # Content-addressed storage keeps one blob per distinct file, so a blob only
+    # becomes garbage once every document holding those bytes has gone.
+    for blob in _files_in(settings.blob_dir):
+        if str(blob) not in referenced and _remove(blob):
+            removed += 1
+
+    # The archive shelves documents by type and month. Empty ones are just the
+    # shape of a filing cabinet nobody has filed in yet. Deepest first, so a
+    # month emptying leaves its type empty and both go.
+    archive = archive_dir(settings)
+    if archive.exists():
+        for shelf in sorted(archive.rglob("*"), reverse=True):
+            if shelf.is_dir() and not any(shelf.iterdir()):
+                _remove(shelf)
+    return removed
+
+
 def delete_document(settings: Settings, document_id: str, actor: str = "reviewer") -> Deleted:
     """Delete one document, its files and its corrections."""
     documents = DocumentStore(settings.db_path)

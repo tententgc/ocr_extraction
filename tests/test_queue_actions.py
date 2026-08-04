@@ -234,6 +234,134 @@ class TestDelete:
         assert result.kept and "same content" in result.kept[0]
 
 
+class TestStartingOver:
+    """Clearing a test run.
+
+    Deleting a ledger entry leaves its document behind on purpose - the page is
+    the evidence for the entry that used to exist. The consequence is that after
+    deleting every record you still have every document, with nothing pointing at
+    them, and a counter that reads the routing decision rather than the ledger
+    will happily report fifteen records over an empty page.
+    """
+
+    def _posted(self, settings, documents, make_run, document_id: str) -> None:
+        run = make_run(GOOD_INVOICE).evolve(document_id=document_id, decision="auto_post")
+        documents.save(run)
+        posted = RecordStore(settings.db_path).post_record(run, "V-1001")
+        documents.save(run.evolve(record_id=posted["record_id"]))
+
+    def test_it_removes_documents_and_ledger_entries_together(
+        self, settings, master, documents, make_run, held
+    ):
+        from docuflow.deletion import wipe_documents
+
+        self._posted(settings, documents, make_run, "DOC-POSTED")
+
+        result = wipe_documents(settings)
+
+        assert result.records == 1
+        assert result.documents == 2, "the held one and the posted one"
+        assert documents.list(limit=50) == []
+        assert RecordStore(settings.db_path).count() == 0
+
+    def test_master_data_survives_it(self, settings, master, documents, make_run, held):
+        """Vendors are a copy of another system's file, not a product of this run."""
+        from docuflow.deletion import wipe_documents
+
+        before = len(master.list_vendors())
+        wipe_documents(settings)
+        assert len(master.list_vendors()) == before > 0
+
+    def test_the_audit_log_survives_it(self, settings, held):
+        from docuflow.deletion import wipe_documents
+
+        wipe_documents(settings, actor="tester")
+        entries = RecordStore(settings.db_path).audit_for("DOC-HELD")
+        assert any(entry["action"] == "document_deleted" for entry in entries)
+
+    def test_it_sweeps_page_images_no_document_refers_to(self, settings, held):
+        """An interrupted run can leave pages behind. Start over means start over."""
+        from docuflow.deletion import wipe_documents
+
+        orphan = settings.page_dir / "DOC-GONE"
+        orphan.mkdir(parents=True, exist_ok=True)
+        (orphan / "page-1.jpg").write_bytes(b"jpeg")
+
+        wipe_documents(settings)
+
+        assert not orphan.exists()
+
+    def test_it_leaves_pages_belonging_to_a_live_document_alone(
+        self, settings, documents, make_run
+    ):
+        """The sweep is scoped by the database, not by "everything in the folder"."""
+        from docuflow.deletion import _sweep_orphans
+
+        documents.save(make_run(GOOD_INVOICE).evolve(document_id="DOC-LIVE"))
+        pages = settings.page_dir / "DOC-LIVE"
+        pages.mkdir(parents=True, exist_ok=True)
+        (pages / "page-1.jpg").write_bytes(b"jpeg")
+
+        assert _sweep_orphans(settings) == 0
+        assert pages.exists()
+
+    def test_it_clears_staged_uploads_and_orphaned_blobs(self, settings, held):
+        """Nothing ever emptied the inbox, so every file ever uploaded was still there."""
+        from docuflow.deletion import wipe_documents
+
+        inbox = settings.data_dir / "inbox"
+        inbox.mkdir(parents=True, exist_ok=True)
+        staged = inbox / "a1b2c3d4-invoice.pdf"
+        staged.write_bytes(b"%PDF-1.4 staged")
+        blob = settings.blob_dir / "deadbeef.pdf"
+        blob.write_bytes(b"%PDF-1.4 blob")
+
+        wipe_documents(settings)
+
+        assert not staged.exists()
+        assert not blob.exists()
+
+    def test_a_file_a_live_document_came_from_is_left_alone(
+        self, settings, documents, make_run
+    ):
+        from docuflow.deletion import _sweep_orphans
+
+        inbox = settings.data_dir / "inbox"
+        inbox.mkdir(parents=True, exist_ok=True)
+        staged = inbox / "keep-me.pdf"
+        staged.write_bytes(b"%PDF-1.4 keep")
+        run = make_run(GOOD_INVOICE).evolve(document_id="DOC-LIVE", blob_path=str(staged))
+        documents.save(run.evolve(source=run.source.model_copy(update={"origin": str(staged)})))
+
+        assert _sweep_orphans(settings) == 0
+        assert staged.exists()
+
+    def test_an_empty_system_is_not_an_error(self, settings):
+        from docuflow.deletion import wipe_documents
+
+        result = wipe_documents(settings)
+        assert result.documents == 0
+        assert "nothing to remove" in result.message
+
+    def test_the_endpoint_refuses_without_confirmation(self, client, held):
+        assert client.post("/api/documents/wipe").status_code == 400
+        assert client.post("/api/documents/wipe?confirm=true").json()["documents"] == 1
+
+    def test_the_records_badge_counts_the_ledger_not_the_documents(
+        self, client, settings, master, documents, make_run
+    ):
+        """The bug this pair of tests exists for: 15 records over an empty page."""
+        self._posted(settings, documents, make_run, "DOC-POSTED")
+        assert client.get("/api/status").json()["stats"]["posted_records"] == 1
+
+        record_id = RecordStore(settings.db_path).list(limit=1)[0]["record_id"]
+        client.delete(f"/api/records/{record_id}")
+
+        stats = client.get("/api/status").json()["stats"]
+        assert stats["posted_records"] == 0
+        assert stats["by_decision"]["auto_post"] == 1, "the document stays, as evidence"
+
+
 class TestQueueActionEndpoints:
     def test_reevaluating_one_document(self, client, held):
         payload = client.post("/api/documents/DOC-HELD/reevaluate").json()

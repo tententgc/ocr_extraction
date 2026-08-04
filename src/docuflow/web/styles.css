@@ -349,6 +349,10 @@ tbody tr:hover { background: var(--surface-2); }
 .settings-actions {
   display: flex; align-items: center; gap: 12px; margin-top: 18px; flex-wrap: wrap;
 }
+/* Last card on the page, and it looks like what it does. */
+.danger-zone { border-color: var(--danger); }
+.danger-zone h3 { color: var(--danger); }
+
 .notice {
   display: flex; gap: 10px; padding: 11px 14px; border-radius: 10px; margin-bottom: 12px;
   background: var(--warn-soft); font-size: 13px; line-height: 1.5;

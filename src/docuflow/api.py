@@ -40,7 +40,7 @@ from docuflow.rules.custom import CustomRuleError, build_rule
 from docuflow.rules.preview import preview_rule
 from docuflow.store.custom_rules import CustomRuleStore
 from docuflow.agents.briefing import write_briefing
-from docuflow.deletion import DeletionError, delete_document
+from docuflow.deletion import DeletionError, delete_document, wipe_documents
 from docuflow.revalidate import DEFAULT_SCOPE, RevalidationError, reevaluate, reevaluate_many
 from docuflow.review import ReviewError, apply_review
 from docuflow.samples.catalog import SAMPLE_DOCUMENTS
@@ -210,7 +210,13 @@ def status() -> dict[str, Any]:
         },
         "url_fetch_enabled": current.allow_url_fetch,
         "max_document_bytes": current.max_document_bytes,
-        "stats": DocumentStore(settings.db_path).stats(),
+        # The ledger is counted from the ledger. Documents carry the decision
+        # that *led* to a posting, which is not the same thing once an entry is
+        # deleted: the document stays as evidence, the entry does not.
+        "stats": {
+            **DocumentStore(settings.db_path).stats(),
+            "posted_records": RecordStore(settings.db_path).count(),
+        },
     }
 
 
@@ -785,6 +791,33 @@ def delete_document_endpoint(document_id: str, reviewer: str = Query(default="re
         return delete_document(active_settings(), document_id, actor=reviewer).to_json()
     except DeletionError as exc:
         return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+@app.post("/api/documents/wipe")
+def wipe_documents_endpoint(
+    confirm: bool = Query(default=False), reviewer: str = Query(default="reviewer")
+) -> dict[str, Any]:
+    """Clear every processed document and ledger entry. Master data survives.
+
+    `confirm=true` is required, so that nothing reaches this by following a link
+    or retrying a request.
+    """
+    if not confirm:
+        raise HTTPException(
+            status_code=400,
+            detail="Pass confirm=true. This removes every document and ledger entry.",
+        )
+    # A document being processed right now has no row yet, but its staged upload
+    # is on disk and about to be read. Clearing underneath it fails the job for
+    # a reason nobody could work out from the error.
+    active = active_queue().summary()["active"]
+    if active:
+        raise HTTPException(
+            status_code=409,
+            detail=f"{active} document(s) are still processing. Wait for the queue to "
+                   f"finish, then clear.",
+        )
+    return wipe_documents(active_settings(), actor=reviewer).to_json()
 
 
 # ---------------------------------------------------------------------------

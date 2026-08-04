@@ -323,6 +323,19 @@
         handling and leave the rest doing their job.</p>
       <div id="rule-list"></div>
     </div>
+
+    <div class="card danger-zone">
+      <h3>Start over</h3>
+      <p class="muted">Removes every processed document, its page images and archived
+        copy, and every ledger entry — so a test run can be cleared without deleting
+        eighteen rows one at a time. <b>Your master data is not touched</b> (vendors,
+        purchase orders and contracts come from elsewhere; clear those from Insights).
+        Neither is the audit log, which is the record that any of it happened.</p>
+      <div class="settings-actions">
+        <button class="btn danger" id="wipe-documents">Delete all documents &amp; records</button>
+        <span class="muted" id="wipe-summary"></span>
+      </div>
+    </div>
   </section>
 </main>
 
