@@ -440,36 +440,32 @@ docuflow demo --reset
 ## Accuracy
 
 ```bash
-docuflow evaluate
+docuflow evaluate            # accuracy, coverage and time saved
+docuflow benchmark           # the same corpus across several model combinations
 ```
 
-Measured on the ten-document corpus with Typhoon OCR 1.5 running on-device:
+Full results, per document, with what was read wrong and why:
+**[docs/EVALUATION.md](docs/EVALUATION.md)**.
+
+The headline, measured on the eighteen-document working corpus — Typhoon OCR 1.5
+on-device, Typhoon Cloud reading it, GPT-5.1 reading it again:
 
 | Metric | Result |
 |---|---|
 | **Silent error rate** | **0.0%** — nothing wrong reached the ledger |
-| Planted defects caught | **8/8 (100%)** |
 | Document type accuracy | **100%** |
-| Field accuracy (exact) | **91.2%** (114/125) |
-| Field accuracy (allowing a one-character OCR slip) | **96.8%** |
-| Straight-through rate | 10% — the rest were correctly held |
+| Field accuracy (exact) | see [docs/EVALUATION.md](docs/EVALUATION.md) |
+| Planted defects caught | see [docs/EVALUATION.md](docs/EVALUATION.md) |
+| Straight-through rate | the rest were held, each for a stated reason |
 
-The silent error rate is the number that matters. Field accuracy of 91% with a
-0% silent error rate is deployable; 99% accuracy with silent errors is not,
-because you cannot tell which payments are wrong.
-
-Every wrong value in that run was a genuine OCR misread on a degraded scan, and
-every one was caught — for example the bank account `5550001111` read as
-`550001111`, blocked by `bank_account_matches_vendor` before it could redirect a
-payment.
+The silent error rate is the number that matters. Field accuracy in the low
+nineties with a 0% silent error rate is deployable; 99% accuracy with silent
+errors is not, because you cannot tell which payments are wrong.
 
 Because each sample carries ground truth *and* a list of the defects planted in
-it, the harness verifies both that values are read correctly and that the rules
-catch what they should.
-
-```bash
-docuflow benchmark   # the same corpus across several model combinations
-```
+it, the harness checks both that values are read correctly and that the rules
+catch what they should — a corpus that only measures reading would score well on
+a system that validates nothing.
 
 ---
 
@@ -480,11 +476,17 @@ docuflow benchmark   # the same corpus across several model combinations
 .venv/bin/python -m pytest tests/ --cov=docuflow --cov-report=term-missing
 ```
 
-250 tests, 82% coverage. The suite runs with no API key and no model download: it
-uses the PDF text layer for OCR and the deterministic extractor for fields, so
-the full pipeline — ingest, render, OCR, classify, extract, validate, route,
-post, review — is exercised in about twenty seconds. Credentials are blanked in
-the fixtures, so results do not depend on which keys happen to be in your `.env`.
+721 tests. The suite runs with no API key and no model download: it uses the PDF
+text layer for OCR and the deterministic extractor for fields, so the full
+pipeline — ingest, render, preprocess, OCR, classify, extract, validate,
+diagnose, route, post, review — is exercised in about a minute.
+
+Credentials *and* business policy are pinned in the fixtures. That second half
+matters more than it sounds: a developer whose `.env` names a verification
+backend, or loosens a tolerance, or turns a rule off while exploring, would
+otherwise get a green suite that is a statement about their machine rather than
+about the code. That has now caught six settings the hard way, each of which is
+named in `tests/conftest.py` with the failure it caused.
 
 ```
 src/docuflow/
@@ -494,9 +496,9 @@ src/docuflow/
 ├── llm/          plugin registry + Typhoon / Ollama / OpenAI / Claude / MLX
 ├── masterdata/   vendors, purchase orders, contracts
 ├── normalize/    dates, amounts, identifiers, text
-├── ocr/          plugin registry, engines, rendering, quality scoring
-├── rules/        the business rule engine
-├── samples/      the demo corpus generator
+├── ocr/          plugin registry, engines, rendering, preprocessing, quality
+├── rules/        the business rule engine, and the repair diagnosis
+├── samples/      the demo and working corpus generators
 ├── schemas/      per-document-type field definitions
 ├── store/        documents, records, corrections
 └── web/          the single-page UI
