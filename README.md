@@ -317,7 +317,8 @@ reads the clean copy; a reviewer confirming a value still sees what arrived.
 
 ## What it checks
 
-Roughly twenty rules run against every document. The blocking ones:
+Twenty-six rules ship with the system, fifteen of them blocking. The ones that
+stop a document:
 
 | Rule | Catches |
 |---|---|
@@ -470,11 +471,16 @@ on-device, Typhoon Cloud reading it, GPT-5.1 reading it again:
 
 | Metric | Result |
 |---|---|
-| **Silent error rate** | **0.0%** — nothing wrong reached the ledger |
-| Document type accuracy | **100%** |
-| Field accuracy (exact) | see [docs/EVALUATION.md](docs/EVALUATION.md) |
-| Planted defects caught | see [docs/EVALUATION.md](docs/EVALUATION.md) |
-| Straight-through rate | the rest were held, each for a stated reason |
+| **Silent error rate** | **0%** — nothing wrong reached the ledger |
+| Planted defects caught | **12/13** (92%) |
+| Document type accuracy | **18/18** (100%) |
+| Field accuracy (exact) | **193/216** (89.4%) |
+| Straight-through rate | 3/18 — the other 15 were held, each for a stated reason |
+| Time saved (modelled) | 112 of 135 manual minutes (83%) |
+
+Seventeen per cent straight-through looks low until you read the corpus: thirteen
+of the eighteen documents have a defect planted in them on purpose, and the three
+that posted are the three that should have.
 
 The silent error rate is the number that matters. Field accuracy in the low
 nineties with a 0% silent error rate is deployable; 99% accuracy with silent
