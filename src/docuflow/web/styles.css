@@ -414,3 +414,27 @@ tbody tr:hover { background: var(--surface-2); }
   border-radius: 7px; padding: 3px 6px; font-size: 11.5px; font-family: var(--mono);
 }
 .rule-row .sev:disabled { opacity: .45; }
+
+/* -------------------------------------------------------- record kinds */
+.kind-grid {
+  display: grid; gap: 12px; margin-top: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+}
+.kind-card {
+  text-align: left; padding: 14px; border-radius: var(--radius); cursor: pointer;
+  background: var(--surface-2); border: 1px solid var(--border); color: var(--text);
+  transition: border-color .12s, transform .12s;
+}
+.kind-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+.kind-card.active { border-color: var(--accent); background: var(--accent-soft); }
+.kind-card .k-title { font-weight: 650; font-size: 14px; }
+.kind-card .k-count { font: 650 26px/1.15 var(--mono); margin: 6px 0 2px; }
+.kind-card .k-money { font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
+.kind-card .k-blurb { font-size: 11.5px; color: var(--muted); margin-top: 7px; line-height: 1.45; }
+.insight-row {
+  display: flex; gap: 26px; flex-wrap: wrap; padding: 12px 0 4px;
+  border-bottom: 1px solid var(--border); margin-bottom: 6px;
+}
+.insight-row .item .lbl { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.insight-row .item .val { font-family: var(--mono); font-size: 14px; margin-top: 3px; }
+.insight-row .party { font-size: 12.5px; }

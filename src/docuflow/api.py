@@ -681,6 +681,54 @@ def list_records(
     return RecordStore(settings.db_path).list(record_kind=record_kind, limit=limit)
 
 
+@app.get("/api/records/summary")
+def records_summary() -> dict[str, Any]:
+    """The ledger split by record kind, with the shape of each one."""
+    store = RecordStore(settings.db_path)
+    kinds = store.summary_by_kind()
+    return {
+        "kinds": [
+            {**kind, "top_counterparties": store.top_counterparties(kind["record_kind"], limit=5)}
+            for kind in kinds
+        ],
+        "total_records": sum(kind["count"] for kind in kinds),
+        # What each kind of record means, so the page can say it rather than
+        # showing a word from the database and leaving the reader to guess.
+        "labels": {
+            "payable": {
+                "title": "Payables",
+                "blurb": "Supplier invoices accepted for payment.",
+                "source": "invoice",
+            },
+            "expense": {
+                "title": "Expenses",
+                "blurb": "Money already spent, evidenced by a receipt.",
+                "source": "receipt",
+            },
+            "commitment": {
+                "title": "Commitments",
+                "blurb": "Purchase orders — spend committed but not yet billed.",
+                "source": "purchase_order",
+            },
+            "contract": {
+                "title": "Contracts",
+                "blurb": "Agreements on file, with their term and value.",
+                "source": "contract",
+            },
+            "submission": {
+                "title": "Submissions",
+                "blurb": "Onboarding forms and applications received.",
+                "source": "form",
+            },
+            "generic": {
+                "title": "Other",
+                "blurb": "Documents that did not match a known type.",
+                "source": "unknown",
+            },
+        },
+    }
+
+
 @app.get("/api/records/{record_id}")
 def get_record(record_id: str) -> dict[str, Any]:
     record = RecordStore(settings.db_path).get(record_id)

@@ -125,6 +125,18 @@
       </div>
       <p class="muted">Every row here was written by the pipeline or by a reviewer approving a
         document. This stands in for the ERP or ledger the business actually uses.</p>
+      <div class="kind-grid" id="kind-grid"></div>
+    </div>
+
+    <div class="card" id="kind-detail-card">
+      <div class="card-head">
+        <h3 id="kind-title">All records</h3>
+        <div class="filters">
+          <span class="muted" id="kind-blurb"></span>
+          <button class="btn small" id="kind-clear" hidden>Show all</button>
+        </div>
+      </div>
+      <div id="kind-insight"></div>
       <div class="table-wrap"><table id="records-table">
         <thead><tr>
           <th>Record</th><th>Kind</th><th>Reference</th><th>Counterparty</th>

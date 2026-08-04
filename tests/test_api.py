@@ -218,3 +218,62 @@ class TestApiEndpoints:
     def test_master_data_is_seeded(self, client):
         vendors = client.get("/api/master/vendors").json()
         assert any(vendor["vendor_id"] == "V-1001" for vendor in vendors)
+
+
+class TestRecordsByKind:
+    """The ledger split by what each record actually is."""
+
+    @pytest.fixture
+    def client(self, settings, monkeypatch):
+        import docuflow.api as api_module
+
+        monkeypatch.setattr(api_module, "settings", settings)
+        with TestClient(api_module.app) as test_client:
+            yield test_client
+
+    @pytest.fixture
+    def posted_records(self, settings, master, make_run):
+        """Two payables from different vendors, so ranking has something to rank."""
+        store = RecordStore(settings.db_path)
+        documents = DocumentStore(settings.db_path)
+        for reference, vendor in (("INV-2026-0731", "V-1001"), ("INV-2026-0999", "V-1002")):
+            run = make_run({**GOOD_INVOICE, "invoice_number": reference}).evolve(decision="auto_post")
+            documents.save(run)
+            store.post_record(run, vendor)
+        return store
+
+    def test_each_kind_is_counted_separately(self, client, posted_records):
+        summary = client.get("/api/records/summary").json()
+        kinds = {row["record_kind"]: row for row in summary["kinds"]}
+        assert "payable" in kinds
+        assert kinds["payable"]["count"] >= 1
+
+    def test_amounts_are_grouped_by_currency(self, client, posted_records):
+        """Adding baht to euros produces a number that means nothing."""
+        summary = client.get("/api/records/summary").json()
+        for kind in summary["kinds"]:
+            currencies = [total["currency"] for total in kind["totals"]]
+            assert len(currencies) == len(set(currencies)), "one row per currency"
+
+    def test_every_kind_carries_a_human_label(self, client, posted_records):
+        """The page should say what a record kind is, not show a database word."""
+        summary = client.get("/api/records/summary").json()
+        for kind in summary["kinds"]:
+            label = summary["labels"].get(kind["record_kind"])
+            assert label and label["title"] and label["blurb"]
+
+    def test_the_list_can_be_filtered_to_one_kind(self, client, posted_records):
+        rows = client.get("/api/records?record_kind=payable").json()
+        assert rows
+        assert {row["record_kind"] for row in rows} == {"payable"}
+
+    def test_counterparties_are_ranked_within_a_kind(self, client, posted_records):
+        summary = client.get("/api/records/summary").json()
+        payable = next(k for k in summary["kinds"] if k["record_kind"] == "payable")
+        counts = [party["count"] for party in payable["top_counterparties"]]
+        assert counts == sorted(counts, reverse=True)
+
+    def test_an_empty_ledger_reports_nothing_rather_than_failing(self, client):
+        summary = client.get("/api/records/summary").json()
+        assert summary["total_records"] >= 0
+        assert isinstance(summary["kinds"], list)

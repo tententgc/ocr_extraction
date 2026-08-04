@@ -11,6 +11,8 @@ const state = {
   schemas: {},
   settings: null,       // business policy and the rule catalogue
   customRules: [],      // rules the user wrote
+  recordSummary: null,  // ledger totals per record kind
+  recordKind: null,     // which kind the records table is filtered to
   draft: null,          // a compiled rule awaiting approval
   currentDoc: null,     // document being reviewed
   edits: {},            // pending reviewer edits
@@ -608,13 +610,24 @@ $('#queue-refresh').addEventListener('click', loadQueue);
 /* --------------------------------------------------------------- records */
 
 async function loadRecords() {
-  let rows;
-  try { rows = await api('/api/records'); }
-  catch (error) { toast(error.message, 'error'); return; }
+  let rows, summary;
+  try {
+    // The summary drives the cards; the list is filtered to whichever kind is
+    // selected, so the two calls always describe the same ledger.
+    [summary, rows] = await Promise.all([
+      api('/api/records/summary'),
+      api(state.recordKind ? `/api/records?record_kind=${encodeURIComponent(state.recordKind)}` : '/api/records'),
+    ]);
+  } catch (error) { toast(error.message, 'error'); return; }
+
+  state.recordSummary = summary;
+  renderKindCards(summary);
+  renderKindInsight(summary);
 
   const body = $('#records-table tbody');
   if (!rows.length) {
-    body.innerHTML = '<tr><td colspan="7"><div class="empty-state">Nothing posted yet.</div></td></tr>';
+    body.innerHTML = `<tr><td colspan="8"><div class="empty-state">${
+      state.recordKind ? 'Nothing of this kind yet.' : 'Nothing posted yet.'}</div></td></tr>`;
     return;
   }
   body.innerHTML = rows.map((row) => `<tr>
@@ -632,6 +645,81 @@ async function loadRecords() {
 }
 
 $('#records-refresh').addEventListener('click', loadRecords);
+
+/* Each kind of record answers a different question, so the ledger is shown as
+   one card per kind rather than one undifferentiated table. Clicking a card
+   filters the table and the insight strip below it. */
+function renderKindCards(summary) {
+  const labels = summary.labels || {};
+  const cards = summary.kinds.map((kind) => {
+    const meta = labels[kind.record_kind] || {};
+    const money = kind.totals.length
+      ? kind.totals.map((t) => money_(t.total, t.currency)).join(' · ')
+      : '—';
+    return `
+      <button class="kind-card ${state.recordKind === kind.record_kind ? 'active' : ''}"
+              data-kind="${esc(kind.record_kind)}">
+        <div class="k-title">${esc(meta.title || kind.record_kind)}</div>
+        <div class="k-count">${kind.count}</div>
+        <div class="k-money">${esc(money)}</div>
+        <div class="k-blurb">${esc(meta.blurb || '')}</div>
+      </button>`;
+  }).join('');
+
+  $('#kind-grid').innerHTML = cards
+    || '<p class="muted">Nothing has been posted yet. Process a document to fill the ledger.</p>';
+}
+
+function renderKindInsight(summary) {
+  const selected = state.recordKind
+    ? summary.kinds.find((k) => k.record_kind === state.recordKind)
+    : null;
+  const meta = (summary.labels || {})[state.recordKind] || {};
+
+  $('#kind-title').textContent = selected ? (meta.title || state.recordKind) : 'All records';
+  $('#kind-blurb').textContent = selected ? (meta.blurb || '') : `${summary.total_records} record(s)`;
+  $('#kind-clear').hidden = !state.recordKind;
+
+  if (!selected) { $('#kind-insight').innerHTML = ''; return; }
+
+  const parties = (selected.top_counterparties || []).slice(0, 4)
+    .map((p) => `<div class="party">${esc(p.counterparty || '—')}
+      <b>${p.count}×</b> ${esc(money_(p.total, p.currency))}</div>`).join('');
+
+  $('#kind-insight').innerHTML = `
+    <div class="insight-row">
+      ${insightItem('Records', selected.count)}
+      ${insightItem('Posted automatically', `${selected.auto_posted} of ${selected.count}`)}
+      ${insightItem('Counterparties', selected.counterparties)}
+      ${insightItem('Period', `${selected.earliest || '—'} → ${selected.latest || '—'}`)}
+      ${selected.totals.map((t) => insightItem(`Total ${t.currency}`, money_(t.total, t.currency))).join('')}
+    </div>
+    ${parties ? `<div style="padding:8px 0"><div class="lbl muted"
+      style="font-size:11px;text-transform:uppercase;letter-spacing:.04em">Most frequent counterparties</div>
+      ${parties}</div>` : ''}`;
+}
+
+const insightItem = (label, value) =>
+  `<div class="item"><div class="lbl">${esc(label)}</div><div class="val">${esc(value)}</div></div>`;
+
+// The table's `money` helper takes (value, currency); this keeps the call sites short.
+const money_ = (value, currency) => money(value, currency);
+
+$('#kind-grid').addEventListener('click', (event) => {
+  const card = event.target.closest('button[data-kind]');
+  if (!card) return;
+  // Clicking the selected kind again clears the filter.
+  state.recordKind = state.recordKind === card.dataset.kind ? null : card.dataset.kind;
+  $('#record-detail-host').innerHTML = '';
+  loadRecords();
+});
+
+$('#kind-clear').addEventListener('click', () => {
+  state.recordKind = null;
+  $('#record-detail-host').innerHTML = '';
+  loadRecords();
+});
+
 
 /* A posted record is only as trustworthy as the page it came from, so opening
    one shows the same panel the reviewer saw: the document image beside every

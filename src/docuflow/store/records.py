@@ -221,3 +221,66 @@ class RecordStore:
                FROM records WHERE status = 'posted' GROUP BY currency, record_kind"""
         ).fetchall()
         return rows_to_dicts(rows)
+
+    def summary_by_kind(self) -> list[dict[str, Any]]:
+        """One row per record kind, for the ledger overview.
+
+        Amounts are grouped by currency as well as by kind: adding baht to euros
+        produces a number that means nothing, and a ledger view that does it is
+        worse than one that shows two rows.
+        """
+        rows = connect(self.db_path).execute(
+            """SELECT record_kind, currency,
+                      COUNT(*)              AS count,
+                      SUM(amount)           AS total,
+                      MIN(issue_date)       AS earliest,
+                      MAX(issue_date)       AS latest,
+                      COUNT(DISTINCT vendor_id)    AS counterparties,
+                      SUM(CASE WHEN posted_by = 'system' THEN 1 ELSE 0 END) AS auto_posted
+               FROM records
+               WHERE status = 'posted'
+               GROUP BY record_kind, currency
+               ORDER BY record_kind, currency"""
+        ).fetchall()
+
+        by_kind: dict[str, dict[str, Any]] = {}
+        for row in rows_to_dicts(rows):
+            kind = row["record_kind"]
+            entry = by_kind.setdefault(
+                kind,
+                {
+                    "record_kind": kind,
+                    "count": 0,
+                    "auto_posted": 0,
+                    "counterparties": 0,
+                    "earliest": None,
+                    "latest": None,
+                    "totals": [],
+                },
+            )
+            entry["count"] += row["count"]
+            entry["auto_posted"] += row["auto_posted"] or 0
+            entry["counterparties"] = max(entry["counterparties"], row["counterparties"] or 0)
+            for key, pick in (("earliest", min), ("latest", max)):
+                value = row[key]
+                if value:
+                    entry[key] = value if entry[key] is None else pick(entry[key], value)
+            if row["total"] is not None:
+                entry["totals"].append(
+                    {"currency": row["currency"] or "-", "total": row["total"], "count": row["count"]}
+                )
+        return sorted(by_kind.values(), key=lambda item: -item["count"])
+
+    def top_counterparties(self, record_kind: str | None = None, limit: int = 5) -> list[dict[str, Any]]:
+        """Who this kind of record is mostly with."""
+        where = "WHERE status = 'posted'" + (" AND record_kind = ?" if record_kind else "")
+        params: tuple[Any, ...] = (record_kind, limit) if record_kind else (limit,)
+        rows = connect(self.db_path).execute(
+            f"""SELECT counterparty, currency, COUNT(*) AS count, SUM(amount) AS total
+                FROM records {where}
+                GROUP BY counterparty, currency
+                ORDER BY count DESC, total DESC
+                LIMIT ?""",
+            params,
+        ).fetchall()
+        return rows_to_dicts(rows)
