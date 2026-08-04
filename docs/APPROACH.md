@@ -22,15 +22,10 @@ deployable, because you cannot tell which 1% of payments to chase. A pipeline at
 91% with a 0% silent error rate is, because everything uncertain is visibly
 queued.
 
-Measured on the ten-document ground-truth corpus in this repo:
-
-| Metric | Result |
-|---|---|
-| **Silent error rate** | **0.0%** |
-| Planted defects caught | 8/8 (100%) |
-| Document-type accuracy | 100% |
-| Field accuracy (exact) | 91.2% |
-| Field accuracy (allowing a one-character OCR slip) | 96.8% |
+Full results, per document, with what was read wrong and why:
+[EVALUATION.md](EVALUATION.md). It also records the one silent error this corpus
+did produce, and the two gaps that let it through — the more useful half of an
+evaluation is the half that fails.
 
 ### End-to-end design
 

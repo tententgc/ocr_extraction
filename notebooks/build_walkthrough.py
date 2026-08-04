@@ -363,9 +363,8 @@ reads the clean copy; a reviewer checking a value still sees what arrived.
 """)
 
 code(r'''
-from docuflow.ocr.preprocess import measure, prepare_pages
+from docuflow.ocr.preprocess import prepare_pages
 
-before = measure(__import__("PIL.Image", fromlist=["Image"]).open(pages[0].path))
 prepared, report = prepare_pages(pages, enabled=settings.ocr_preprocess)
 
 print(report.summary)
@@ -382,6 +381,15 @@ for page in report.pages:
         print(f"      reverted   {', '.join(page.reverted)}  (measured no better)")
     for note in page.notes:
         print(f"      note       {note}")
+
+# Separate from "was it corrected", and it carries weight downstream. A page
+# straightened by a degree was always legible; a page whose ink had to be
+# rescued from its paper was not, and everything read from it is treated as
+# degraded — the OCR engine's own quality score cannot see that, because it
+# scores the text that came back and confidently wrong text scores well.
+if report.rescued_pages:
+    print(f"\n{len(report.rescued_pages)} page(s) arrived below the legibility floor;")
+    print("values read from them are marked degraded and cannot post on their own.")
 
 # Side by side, when anything was actually done.
 if report.changed_pages:
