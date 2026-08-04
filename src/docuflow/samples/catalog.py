@@ -11,7 +11,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-LayoutStyle = Literal["classic", "modern", "thai_tax", "dense", "prose", "form", "narrow"]
+LayoutStyle = Literal[
+    "classic", "modern", "thai_tax", "dense", "two_column", "minimal", "prose", "form", "narrow"
+]
 
 
 @dataclass(frozen=True)
@@ -28,6 +30,10 @@ class SampleDoc:
     line_items: tuple[dict[str, Any], ...] = ()
     body: tuple[str, ...] = ()
     # Simulated scan damage: 0 = clean digital PDF, 1 = badly photocopied.
+    # Left at zero across the corpus. Blur measures how much noise the OCR
+    # tolerates, which is a property of the OCR model; what this system has to
+    # be good at is documents that are perfectly legible and still hard - an
+    # unlabelled value, three company names on a page, a total on page two.
     degrade: float = 0.0
     language: Literal["en", "th"] = "en"
     # Rule IDs this document is expected to trip.
@@ -216,13 +222,12 @@ SAMPLE_DOCUMENTS: tuple[SampleDoc, ...] = (
         ),
         expected_findings=("invoice_totals_consistent",),
     ),
-    # ---- 3. Thai tax invoice, Buddhist-era dates, degraded scan -------------
+    # ---- 3. Thai tax invoice, Buddhist-era dates ---------------------------
     SampleDoc(
         doc_id="inv-thai-scan",
         doc_type="invoice",
         layout="thai_tax",
         language="th",
-        degrade=0.55,
         title="ใบกำกับภาษี - เจ้าพระยา แฟซิลิตี้ (สแกน)",
         demonstrates="Thai-language scanned tax invoice with Buddhist-era dates and Thai numerals.",
         ground_truth={
@@ -250,7 +255,6 @@ SAMPLE_DOCUMENTS: tuple[SampleDoc, ...] = (
         doc_id="inv-unknown-vendor",
         doc_type="invoice",
         layout="dense",
-        degrade=0.25,
         title="Invoice from a vendor not in the master file",
         demonstrates="Unregistered vendor and an unrecognised bank account - the classic invoice-fraud pattern.",
         ground_truth={
@@ -392,7 +396,6 @@ SAMPLE_DOCUMENTS: tuple[SampleDoc, ...] = (
         doc_id="form-vendor-onboarding",
         doc_type="form",
         layout="form",
-        degrade=0.35,
         title="Vendor onboarding form (hand-filled, scanned)",
         demonstrates="Semi-structured form with checkboxes and an invalid tax-ID checksum.",
         ground_truth={
@@ -416,7 +419,6 @@ SAMPLE_DOCUMENTS: tuple[SampleDoc, ...] = (
         doc_id="receipt-fuel",
         doc_type="receipt",
         layout="narrow",
-        degrade=0.4,
         title="Fuel receipt (thermal print)",
         demonstrates="Small, low-contrast thermal receipt - the hardest OCR case in the corpus.",
         ground_truth={
@@ -434,6 +436,9 @@ SAMPLE_DOCUMENTS: tuple[SampleDoc, ...] = (
         line_items=(
             {"description": "Diesel B7", "quantity": 40.0, "unit_price": 37.50, "amount": 1_500.00},
         ),
+        # The pump prints the gross amount on the line and the net as subtotal,
+        # so the two genuinely do not reconcile. Expected, and worth surfacing.
+        expected_findings=("line_items_sum_to_subtotal",),
     ),
     # ---- 10. Purchase order -------------------------------------------------
     SampleDoc(
@@ -456,6 +461,124 @@ SAMPLE_DOCUMENTS: tuple[SampleDoc, ...] = (
             {"description": "Letterhead print run", "quantity": 1, "unit_price": 5_400.00, "amount": 5_400.00},
         ),
         expected_findings=("vendor_active",),
+    ),
+    # ---- 11. Payment redirected to a third party ---------------------------
+    SampleDoc(
+        doc_id="inv-remit-to-changed",
+        doc_type="invoice",
+        layout="two_column",
+        title="Invoice from a known vendor, payable to someone else",
+        demonstrates=(
+            "Three company names on one page and a bank account that is not the "
+            "vendor's registered one - the shape every invoice-fraud attempt takes."
+        ),
+        ground_truth={
+            "invoice_number": "INV-2026-0812",
+            "invoice_date": "2026-08-01",
+            "due_date": "2026-08-31",
+            "vendor_name": "Siam Tech Supply Co., Ltd.",
+            "vendor_tax_id": "0105543000129",
+            "buyer_name": BUYER,
+            "ship_to_name": "Mirtphol Industries PCL - Rayong Plant",
+            "ship_to_address": "119 Moo 4, Map Ta Phut, Rayong 21150, Thailand",
+            "remit_to_name": "Pacific Trade Finance Ltd.",
+            "remit_to_note": "Receivable assigned under factoring agreement",
+            "currency": "THB",
+            "subtotal": 96_000.00,
+            "tax_rate": 7.0,
+            "tax_amount": 6_720.00,
+            "total_amount": 102_720.00,
+            "payment_terms": "Net 30",
+            # Siam Tech is registered against 1234567890.
+            "bank_account": "8812349900",
+        },
+        line_items=(
+            {"description": "Managed endpoint support, August", "quantity": 120, "unit_price": 800.00, "amount": 96_000.00},
+        ),
+        expected_findings=("bank_account_matches_vendor",),
+    ),
+    # ---- 12. Nothing is labelled -------------------------------------------
+    SampleDoc(
+        doc_id="inv-minimal-unlabelled",
+        doc_type="invoice",
+        layout="minimal",
+        title="Studio invoice with no field labels",
+        demonstrates=(
+            "Every value present, almost nothing named: no 'Invoice No.', no "
+            "'Date', no column headers. Also carries a VAT rate Thailand does not use."
+        ),
+        ground_truth={
+            "invoice_number": "SS-0043",
+            "invoice_date": "2026-07-28",
+            "due_date": "2026-08-11",
+            "vendor_name": "Summit Solutions Trading",
+            "buyer_name": BUYER,
+            "currency": "THB",
+            "subtotal": 74_000.00,
+            "tax_rate": 10.0,
+            "tax_amount": 7_400.00,
+            "total_amount": 81_400.00,
+            "bank_account": "7778889990",
+        },
+        line_items=(
+            {"description": "Brand identity system", "amount": 52_000.00},
+            {"description": "Packaging artwork, 6 SKUs", "amount": 22_000.00},
+        ),
+        expected_findings=("vat_rate_expected", "vendor_known"),
+    ),
+    # ---- 13. Long order, totals on page two --------------------------------
+    SampleDoc(
+        doc_id="inv-two-page-order",
+        doc_type="invoice",
+        layout="classic",
+        title="Twenty-line order running onto a second page",
+        demonstrates=(
+            "The totals are on page two. A reader that stops at page one gets a "
+            "plausible wrong answer, which is worse than getting none. The due "
+            "date is also typed before the invoice date."
+        ),
+        ground_truth={
+            "invoice_number": "NW-2026-3311",
+            "invoice_date": "2026-07-30",
+            # Transposed by whoever typed it: due a month *before* issue.
+            "due_date": "2026-06-30",
+            "vendor_name": "Northwind Logistics Ltd.",
+            "vendor_tax_id": "0105561071237",
+            "buyer_name": BUYER,
+            "purchase_order_ref": "PO-2026-0455",
+            "currency": "THB",
+            "subtotal": 63_500.00,
+            "tax_rate": 7.0,
+            "tax_amount": 4_445.00,
+            "total_amount": 67_945.00,
+            "payment_terms": "Net 45",
+            "bank_account": "9876543210",
+        },
+        line_items=tuple(
+            {
+                "description": f"Freight leg {index:02d} - Bangkok to {city}",
+                "quantity": 1,
+                "unit_price": price,
+                "amount": price,
+            }
+            for index, (city, price) in enumerate(
+                (
+                    ("Chiang Mai", 2_200.00), ("Khon Kaen", 1_900.00), ("Hat Yai", 2_750.00),
+                    ("Phuket", 2_600.00), ("Udon Thani", 1_750.00), ("Rayong", 950.00),
+                    ("Nakhon Ratchasima", 1_550.00), ("Surat Thani", 2_500.00), ("Chonburi", 1_050.00),
+                    ("Ayutthaya", 650.00), ("Lampang", 2_100.00), ("Trang", 2_600.00),
+                    ("Ubon Ratchathani", 2_150.00), ("Phitsanulok", 1_650.00), ("Songkhla", 2_700.00),
+                    ("Chumphon", 2_250.00), ("Loei", 1_950.00), ("Sakon Nakhon", 2_100.00),
+                    ("Kanchanaburi", 850.00), ("Prachuap Khiri Khan", 1_450.00), ("Nakhon Si Thammarat", 2_550.00),
+                    ("Buriram", 1_850.00), ("Chiang Rai", 2_450.00), ("Krabi", 2_650.00),
+                    ("Sukhothai", 1_900.00), ("Roi Et", 1_800.00), ("Phetchaburi", 900.00),
+                    ("Nan", 2_350.00), ("Satun", 2_700.00), ("Mukdahan", 2_200.00),
+                    ("Tak", 1_950.00), ("Ranong", 2_500.00),
+                ),
+                start=1,
+            )
+        ),
+        expected_findings=("due_date_after_issue",),
     ),
 )
 

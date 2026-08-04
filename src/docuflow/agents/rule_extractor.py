@@ -412,12 +412,19 @@ def _find_text_line_items(text: str) -> list[dict[str, object]]:
         match = _TEXT_ROW_RE.match(raw_line.strip())
         if not match:
             continue
+        line = raw_line.strip()
         description = match.group("description").strip()
         normalized = normalize_for_match(description)
         # Totals lines look like rows but are not line items.
         if not normalized or any(normalized.startswith(word) for word in _TOTALS_WORDS):
             continue
         if not any(char.isalpha() for char in description):
+            continue
+        # Neither is a date. "Aug 1, 2026" on its own line has a word and two
+        # numbers, which is the shape this pattern is looking for - and it was
+        # read as an item costing 2,026.00, quietly breaking the line-item
+        # reconciliation on any layout that prints a date unlabelled.
+        if parse_date(line) is not None:
             continue
 
         numbers = [parse_money(token) for token in match.group("numbers").split()]

@@ -245,6 +245,8 @@ def draw_dense_invoice(sheet: Sheet, doc: SampleDoc) -> None:
 
     currency = gt.get("currency", "THB")
     for index, item in enumerate(_items_or_default(doc), start=1):
+        if sheet.needs_page(60.0):
+            sheet.new_page()
         sheet.text(
             f"{index}. {item['description']}  x{quantity(item.get('quantity'))} @ "
             f"{money(item.get('unit_price'))} = {money(item.get('amount'))}",
@@ -417,6 +419,119 @@ def draw_receipt(sheet: Sheet, doc: SampleDoc) -> None:
 # ---------------------------------------------------------------------------
 
 
+def draw_two_column_invoice(sheet: Sheet, doc: SampleDoc) -> None:
+    """Three company names on one page, only one of which is the supplier.
+
+    Bill-to and ship-to sit side by side, and payment is directed to a factoring
+    house under its own name and its own account number. Every real invoice-fraud
+    attempt looks exactly like this, and so does a great many legitimate ones -
+    the reader has to know that the issuer is the letterhead, the payee block is
+    not a party to the transaction, and the account is the one to check.
+    """
+    gt = doc.ground_truth
+    top = sheet.y
+
+    sheet.text(gt.get("vendor_name", ""), size=13, bold=True)
+    sheet.text(_vendor_address(gt.get("vendor_name")), size=8, color=GREY)
+    if gt.get("vendor_tax_id"):
+        sheet.text(f"Tax ID {gt['vendor_tax_id']}", size=8, color=GREY)
+
+    sheet.at("INVOICE", sheet.right, top, size=18, bold=True, align="right", color=ACCENT)
+    sheet.at(str(gt.get("invoice_number", "")), sheet.right, top - 20, size=10.5, bold=True, align="right")
+    sheet.at(date_us(gt.get("invoice_date")), sheet.right, top - 36, size=9, align="right", color=GREY)
+    sheet.at(f"Terms {gt.get('payment_terms', '')}", sheet.right, top - 50, size=9, align="right", color=GREY)
+
+    sheet.y = min(sheet.y, top - 64)
+    sheet.rule()
+    sheet.down(8)
+
+    # Two address blocks, side by side, same shape and same size. Nothing about
+    # the typography says which one is the counterparty.
+    column = sheet.content_width / 2
+    block_top = sheet.y
+    for offset, (heading, name, address) in enumerate((
+        ("BILL TO", gt.get("buyer_name", BUYER), BUYER_ADDRESS),
+        ("SHIP TO", gt.get("ship_to_name", BUYER), gt.get("ship_to_address", BUYER_ADDRESS)),
+    )):
+        x = sheet.left + offset * column
+        sheet.at(heading, x, block_top, size=7.5, bold=True, color=GREY)
+        sheet.at(str(name), x, block_top - 14, size=10, bold=True)
+        sheet.at(str(address), x, block_top - 27, size=8, color=GREY)
+    sheet.y = block_top - 48
+
+    _draw_items_table(sheet, doc, currency=gt.get("currency", "THB"), shaded=True)
+    _draw_totals_block(sheet, doc)
+
+    sheet.down(16)
+    payee = gt.get("remit_to_name")
+    if payee:
+        sheet.box(sheet.left, sheet.y - 58, sheet.content_width, 58, fill=SOFT)
+        sheet.at("PAYMENT INSTRUCTIONS", sheet.left + 12, sheet.y - 16, size=7.5, bold=True, color=GREY)
+        sheet.at(f"Payable to: {payee}", sheet.left + 12, sheet.y - 31, size=9.5, bold=True)
+        sheet.at(
+            f"Account No: {gt.get('bank_account', '')}   ·   {gt.get('remit_to_note', '')}",
+            sheet.left + 12, sheet.y - 46, size=8.5, color=GREY,
+        )
+        sheet.down(70)
+    elif gt.get("bank_account"):
+        sheet.text(f"Remit to Account No: {gt['bank_account']}", size=8.5, color=GREY)
+
+
+def draw_minimal_invoice(sheet: Sheet, doc: SampleDoc) -> None:
+    """Almost nothing is labelled. The values are there; the words are not.
+
+    A designer's invoice: the number sits under the logo with no caption, the
+    date is a bare line, and the only word near the total is the currency. Blur
+    tests the OCR; this tests whether the reader can place a value with no label
+    beside it - which is the harder and more common problem.
+    """
+    gt = doc.ground_truth
+    sheet.down(30)
+
+    sheet.text(gt.get("vendor_name", ""), size=22, bold=True)
+    sheet.down(2)
+    sheet.text(str(gt.get("invoice_number", "")), size=11, color=GREY)
+    sheet.text(date_slash(gt.get("invoice_date")), size=11, color=GREY)
+    sheet.down(26)
+
+    sheet.text(str(gt.get("buyer_name", BUYER)), size=10.5)
+    sheet.text(BUYER_ADDRESS, size=8.5, color=GREY)
+    sheet.down(30)
+
+    # No column headers at all - just rows of description and amount.
+    for item in _items_or_default(doc):
+        row_y = sheet.y
+        sheet.at(str(item["description"]), sheet.left, row_y, size=10)
+        sheet.at(money(item.get("amount")), sheet.right, row_y, size=10, align="right")
+        sheet.down(20)
+
+    sheet.down(6)
+    sheet.rule(color=BLACK, thickness=0.8, gap=14)
+
+    currency = gt.get("currency", "THB")
+    for label, value in (
+        ("", gt.get("subtotal")),
+        (f"+{money(gt.get('tax_rate'), 0)}%", gt.get("tax_amount")),
+    ):
+        if value is None:
+            continue
+        row_y = sheet.y
+        if label:
+            sheet.at(label, sheet.right - 120, row_y, size=9.5, color=GREY, align="right")
+        sheet.at(money(value), sheet.right, row_y, size=9.5, align="right")
+        sheet.down(17)
+
+    sheet.down(4)
+    sheet.at(currency, sheet.right - 120, sheet.y, size=12, color=GREY, align="right")
+    sheet.at(money(gt.get("total_amount")), sheet.right, sheet.y, size=16, bold=True, align="right")
+    sheet.down(40)
+
+    if gt.get("due_date"):
+        sheet.text(date_slash(gt["due_date"]), size=9.5, color=GREY)
+    if gt.get("bank_account"):
+        sheet.text(str(gt["bank_account"]), size=9.5, color=GREY)
+
+
 def _draw_items_table(
     sheet: Sheet,
     doc: SampleDoc,
@@ -442,6 +557,21 @@ def _draw_items_table(
     qty_fmt = (lambda value: to_thai_digits(quantity(value))) if thai_numerals else quantity
 
     for item in items:
+        # A long order runs onto a second page, taking its totals with it. Any
+        # reader that stops after page one gets a plausible, wrong answer -
+        # which is worse than failing.
+        if sheet.needs_page(120.0):
+            sheet.new_page()
+            sheet.text(f"{doc.ground_truth.get('invoice_number') or doc.ground_truth.get('po_number', '')}"
+                       f"  ·  continued", size=8, color=GREY)
+            sheet.down(6)
+            header_y = sheet.y
+            sheet.at(headers[0], columns[0], header_y - 12, size=8, bold=True, color=GREY)
+            for index, header in enumerate(headers[1:], start=1):
+                sheet.at(header, columns[index], header_y - 12, size=8, bold=True, color=GREY, align="right")
+            sheet.y = header_y - 22
+            sheet.rule(color=GREY, thickness=0.5, gap=8)
+
         row_y = sheet.y
         sheet.at(str(item["description"]), columns[0], row_y, size=9)
         sheet.at(qty_fmt(item.get("quantity")), columns[1], row_y, size=9, align="right")
@@ -489,6 +619,8 @@ LAYOUT_RENDERERS = {
     "modern": draw_modern_invoice,
     "thai_tax": draw_thai_tax_invoice,
     "dense": draw_dense_invoice,
+    "two_column": draw_two_column_invoice,
+    "minimal": draw_minimal_invoice,
     "prose": draw_contract,
     "form": draw_form,
     "narrow": draw_receipt,
