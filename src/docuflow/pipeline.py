@@ -46,6 +46,7 @@ from docuflow.normalize.amounts import parse_money, parse_number
 from docuflow.normalize.locale import infer_currency
 from docuflow.ocr.render import UnsupportedDocumentError, render_document
 from docuflow.ocr.engine import run_ocr
+from docuflow.ocr.preprocess import prepare_pages
 from docuflow.ocr.quality import score_document_text
 from docuflow.routing import decide
 from docuflow.rules import RuleContext, run_rules
@@ -143,6 +144,7 @@ class Pipeline:
                 run, get_schema("unknown"), VendorMatch(None, 0.0, "not evaluated"), None, Reconciliation()
             )
 
+        run, images = self._stage_preprocess(run, images, progress)
         run = self._stage_ocr(run, images, progress)
         ocr_report = score_document_text([page.text for page in run.ocr.pages])
         pages = [(page.page_number, page.text) for page in run.ocr.pages]
@@ -198,6 +200,38 @@ class Pipeline:
                 )
             ),
             images,
+        )
+
+    def _stage_preprocess(
+        self, run: DocumentRun, images: list, progress: ProgressCallback
+    ) -> tuple[DocumentRun, list]:
+        """Straighten and clean the pages the model is about to read.
+
+        `run.page_images` deliberately keeps pointing at the *rendered* pages, not
+        the prepared ones. The reviewer opening this document should see what
+        arrived, crooked and all; only the OCR model reads the retouched copy.
+        Showing a person a corrected image and asking them to confirm a value
+        against it quietly removes the thing they were meant to be checking.
+        """
+        if not images:
+            return run, images
+        progress("preprocess", "Straightening and cleaning the pages")
+        prepared, report = prepare_pages(images, enabled=self.settings.ocr_preprocess)
+        if not report.enabled:
+            return run, images
+
+        corrected = report.changed_pages
+        return (
+            run.with_step(
+                TraceStep(
+                    step="preprocess",
+                    status="warning" if corrected else "ok",
+                    summary=report.summary,
+                    duration_ms=report.duration_ms,
+                    detail=report.to_json(),
+                )
+            ),
+            prepared,
         )
 
     def _stage_ocr(self, run: DocumentRun, images: list, progress: ProgressCallback) -> DocumentRun:

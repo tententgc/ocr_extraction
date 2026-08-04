@@ -41,6 +41,11 @@ class Settings(BaseSettings):
     ocr_max_pages: int = Field(default=8, ge=1, le=100)
     ocr_image_dim: int = Field(default=1800, ge=512, le=4096)
     ocr_max_tokens: int = Field(default=8192, ge=512, le=32768)
+    # Straighten, relight and sharpen each page before the model reads it. Every
+    # correction is gated on a measurement and reverted if it does not help, so
+    # a clean digital PDF passes through untouched; this is here for the photos
+    # and the faxes. Turn it off to measure the OCR engine on raw input.
+    ocr_preprocess: bool = True
     # Disable engine fallback. Production wants fallback (a missing model should
     # degrade a run, not break it), but a benchmark must measure the engine it
     # names - otherwise a weak engine silently scores its fallback's accuracy.
