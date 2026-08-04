@@ -13,6 +13,7 @@ from docuflow.config import get_settings
 from docuflow.ingest.fetch import FetchError, fetch_url
 from docuflow.llm.factory import describe_llms
 from docuflow.masterdata import MasterDataRepository
+from docuflow.masterdata.importer import KINDS, TEMPLATES, MasterImportError, import_csv
 from docuflow.ocr.factory import describe_providers
 from docuflow.pipeline import Pipeline, PipelineResult
 from docuflow.store.documents import DocumentStore
@@ -303,6 +304,50 @@ def cmd_vendor(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_master(args: argparse.Namespace) -> int:
+    """Load, inspect or empty the master file."""
+    settings = get_settings()
+    bootstrap(settings, with_samples=False)
+    master = MasterDataRepository(settings.db_path)
+
+    if args.master_command == "template":
+        print(TEMPLATES[args.type], end="")
+        return 0
+
+    if args.master_command == "clear":
+        cleared = master.clear()
+        print("Master file emptied: " + ", ".join(f"{count} {name}" for name, count in cleared.items()) + ".")
+        print("Import your own with: docuflow master import <file.csv> --type vendors")
+        return 0
+
+    if args.master_command == "show":
+        for name, rows in (
+            ("vendors", master.list_vendors()),
+            ("purchase orders", master.list_purchase_orders()),
+            ("contracts", master.list_contracts()),
+        ):
+            print(f"\n{name.upper()} ({len(rows)})")
+            for row in rows:
+                print("  " + " · ".join(f"{key}={value}" for key, value in row.items() if value))
+        return 0
+
+    path = Path(args.file)
+    if not path.exists():
+        print(f"error: {path} does not exist", file=sys.stderr)
+        return 1
+    try:
+        report = import_csv(master, args.type, path.read_bytes())
+    except MasterImportError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+
+    print(report.summary)
+    for error in report.errors:
+        print(f"  row {error.row}: {error.message}", file=sys.stderr)
+    # A file where nothing loaded is a failed import, whatever the reason.
+    return 1 if report.imported == 0 else 0
+
+
 def cmd_models(args: argparse.Namespace) -> int:
     from docuflow.models_registry import list_models
 
@@ -401,6 +446,18 @@ def main(argv: list[str] | None = None) -> int:
     vendor_add.add_argument("--terms", help="payment terms, e.g. 'Net 30'")
     vendor_add.add_argument("--currency", default="THB")
     vendor_parser.set_defaults(func=cmd_vendor)
+
+    master_parser = subparsers.add_parser("master", help="load or clear the master file")
+    master_sub = master_parser.add_subparsers(dest="master_command", required=True)
+    master_import = master_sub.add_parser("import", help="load a CSV export")
+    master_import.add_argument("file", help="path to the CSV")
+    master_import.add_argument("--type", required=True, choices=list(KINDS),
+                               help="which master file this CSV holds")
+    master_template = master_sub.add_parser("template", help="print the expected columns")
+    master_template.add_argument("--type", required=True, choices=list(KINDS))
+    master_sub.add_parser("show", help="print the master file")
+    master_sub.add_parser("clear", help="empty the master file")
+    master_parser.set_defaults(func=cmd_master)
 
     models_parser = subparsers.add_parser("models", help="list selectable OCR and agent models")
     models_parser.set_defaults(func=cmd_models)

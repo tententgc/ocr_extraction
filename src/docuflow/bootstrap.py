@@ -20,7 +20,12 @@ def bootstrap(settings: Settings, with_samples: bool = True) -> dict[str, Any]:
     init_db(settings.db_path)
 
     master = MasterDataRepository(settings.db_path)
-    seeded = master.seed(master_data_rows())
+    # Only into an empty register. Once real master data is loaded, restarting
+    # the server must not quietly put five fictional vendors back beside it -
+    # and clearing the file must not undo itself on the next start.
+    seeded: dict[str, int] = {}
+    if settings.seed_demo_master_data and master.is_empty():
+        seeded = master.seed(master_data_rows())
 
     result: dict[str, Any] = {
         "database": str(settings.db_path),

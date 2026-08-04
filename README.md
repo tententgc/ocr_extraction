@@ -105,6 +105,10 @@ docuflow process invoice.pdf          # one file
 docuflow process https://…/invoice.pdf  # straight from a URL
 docuflow demo --reset                 # process the whole demo corpus
 docuflow records                      # what has been posted
+docuflow master import vendors.csv --type vendors   # load your own master data
+docuflow master template --type purchase_orders     # the columns it expects
+docuflow master show                  # what the register holds
+docuflow master clear                 # empty it
 docuflow models                       # every selectable model and its status
 docuflow evaluate --out report.json   # accuracy against ground truth
 docuflow benchmark                    # compare models on the same corpus

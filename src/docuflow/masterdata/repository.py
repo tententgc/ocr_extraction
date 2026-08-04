@@ -145,6 +145,97 @@ class MasterDataRepository:
             )
         return row
 
+    # --- bulk load ---------------------------------------------------------
+    # Import is an update of a copy, not an insert of new facts: the ERP is the
+    # source, and re-exporting it tomorrow must correct yesterday's rows rather
+    # than duplicate them. So these upsert on the natural key, and unlike
+    # `add_vendor` they do not refuse an existing record - that refusal exists
+    # to stop a person registering a duplicate by hand.
+
+    def upsert_vendor(self, row: dict[str, Any]) -> str:
+        """Insert or update one vendor. Returns "created" or "updated"."""
+        if not str(row.get("legal_name", "")).strip():
+            raise ValueError("'legal_name' is required and is empty")
+
+        existing = None
+        if row.get("vendor_id"):
+            existing = self.get_vendor(str(row["vendor_id"]))
+        if existing is None:
+            match = self.find_vendor(row.get("legal_name"), row.get("tax_id"))
+            # Only an identity-grade match may overwrite an existing record. A
+            # fuzzy name hit is a suggestion, and quietly merging two suppliers
+            # whose names look alike is worse than creating a second row.
+            existing = match.vendor if match.matched and match.score >= 0.97 else None
+
+        values = {
+            "vendor_id": (existing or {}).get("vendor_id") or row.get("vendor_id") or self._next_vendor_id(),
+            "legal_name": str(row["legal_name"]).strip(),
+            "aliases": row.get("aliases") or "",
+            "tax_id": row.get("tax_id"),
+            "bank_account": row.get("bank_account"),
+            "status": row.get("status") or "active",
+            "payment_terms": row.get("payment_terms"),
+            "currency": row.get("currency") or "THB",
+        }
+        with transaction(self.db_path) as connection:
+            connection.execute(
+                """INSERT INTO vendors
+                   (vendor_id, legal_name, aliases, tax_id, bank_account, status, payment_terms, currency)
+                   VALUES (:vendor_id, :legal_name, :aliases, :tax_id, :bank_account, :status,
+                           :payment_terms, :currency)
+                   ON CONFLICT(vendor_id) DO UPDATE SET
+                       legal_name = excluded.legal_name, aliases = excluded.aliases,
+                       tax_id = excluded.tax_id, bank_account = excluded.bank_account,
+                       status = excluded.status, payment_terms = excluded.payment_terms,
+                       currency = excluded.currency""",
+                values,
+            )
+        return "updated" if existing else "created"
+
+    def upsert_purchase_order(self, row: dict[str, Any]) -> str:
+        existing = self.get_purchase_order(row.get("po_number"))
+        with transaction(self.db_path) as connection:
+            connection.execute(
+                """INSERT INTO purchase_orders
+                   (po_number, vendor_id, po_date, currency, amount, status, description)
+                   VALUES (:po_number, :vendor_id, :po_date, :currency, :amount, :status, :description)
+                   ON CONFLICT(po_number) DO UPDATE SET
+                       vendor_id = excluded.vendor_id, po_date = excluded.po_date,
+                       currency = excluded.currency, amount = excluded.amount,
+                       status = excluded.status, description = excluded.description""",
+                row,
+            )
+        return "updated" if existing else "created"
+
+    def upsert_contract(self, row: dict[str, Any]) -> str:
+        existing = self.get_contract(row.get("contract_number"))
+        with transaction(self.db_path) as connection:
+            connection.execute(
+                """INSERT INTO contracts
+                   (contract_number, vendor_id, party_a, party_b, effective_date,
+                    expiry_date, value, currency)
+                   VALUES (:contract_number, :vendor_id, :party_a, :party_b, :effective_date,
+                           :expiry_date, :value, :currency)
+                   ON CONFLICT(contract_number) DO UPDATE SET
+                       vendor_id = excluded.vendor_id, party_a = excluded.party_a,
+                       party_b = excluded.party_b, effective_date = excluded.effective_date,
+                       expiry_date = excluded.expiry_date, value = excluded.value,
+                       currency = excluded.currency""",
+                row,
+            )
+        return "updated" if existing else "created"
+
+    def clear(self) -> dict[str, int]:
+        """Empty the master file. Posted records keep their own copy of what they matched."""
+        counts = {}
+        with transaction(self.db_path) as connection:
+            for table in ("purchase_orders", "contracts", "vendors"):
+                counts[table] = connection.execute(f"DELETE FROM {table}").rowcount
+        return counts
+
+    def is_empty(self) -> bool:
+        return not (self.list_vendors() or self.list_purchase_orders() or self.list_contracts())
+
     def _next_vendor_id(self) -> str:
         """Next id in the V-#### series."""
         numbers = [

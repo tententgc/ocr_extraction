@@ -218,7 +218,12 @@
         <button class="chip-tab active" data-master="vendors">Vendors</button>
         <button class="chip-tab" data-master="purchase-orders">Purchase orders</button>
         <button class="chip-tab" data-master="contracts">Contracts</button>
+        <span class="grow"></span>
+        <a class="btn small" id="master-template" download>Template CSV</a>
+        <button class="btn small" id="master-import">Import CSV</button>
+        <input type="file" id="master-file" accept=".csv,text/csv" hidden />
       </div>
+      <div id="import-report"></div>
       <div class="table-wrap" id="master-host"></div>
     </div>
   </section>

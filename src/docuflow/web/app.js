@@ -1138,11 +1138,17 @@ const MASTER_VIEWS = {
   },
 };
 
+/* The API names these with underscores; the tabs use hyphens because they are
+   also URL fragments. One place to convert. */
+const masterKind = (tab) => tab.replace('-', '_');
+
 async function loadMaster(name) {
   const view = MASTER_VIEWS[name];
   if (!view) return;
   state.masterTab = name;
   $$('#master-tabs .chip-tab').forEach((tab) => tab.classList.toggle('active', tab.dataset.master === name));
+  $('#master-template').href = `/api/master/template?kind=${masterKind(name)}`;
+  $('#master-template').textContent = `Template CSV`;
 
   let rows;
   try { rows = await api(view.path); } catch (error) { toast(error.message, 'error'); return; }
@@ -1157,6 +1163,45 @@ $('#master-tabs').addEventListener('click', (event) => {
   const tab = event.target.closest('button[data-master]');
   if (tab) loadMaster(tab.dataset.master);
 });
+
+/* Import loads whichever file the visible tab is showing, so there is no way to
+   put purchase orders into the vendor table by picking the wrong option. */
+$('#master-import').addEventListener('click', () => $('#master-file').click());
+
+$('#master-file').addEventListener('change', async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  event.target.value = '';                    // so the same file can be picked twice
+
+  const body = new FormData();
+  body.append('file', file);
+  $('#import-report').innerHTML = '<p class="muted">Reading the file…</p>';
+  try {
+    const report = await api(`/api/master/import?kind=${masterKind(state.masterTab)}`, { method: 'POST', body });
+    renderImportReport(report);
+    toast(report.summary, report.imported ? 'success' : 'error');
+    await loadMaster(state.masterTab);
+    loadInsights();                           // the agenda reads the register
+  } catch (error) {
+    $('#import-report').innerHTML = `<div class="notice"><span>⚠</span><div>${esc(error.message)}</div></div>`;
+  }
+});
+
+/* A rejected row is only useful if the reader can find and fix it, so each one
+   is reported by the row number they will see in their spreadsheet. */
+function renderImportReport(report) {
+  if (!report.errors.length) {
+    $('#import-report').innerHTML = report.imported
+      ? `<div class="notice ok"><span>✓</span><div>${esc(report.summary)}</div></div>` : '';
+    return;
+  }
+  $('#import-report').innerHTML = `<div class="notice"><span>⚠</span><div>
+    ${esc(report.summary)}
+    <ul class="import-errors">${report.errors.slice(0, 12)
+      .map((error) => `<li><b>row ${error.row}</b> — ${esc(error.message)}</li>`).join('')}</ul>
+    ${report.errors.length > 12 ? `<span class="muted small">…and ${report.errors.length - 12} more.</span>` : ''}
+  </div></div>`;
+}
 
 /* -------------------------------------------------------------- settings */
 

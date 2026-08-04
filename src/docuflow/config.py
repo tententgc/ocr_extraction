@@ -176,6 +176,14 @@ class Settings(BaseSettings):
             part.strip() for part in str(self.unknown_vendor_blocks).split(",") if part.strip()
         )
 
+    # --- Master data -------------------------------------------------------
+    # The bundled demo register - five vendors, four purchase orders, two
+    # contracts - so a fresh install has something for documents to match
+    # against. It is only ever seeded into an *empty* master file, so importing
+    # your own replaces it permanently. Set this false to keep it out entirely,
+    # including after you clear the master file.
+    seed_demo_master_data: bool = True
+
     # --- Ingest ------------------------------------------------------------
     allow_url_fetch: bool = True
     max_document_bytes: int = Field(default=25 * 1024 * 1024, ge=1024)

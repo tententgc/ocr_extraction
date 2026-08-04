@@ -41,6 +41,10 @@ def settings(tmp_path: Path) -> Settings:
         amount_tolerance=0.02,
         rules_free_mode=False,
         disabled_rules="",
+        # Pinned for the same reason: a developer who turned the demo register
+        # off in their own .env would otherwise run a suite where half the
+        # master-data tests have nothing to look up.
+        seed_demo_master_data=True,
     )
     config.ensure_directories()
     init_db(config.db_path)

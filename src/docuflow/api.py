@@ -15,7 +15,7 @@ from typing import Any
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 
 from docuflow.archive import describe_archive, rebuild as rebuild_archive
@@ -26,6 +26,7 @@ from docuflow.runtime import SelectionError, SelectionStore
 from docuflow.ingest.fetch import FetchError, fetch_url
 from docuflow.jobs import MAX_BATCH_FILES, JobQueue
 from docuflow.llm.factory import describe_llms, resolve_llm
+from docuflow.masterdata.importer import TEMPLATES, MasterImportError, import_csv
 from docuflow.masterdata.repository import MasterDataRepository
 from docuflow.ocr.factory import describe_providers
 from docuflow.ocr.render import is_supported
@@ -811,6 +812,43 @@ def list_purchase_orders() -> list[dict[str, Any]]:
 @app.get("/api/master/contracts")
 def list_contracts() -> list[dict[str, Any]]:
     return MasterDataRepository(settings.db_path).list_contracts()
+
+
+@app.post("/api/master/import")
+async def import_master_data(
+    kind: str = Query(..., pattern="^(vendors|purchase_orders|contracts)$"),
+    file: UploadFile = File(...),
+) -> dict[str, Any]:
+    """Load a CSV export from the ERP, procurement system or contract register.
+
+    Rows are upserted on their natural key, so re-importing tomorrow's export
+    corrects today's rows rather than duplicating them.
+    """
+    content = await file.read()
+    if len(content) > settings.max_document_bytes:
+        raise HTTPException(status_code=413, detail="That file is larger than the configured limit.")
+    try:
+        report = import_csv(MasterDataRepository(settings.db_path), kind, content)
+    except MasterImportError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return report.to_json()
+
+
+@app.get("/api/master/template")
+def master_template(kind: str = Query(..., pattern="^(vendors|purchase_orders|contracts)$")) -> PlainTextResponse:
+    """A one-row CSV showing the columns this importer expects."""
+    return PlainTextResponse(
+        TEMPLATES[kind],
+        headers={"Content-Disposition": f'attachment; filename="{kind}-template.csv"'},
+    )
+
+
+@app.delete("/api/master")
+def clear_master_data() -> dict[str, Any]:
+    """Empty the master file. Posted records keep their own copy of what they matched."""
+    cleared = MasterDataRepository(settings.db_path).clear()
+    RecordStore(settings.db_path).log("master_data_cleared", actor="reviewer", **cleared)
+    return {"cleared": cleared, "message": "Master file emptied. Import your own to replace it."}
 
 
 @app.get("/api/metrics")
