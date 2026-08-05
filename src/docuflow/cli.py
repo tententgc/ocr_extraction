@@ -188,6 +188,65 @@ def cmd_demo(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_split(args: argparse.Namespace) -> int:
+    """Say where the documents in a file begin, and optionally write them out."""
+    import pypdfium2 as pdfium
+
+    from docuflow.ingest.splitting import describe, detect
+    from docuflow.ocr.engine import run_ocr
+    from docuflow.ocr.render import render_document
+
+    settings = get_settings()
+    path = Path(args.target)
+    if not path.exists():
+        print(f"error: {path} does not exist", file=sys.stderr)
+        return 1
+
+    pages = render_document(
+        path, settings.page_dir / f"split-{path.stem}", max_pages=settings.ocr_max_pages
+    )
+    result = run_ocr(pages, settings)
+    report = detect([(page.page_number, page.text) for page in result.pages])
+
+    print(f"{path.name}: {describe(report)}")
+    for segment in report.segments:
+        print(f"  pages {segment.start_page}-{segment.end_page}  "
+              f"{segment.doc_type:9} {segment.reason}")
+    for note in report.notes:
+        print(f"  note: {note}")
+
+    if report.uncertain:
+        # An answer nobody should act on. Said on stderr and with a non-zero
+        # exit, so a script that pipes this does not quietly split anyway.
+        print("\nerror: the boundaries could not be decided; this file needs a person",
+              file=sys.stderr)
+        return 2
+
+    if not args.out:
+        return 0
+    if not report.is_multi:
+        print("\nOne document - nothing to write.")
+        return 0
+    if path.suffix.lower() != ".pdf":
+        print("error: only a PDF can be written back out", file=sys.stderr)
+        return 1
+
+    out_dir = Path(args.out)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    source = pdfium.PdfDocument(path)
+    written = []
+    for index, segment in enumerate(report.segments, start=1):
+        piece = pdfium.PdfDocument.new()
+        piece.import_pages(source, list(range(segment.start_page - 1, segment.end_page)))
+        target = out_dir / f"{path.stem}-{index:02d}-{segment.doc_type}.pdf"
+        piece.save(str(target))
+        written.append(target)
+    print(f"\nWrote {len(written)} file(s) to {out_dir}:")
+    for target in written:
+        print(f"  {target.name}")
+    return 0
+
+
 def cmd_export(args: argparse.Namespace) -> int:
     """Write the ledger to a file, or to stdout so it can be piped."""
     from docuflow.export import (
@@ -659,6 +718,23 @@ def main(argv: list[str] | None = None) -> int:
 
     records_parser = subparsers.add_parser("records", help="list posted records")
     records_parser.set_defaults(func=cmd_records)
+
+    split_parser = subparsers.add_parser(
+        "split",
+        help="find where the documents in a scanned file begin and end",
+        description=(
+            "A scanner makes one PDF from a stack of paper. Read as one document it "
+            "yields one invoice number and one total, and every other invoice in the "
+            "stack is silently never recorded. This reports the boundaries, and with "
+            "--out writes each document to its own PDF. Exits 2 without writing "
+            "anything when the boundaries cannot be decided."
+        ),
+    )
+    split_parser.add_argument("target", help="the PDF or image to examine")
+    split_parser.add_argument(
+        "--out", default=None, help="directory to write one PDF per document into"
+    )
+    split_parser.set_defaults(func=cmd_split)
 
     export_parser = subparsers.add_parser(
         "export",
