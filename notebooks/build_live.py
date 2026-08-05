@@ -1710,11 +1710,58 @@ def normalize(value, kind):
     if kind == "date":
         return parse_date(s)
     if kind in ("money", "number", "percent"):
-        try:
-            return float(s.replace(",", "").replace("%", "").replace("฿", "").strip())
-        except ValueError:
-            return s
+        return to_number(s)
     return " ".join(s.split())
+
+# ตัวเลขในเอกสารจริงไม่ได้มาเปล่าๆ — มันมาพร้อมสกุลเงิน หน่วย หรือวงเล็บ
+# ช่องว่างอยู่ใน character class ด้วย เพราะยุโรปเขียนหลักพันด้วยช่องว่าง
+NUMBER_RE = re.compile(r"-?\d[\d,. ']*\d|\d")
+
+def resolve_separators(token):
+    """ตัวไหนคือจุดทศนิยม `.` หรือ `,` — แล้วทิ้งอีกตัว
+
+    ลอกมาจาก `normalize/amounts.py` ของระบบจริงทั้งดุ้น เพราะเดาเอาเองแล้วพลาด
+    `1 234,56` (ยุโรป) จะกลายเป็น 23456 แทนที่จะเป็น 1234.56 — **ผิดแบบเงียบ**
+    คือสิ่งเดียวที่ระบบนี้กลัวจริงๆ
+    """
+    has_dot, has_comma = "." in token, "," in token
+    if has_dot and has_comma:
+        decimal = "." if token.rfind(".") > token.rfind(",") else ","   # ตัวหลังชนะ
+        return token.replace("," if decimal == "." else ".", "").replace(decimal, ".")
+    if has_comma:
+        tail = token.rsplit(",", 1)[1]
+        # "1,234" คือหลักพัน · "1,50" คือทศนิยมแบบยุโรป
+        return token.replace(",", "") if len(tail) == 3 else token.replace(",", ".")
+    if has_dot and len(token.split(".")) > 2:
+        return "".join(token.split("."))                               # "1.234.567"
+    return token
+
+def to_number(s):
+    """ดึงตัวเลขออกจากข้อความที่มีอย่างอื่นปนมา — เหมือน normalize/amounts.py
+
+    **นี่คือจุดที่เคยพัง** agent 1 ถูกสั่งให้ตอบตาม schema จึงตอบ `35000.00`
+    ส่วน agent 2 ถูกสั่งให้ "รายงานตามที่พิมพ์บนหน้า" จึงตอบ `35,000.00 THB`
+    ตามที่หน้ากระดาษเขียนไว้จริงๆ — **ทั้งคู่อ่านถูก**
+
+    วิธีเดิมคือ `.replace(",","").replace("%","").replace("฿","")` แล้ว float()
+    ซึ่งพอเจอ `THB` ต่อท้ายก็แปลงไม่ได้ คืนสตริงดิบกลับไป กลายเป็นเทียบ
+    `35000.0` (float) กับ `'35,000.00 THB'` (str) แล้วรายงานว่า **ขัดกัน**
+    ทั้งที่เป็นจำนวนเดียวกัน — ช่องนั้นร่วงจาก 97% เหลือ 45% พร้อมกันสามช่อง
+    และลากความมั่นใจทั้งใบลงไปด้วย
+
+    เป็นบั๊กตระกูลเดียวกับวันที่และกับ `#249872` เป๊ะ: **ทำให้เป็นมาตรฐาน
+    ก่อนเทียบ** ไม่งั้นเสียงรบกวนที่เราสร้างเองจะกลบสัญญาณที่ agent 2 มีไว้ให้
+    """
+    negative = "(" in s and ")" in s      # บัญชีเขียนติดลบด้วยวงเล็บ
+    matches = NUMBER_RE.findall(s.replace("(", "").replace(")", ""))
+    if not matches:
+        return s                          # ไม่มีตัวเลขเลย — คืนของเดิมไว้ให้เห็น
+    token = max(matches, key=len).strip().replace(" ", "").replace("'", "")
+    try:
+        number = float(resolve_separators(token))
+    except ValueError:
+        return s
+    return -number if negative else number
 
 def grounded(evidence, page):
     """evidence ที่ agent อ้าง อยู่บนหน้าจริงไหม — บีบช่องว่างทิ้งก่อนหา"""
@@ -1819,10 +1866,18 @@ print(f"\nชี้ที่มาบนหน้าไม่ได้: {', '.jo
 # แถวมีกี่แถวก็ได้ — และการที่สองชั้นนี้ต้องบวกกันได้ คือกฎอีกข้อหนึ่ง
 def read_line_items(page):
     def number(text):
-        try:
-            return float(text.replace(",", ""))
-        except ValueError:
-            return None
+        """ตัวเลขในช่อง หรือ None ถ้าช่องนั้นไม่ใช่ตัวเลข
+
+        ใช้ `to_number` ตัวเดียวกับที่ merge ใช้ เพราะช่องในตารางก็มีสกุลเงิน
+        ติดมาได้เหมือนกัน — `฿9,500.00` เคยแปลงไม่ผ่านแล้วคืน None ซึ่งบรรทัด
+        ล่างอ่านว่า "นี่คือหัวตาราง" แล้ว**ทิ้งทั้งแถว**เงียบๆ พอแถวหาย
+        กฎ line_items_sum_to_subtotal ก็เอายอดที่ขาดไปเทียบกับ subtotal
+        แล้วรายงานว่าเอกสารขัดกับตัวเอง ทั้งที่คนทำผิดคือเราเอง
+
+        None ยังต้องเป็น None อยู่ ตรงนั้นคือวิธีแยกหัวตารางออกจากแถวข้อมูล
+        """
+        got = to_number(str(text))
+        return got if isinstance(got, float) else None
 
     rows = []
     for row in re.findall(r"<tr>(.*?)</tr>", page, re.S):
@@ -1914,6 +1969,39 @@ md(r"""
 ### สามระดับ และต้องทำงานต่างกันจริง
 
 `blocking` **หยุดเอกสาร** · `warning` บันทึกไว้ให้เห็นแต่**ไม่หยุดอะไร** · `info` แค่หมายเหตุ
+
+---
+
+## 🔧 ปิดกฎเอง — `DISABLED_RULES`
+
+cell ข้างล่างเปิดด้วยบรรทัดนี้ **แก้แล้วรันใหม่ได้เลย**
+
+```python
+DISABLED_RULES = set()                    # ค่าเริ่มต้น: เปิดครบทุกข้อ
+DISABLED_RULES = {"bank_account_matches"} # ปิดข้อเดียว
+```
+
+ชื่อที่ใส่ได้คือ 4 ข้อในตารางข้างบน
+
+### ปิดกฎแล้วเกิดอะไรขึ้น — และ**ไม่**เกิดอะไรขึ้น
+
+| | |
+|---|---|
+| กฎที่ปิด | **ไม่ถูกตรวจเลย** |
+| ผลของมัน | ไปอยู่ `SKIPPED` **ไม่ใช่** `FINDINGS` |
+| นับเป็นผ่านไหม | **ไม่** — และนี่คือจุดสำคัญที่สุดของทั้งหัวข้อ |
+
+**ปิด ≠ ผ่าน** ถ้าปิดแล้วนับเป็นผ่าน เอกสารที่*ไม่ได้ตรวจ*จะหน้าตาเหมือนเอกสารที่*ตรวจแล้วผ่าน* ทุกประการ — ซึ่งคือ **silent error** พอดี ตัวเลขที่ระบบทั้งระบบนี้มีไว้วัด
+
+notebook จึงพิมพ์ข้อที่ปิดไว้ออกมาทุกครั้ง ทั้งใน cell กฎ ทั้งในสรุปท้าย และติดไปกับ `RESULT` JSON ด้วย เพราะปลายทางที่รับผลไปก็ต้องรู้เท่ากับคนที่นั่งอ่าน
+
+### ระบบจริงทำแบบเดียวกัน
+
+`DISABLED_RULES` ใน `.env` · ปิดทั้งชุดด้วย `builtin_rules_disabled` · ปิดหมดจริงๆ ด้วย free mode
+
+ทุกแบบ**เขียน finding ระดับ `info` ติดไปกับเอกสารทุกใบ** ว่านโยบายไม่ได้ถูกใช้เต็ม — ด้วยเหตุผลเดียวกับข้างบน
+
+> **เจอมาแล้วกับตัว** — เครื่องที่ทำ Demo_Sample ปิด `bank_account_matches_vendor` กับ `po_amount_within_tolerance` ไว้ใน `.env` เอกสารใบ 06 กับ 08 ที่*ต้อง*ถูกจับ เลย POST ผ่านหน้าตาเฉย ดูเหมือนระบบพัง ทั้งที่ระบบทำตามที่ตั้งค่าไว้เป๊ะ **นั่นแหละเหตุผลที่มันต้องพูดออกมาดังๆ**
 """)
 
 code(r'''
@@ -2017,8 +2105,18 @@ def find_vendor():
                 return vid, v, "ชื่อ"
     return None, None, "ไม่พบ"
 
-# ── ที่เก็บผลตรวจ ─────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════
+# ปิดกฎเอง — แก้ set นี้แล้วรัน cell นี้ใหม่
+# ══════════════════════════════════════════════════════════════════════════
+# ใส่ rule_id ที่ไม่อยากให้ตรวจ เช่น {"bank_account_matches"} แล้วรันใหม่
+# ชื่อที่ใส่ได้: totals_consistent · tax_rate_consistent ·
+#              line_items_sum_to_subtotal · bank_account_matches
+# (กฎของ agent ปิดที่ cell ของมันเอง — ดูท้าย notebook)
+DISABLED_RULES = set()
+
+# ที่เก็บผลตรวจ กับที่เก็บ "ข้อที่ถูกปิด" — คนละที่กัน โดยตั้งใจ
 FINDINGS = []
+SKIPPED = []
 
 def check(rule_id, ok, severity, message):
     """บันทึกผลตรวจหนึ่งข้อ — เขียนทับของเดิมถ้ามี id ซ้ำ
@@ -2026,8 +2124,16 @@ def check(rule_id, ok, severity, message):
     ทับ ไม่ใช่ต่อท้าย เพราะ notebook เป็นสถานะที่ค้างอยู่: รัน cell agent ซ้ำ
     รอบสองจะได้กฎเดิมโผล่สองครั้ง แล้วรายงานสุดท้ายบอกว่าตรวจ 5 ข้อทั้งที่มี 4
     ซึ่งเจอแน่นอน เพราะท้าย notebook เขียนไว้ให้แก้ค่าแล้วรันซ้ำ
+
+    กฎที่ถูกปิด **ไม่ได้กลายเป็นผ่าน** — มันไปอยู่ SKIPPED ไม่ใช่ FINDINGS
+    ถ้าปิดแล้วนับเป็นผ่าน เอกสารที่ไม่ได้ตรวจจะหน้าตาเหมือนเอกสารที่ตรวจแล้ว
+    และนั่นคือ silent error พอดี — ตัวเลขที่ระบบนี้มีไว้วัดโดยเฉพาะ
     """
     global FINDINGS
+    if rule_id in DISABLED_RULES:
+        if rule_id not in [s["rule"] for s in SKIPPED]:
+            SKIPPED.append({"rule": rule_id, "severity": severity})
+        return
     FINDINGS = [f for f in FINDINGS if f["rule"] != rule_id]
     FINDINGS.append({"rule": rule_id, "ok": ok, "severity": severity, "message": message})
 
@@ -2079,6 +2185,13 @@ print(f"ตรวจ   : {len(FINDINGS)} ข้อ · ผ่าน {sum(f['ok'] 
 for f in FINDINGS:
     mark = "ok  " if f["ok"] else f["severity"].upper()
     print(f"  [{mark:8}] {f['rule']:22} {f['message']}")
+
+# ข้อที่ถูกปิด พูดออกมาดังๆ ทุกครั้ง ไม่ใช่เงียบ — เอกสารที่ไม่ได้ตรวจครบ
+# ต้องไม่หน้าตาเหมือนเอกสารที่ตรวจครบ
+if SKIPPED:
+    print(f"\n  ⚠ ปิดไว้ {len(SKIPPED)} ข้อ — ไม่ได้ตรวจ และไม่นับว่าผ่าน:")
+    for s in SKIPPED:
+        print(f"    [ปิดอยู่  ] {s['rule']:22} (ปกติเป็น {s['severity']})")
 ''', """
 ผู้ขาย : V-9001  Siam Tech Supply Co., Ltd.  (จับคู่จากเลขผู้เสียภาษี)
 ตรวจ   : 4 ข้อ · ผ่าน 4 · ไม่ผ่าน 0
@@ -2963,10 +3076,14 @@ print(f"\n── ผ่านกฎไหม ({len(FINDINGS)} ข้อ) " + "�
 for f in FINDINGS:
     status = "ผ่าน  " if f["ok"] else f"ไม่ผ่าน [{f['severity']}]"
     print(f"  {status:22} {f['rule']:30} {f['message'][:60]}")
+for s in SKIPPED:
+    print(f"  {'ปิดอยู่ — ไม่ได้ตรวจ':22} {s['rule']:30} (ปกติเป็น {s['severity']})")
 
 print(f"\n── สรุป " + "─" * 66)
 print(f"  Confidence      : {CONFIDENCE:.0%}   (เกณฑ์ {AUTO_POST_MIN_CONFIDENCE:.0%})")
 print(f"  กฎที่ไม่ผ่าน      : {sum(not f['ok'] for f in FINDINGS)} จาก {len(FINDINGS)}")
+if SKIPPED:
+    print(f"  กฎที่ปิดไว้       : {len(SKIPPED)} ← ผลนี้ไม่ได้ผ่านนโยบายเต็ม")
 print(f"  เรียกโมเดล      : OCR 1 + agent อ่าน {1 + bool(ANTHROPIC_KEY)} + agent กฎ (tool {len(TOOL_LOG)} ครั้ง)")
 print(f"  โมเดลในการตัดสิน : 0")
 
@@ -2982,9 +3099,21 @@ if reasons:
 else:
     print("\n→ เขียนลงบัญชีอัตโนมัติ ไม่ต้องมีคนดู")
 
+# POST=True ที่ได้มาเพราะปิดกฎ ไม่เหมือน POST=True ที่ผ่านครบ — ต้องเขียนไว้
+# ตรงนี้ ไม่ใช่ให้คนอ่านย้อนขึ้นไปเดาเอง
+if SKIPPED:
+    print(f"\n⚠ ผลนี้ตรวจไม่ครบนโยบาย: ปิดไว้ {len(SKIPPED)} ข้อ "
+          f"({', '.join(s['rule'] for s in SKIPPED)})")
+    if POST:
+        print("  POST=True ข้างบนจึงแปลว่า 'ผ่านเท่าที่ยังเปิดอยู่' ไม่ใช่ 'ผ่านทั้งหมด'")
+
 RESULT = {"file": DOC_PATH.name, "doc_type": DOC_TYPE, "vendor": VENDOR_ID,
           "fields": {n: f["value"] for n, f in FIELDS.items()},
           "rules": [{k: f[k] for k in ("rule", "ok", "severity")} for f in FINDINGS],
+          # ติดไปกับผลลัพธ์ด้วย เพราะปลายทางที่รับ JSON นี้ไปก็ต้องรู้ว่า
+          # ตรวจครบหรือไม่ครบ พอๆ กับคนที่นั่งอ่าน notebook
+          "disabled_rules": sorted(DISABLED_RULES),
+          "skipped": [s["rule"] for s in SKIPPED],
           "confidence": round(CONFIDENCE, 3), "post": POST, "reasons": reasons}
 print("\n── ผลลัพธ์เป็น JSON (พร้อมส่งต่อ) " + "─" * 42)
 print(json.dumps(RESULT, ensure_ascii=False, indent=2)[:1200])
