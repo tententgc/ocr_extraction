@@ -15,7 +15,12 @@ and the word in the filename all agree about what should happen.
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import pytest
+
+ROOT = Path(__file__).resolve().parent.parent
 
 from docuflow.samples.demo_set import (
     DEMO_DOCUMENTS,
@@ -25,6 +30,9 @@ from docuflow.samples.demo_set import (
 )
 
 ARITHMETIC_SLACK = 0.01
+# How far an invoice may sit from the purchase order it quotes: a commercial
+# allowance, deliberately not the same number as the arithmetic slack above.
+AMOUNT_TOLERANCE = 0.02
 # Both formats have to appear: a PDF carries a text layer and a PNG does not,
 # so a set of PDFs only demonstrates the half where OCR is barely tested.
 REQUIRED_ARRIVALS = {"pdf", "png"}
@@ -39,10 +47,10 @@ def _order(number: str) -> dict | None:
 
 
 class TestTheSetIsBalanced:
-    def test_ten_documents_split_evenly(self) -> None:
+    def test_the_documents_split_evenly(self) -> None:
         posting = [posts for _, _, posts, _ in DEMO_DOCUMENTS]
-        assert len(DEMO_DOCUMENTS) == 10
-        assert sum(posting) == 5, "five must pass and five must fail"
+        assert len(DEMO_DOCUMENTS) == 12
+        assert sum(posting) == 6, "half must pass and half must fail"
 
     def test_both_arrival_formats_are_present(self) -> None:
         arrivals = {arrival for _, arrival, _, _ in DEMO_DOCUMENTS}
@@ -156,6 +164,35 @@ class TestEachDocumentCarriesWhatItsNameClaims:
     @pytest.mark.parametrize("slug,posts,doc", [
         (slug, posts, doc) for slug, _, posts, doc in DEMO_DOCUMENTS
     ])
+    def test_no_document_is_accidentally_under_its_purchase_order(
+        self, slug: str, posts: bool, doc
+    ) -> None:
+        """`po_amount_within_tolerance` tests `abs(difference)`.
+
+        So it flags an underrun exactly as loudly as an overrun, and a document
+        billing comfortably *below* its order arrives with a second, unintended
+        blocking finding. This has caught three documents during the life of
+        this set - each looked like the system misbehaving until the rule was
+        read. Until the rule distinguishes the two directions, every document
+        here has to sit inside the band in both.
+        """
+        reference = doc.ground_truth.get("purchase_order_ref")
+        if not reference or "over_purchase_order" in slug:
+            return
+        order = _order(reference)
+        po_amount = float(order["amount"])
+        difference = abs(doc.ground_truth["subtotal"] - po_amount)
+        allowed = max(po_amount * AMOUNT_TOLERANCE, ARITHMETIC_SLACK)
+        assert difference <= allowed, (
+            f"{slug}: bills {doc.ground_truth['subtotal']:,.2f} against a "
+            f"{po_amount:,.2f} order - {difference:,.2f} out, tolerance is "
+            f"{allowed:,.2f}. It will be held for being under, which is not what "
+            f"this document is meant to demonstrate."
+        )
+
+    @pytest.mark.parametrize("slug,posts,doc", [
+        (slug, posts, doc) for slug, _, posts, doc in DEMO_DOCUMENTS
+    ])
     def test_line_items_sum_to_the_subtotal(self, slug: str, posts: bool, doc) -> None:
         if not doc.line_items:
             return
@@ -209,3 +246,74 @@ class TestTheRegisterSupportsTheSet:
     def test_contracts_are_absent_rather_than_empty(self) -> None:
         """The loader refuses a header with no rows, mid-demonstration."""
         assert master_rows()["contracts"] == ()
+
+
+class TestTheAgentRulePair:
+    """Documents 11 and 12: the two the AI-written rule decides.
+
+    Their whole point is that they are the same invoice in every respect a
+    built-in rule can see, and differ only in a register column none of them
+    reads. If that stops being true the pair stops demonstrating anything -
+    it just becomes two more documents.
+    """
+
+    OPEN = "invoice_purchase_order_open"
+    CLOSED = "invoice_purchase_order_closed"
+
+    def _doc(self, slug: str):
+        return next(d for s, _, _, d in DEMO_DOCUMENTS if s == slug)
+
+    def test_the_pair_exists_one_passing_one_held(self) -> None:
+        outcomes = {slug: posts for slug, _, posts, _ in DEMO_DOCUMENTS
+                    if slug in (self.OPEN, self.CLOSED)}
+        assert outcomes == {self.OPEN: True, self.CLOSED: False}
+
+    def test_they_differ_in_the_purchase_order_status_and_nothing_else(self) -> None:
+        for slug, expected in ((self.OPEN, "open"), (self.CLOSED, "closed")):
+            order = _order(self._doc(slug).ground_truth["purchase_order_ref"])
+            assert order is not None, f"{slug} quotes an order nobody issued"
+            assert order["status"] == expected, (
+                f"{slug} is the '{expected}' half of the pair and its order says "
+                f"'{order['status']}'"
+            )
+
+    def test_the_held_one_is_clean_to_every_built_in_check(self) -> None:
+        """Otherwise it would be held anyway and prove nothing about the agent."""
+        doc = self._doc(self.CLOSED)
+        gt = doc.ground_truth
+        assert abs(gt["subtotal"] + gt["tax_amount"] - gt["total_amount"]) <= ARITHMETIC_SLACK
+        assert abs(round(gt["subtotal"] * gt["tax_rate"] / 100, 2)
+                   - gt["tax_amount"]) <= ARITHMETIC_SLACK
+        vendor = _vendor_by_tax_id(gt["vendor_tax_id"])
+        assert vendor is not None and gt["bank_account"] == vendor["bank_account"]
+        order = _order(gt["purchase_order_ref"])
+        assert gt["subtotal"] <= float(order["amount"]) + ARITHMETIC_SLACK, (
+            "billing over the order would trip po_amount_within_tolerance too, and "
+            "then the document no longer shows what only the agent rule can catch"
+        )
+        assert order["vendor_id"] == vendor["vendor_id"]
+
+    def test_the_held_one_names_the_agent_rule(self) -> None:
+        assert self._doc(self.CLOSED).expected_findings == (
+            "purchase_order_still_has_room",
+        )
+
+    def test_the_shipped_rule_is_the_real_one_verbatim(self) -> None:
+        """A demo rule that has drifted from the system's teaches the drift."""
+        demo = json.loads((ROOT / "Demo_Sample" / "rules.json").read_text(encoding="utf-8"))
+        real = json.loads((ROOT / "real_samples" / "rules.json").read_text(encoding="utf-8"))
+        shipped = {r["rule_id"]: r for r in demo["rules"]}
+        canonical = {r["rule_id"]: r for r in real["rules"]}
+        assert set(shipped) == {"purchase_order_still_has_room"}
+        for rule_id, rule in shipped.items():
+            assert rule == canonical[rule_id], (
+                f"Demo_Sample/rules.json has drifted from real_samples/rules.json "
+                f"for {rule_id}"
+            )
+
+    def test_the_rule_is_an_agent_rule_that_blocks(self) -> None:
+        demo = json.loads((ROOT / "Demo_Sample" / "rules.json").read_text(encoding="utf-8"))
+        rule = demo["rules"][0]
+        assert rule["kind"] == "agent", "a fixed expression cannot read the register"
+        assert rule["severity"] == "blocking", "a warning would let document 12 post"
+        assert "invoice" in rule["doc_types"]

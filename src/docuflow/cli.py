@@ -516,11 +516,15 @@ def cmd_demo_set(args: argparse.Namespace) -> int:
 
     print(f"\n  register: {out_dir / 'master'}  "
           f"({len(VENDORS)} vendors, {len(PURCHASE_ORDERS)} purchase orders)")
+    # The rule file is not optional here. Two of the twelve are decided by
+    # `purchase_order_still_has_room` and by nothing else, so a run that skips
+    # this line posts document 12 and looks like the system missed it.
     print(
         "\nLoad it and run it with:\n"
         "  docuflow reset --confirm\n"
         f"  docuflow master load {out_dir / 'master'}\n"
-        f"  docuflow process {out_dir}/*.pdf {out_dir}/*.png"
+        f"  docuflow rules load {out_dir / 'rules.json'}\n"
+        f"  docuflow process {out_dir}/*.pdf {out_dir}/*.png {out_dir}/*.jpg"
     )
     return 0
 

@@ -1,0 +1,33 @@
+{
+  "_comment": "The one rule Demo_Sample needs that is not built in. Documents 11 and 12 are decided by it and by nothing else: they differ only in the `status` column of the purchase order they quote, and no built-in rule reads that column. Copied verbatim from real_samples/rules.json - tests/test_demo_set.py fails if the two ever drift apart. Load with: docuflow rules load Demo_Sample/rules.json",
+  "rules": [
+    {
+      "rule_id": "purchase_order_still_has_room",
+      "title": "The purchase order must still be open and have budget left",
+      "prompt": "Before paying an invoice against a purchase order, check the order is still open and that what we have already paid against it plus this invoice does not exceed it.",
+      "message": "This invoice cannot be paid against the purchase order it quotes.",
+      "doc_types": [
+        "invoice"
+      ],
+      "severity": "blocking",
+      "kind": "agent",
+      "when": {
+        "field": "purchase_order_ref",
+        "op": "present"
+      },
+      "instruction": "Decide whether this invoice may be paid against the purchase order it quotes. It may not if the order is closed or cancelled, or if everything already posted against it plus this invoice exceeds the order value. Answer pass only if the order is open and there is room.",
+      "plan": [
+        "Look up the purchase order quoted on the invoice and note its status, value and currency.",
+        "If the status is anything other than open, that alone is a fail - say which status it is.",
+        "Find the records already posted against this purchase order and add up their amounts.",
+        "Add this invoice's subtotal to that sum and compare it with the order value.",
+        "Answer fail if the total exceeds the order value, pass if it does not, and unsure if a lookup returned nothing."
+      ],
+      "tools": [
+        "lookup_purchase_order",
+        "find_posted_records",
+        "read_document"
+      ]
+    }
+  ]
+}

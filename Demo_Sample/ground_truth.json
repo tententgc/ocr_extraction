@@ -220,6 +220,52 @@
       "reference_text": "Northwind Logistics Ltd.\r\n45 Bangna-Trad Km.19, Bang Phli, Samut Prakan 10540\r\nINVOICE\r\nBILLED TO\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nInvoice # NWL-2026-0518\r\nIssued Jul 26, 2026\r\nPayment Due Sep 9, 2026\r\nPO PO-2026-9106\r\nSupplier Tax ID 0105561071237\r\nDescription Qty Unit Price Amount\r\nInbound freight, Laem Chabang to Bangkok 7 3,500.00 24,500.00\r\nCustoms clearance handling 2 5,250.00 10,500.00\r\nSubtotal 35,000.00 THB\r\nVAT 7% 2,450.00 THB\r\nAmount Due 37,450.00 THB\r\nTerms: Net 45\r\nBank Account: 9876543210"
     },
     {
+      "doc_id": "demo_invoice_purchase_order_open",
+      "doc_type": "invoice",
+      "layout": "classic",
+      "title": "Siam Tech invoice against a purchase order that is still open",
+      "demonstrates": "The pass half of the agent-rule pair. PO-2026-9107 is open and was raised for 48,900.00; this invoice bills 48,000.00 against it. The agent looks the order up, reads the status, compares the amounts and answers pass - on evidence it fetched, not on anything printed on the page.",
+      "ground_truth": {
+        "invoice_number": "STS-2026-0431",
+        "invoice_date": "2026-07-28",
+        "due_date": "2026-08-27",
+        "vendor_name": "Siam Tech Supply Co., Ltd.",
+        "vendor_tax_id": "0105543000129",
+        "buyer_name": "Mirtphol Industries PCL",
+        "purchase_order_ref": "PO-2026-9107",
+        "currency": "THB",
+        "subtotal": 48000.0,
+        "tax_rate": 7.0,
+        "tax_amount": 3360.0,
+        "total_amount": 51360.0,
+        "payment_terms": "Net 30",
+        "bank_account": "1234567890"
+      },
+      "line_items": [
+        {
+          "description": "Rack rail set, 42U",
+          "quantity": 24,
+          "unit_price": 1500.0,
+          "amount": 36000.0
+        },
+        {
+          "description": "Cable management arms",
+          "quantity": 24,
+          "unit_price": 500.0,
+          "amount": 12000.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [],
+      "requires_posted": null,
+      "file": "06_PASS_invoice_purchase_order_open.pdf",
+      "expected_post": true,
+      "arrival": "pdf",
+      "reference_text": "Siam Tech Supply Co., Ltd.\r\n199/22 Ratchadaphisek Road, Din Daeng, Bangkok 10400\r\nTax ID: 0105543000129\r\nTAX INVOICE\r\nInvoice No.: STS-2026-0431\r\nInvoice Date: 28 July 2026\r\nDue Date: 27 August 2026\r\nPO Reference: PO-2026-9107\r\nBill To\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nDescription Qty Unit Price Amount\r\nRack rail set, 42U 24 1,500.00 36,000.00\r\nCable management arms 24 500.00 12,000.00\r\nSubtotal 48,000.00 THB\r\nVAT 7% 3,360.00 THB\r\nAmount Due 51,360.00 THB\r\nPayment Terms: Net 30\r\nRemit to Account No: 1234567890"
+    },
+    {
       "doc_id": "demo_invoice_bank_account_changed",
       "doc_type": "invoice",
       "layout": "modern",
@@ -262,7 +308,7 @@
         "bank_account_matches_vendor"
       ],
       "requires_posted": null,
-      "file": "06_FAIL_invoice_bank_account_changed.png",
+      "file": "07_FAIL_invoice_bank_account_changed.png",
       "expected_post": false,
       "arrival": "png",
       "reference_text": "Rungruang Steel Works Co., Ltd.\r\nBangkok, Thailand\r\nINVOICE\r\nBILLED TO\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nInvoice # RSW-2026-1188\r\nIssued Jul 18, 2026\r\nPayment Due Sep 16, 2026\r\nPO PO-2026-9102\r\nSupplier Tax ID 0105552000110\r\nDescription Qty Unit Price Amount\r\nHot-rolled steel plate 12mm x 1500 x 6000 4 18,500.00 74,000.00\r\nCutting and edge preparation 4 5,500.00 22,000.00\r\nSubtotal 96,000.00 THB\r\nVAT 7% 6,720.00 THB\r\nAmount Due 102,720.00 THB\r\nTerms: Net 60\r\nBank Account: 5590112233"
@@ -310,7 +356,7 @@
         "tax_rate_consistent"
       ],
       "requires_posted": null,
-      "file": "07_FAIL_invoice_vat_wrong.pdf",
+      "file": "08_FAIL_invoice_vat_wrong.pdf",
       "expected_post": false,
       "arrival": "pdf",
       "reference_text": "Northwind Logistics Ltd.\r\n45 Bangna-Trad Km.19, Bang Phli, Samut Prakan 10540\r\nTax ID: 0105561071237\r\nTAX INVOICE\r\nInvoice No.: NWL-2026-0442\r\nInvoice Date: 21 July 2026\r\nDue Date: 4 September 2026\r\nPO Reference: PO-2026-9103\r\nBill To\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nDescription Qty Unit Price Amount\r\nInbound freight, Laem Chabang to Bangkok 8 3,500.00 28,000.00\r\nCustoms clearance handling 2 5,000.00 10,000.00\r\nSubtotal 38,000.00 THB\r\nVAT 7% 3,420.00 THB\r\nAmount Due 41,420.00 THB\r\nPayment Terms: Net 45\r\nRemit to Account No: 9876543210"
@@ -358,7 +404,7 @@
         "invoice_within_purchase_order"
       ],
       "requires_posted": null,
-      "file": "08_FAIL_invoice_over_purchase_order.pdf",
+      "file": "09_FAIL_invoice_over_purchase_order.pdf",
       "expected_post": false,
       "arrival": "pdf",
       "reference_text": "Siam Tech Supply Co., Ltd.\r\n199/22 Ratchadaphisek Road, Din Daeng, Bangkok 10400\r\nINVOICE\r\nBILLED TO\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nInvoice # STS-2026-0402\r\nIssued Jul 29, 2026\r\nPayment Due Aug 28, 2026\r\nPO PO-2026-9101\r\nSupplier Tax ID 0105543000129\r\nDescription Qty Unit Price Amount\r\nUPS 3kVA rack mount 16 9,500.00 152,000.00\r\nInstallation and commissioning 1 16,000.00 16,000.00\r\nSubtotal 168,000.00 THB\r\nVAT 7% 11,760.00 THB\r\nAmount Due 179,760.00 THB\r\nTerms: Net 30\r\nBank Account: 1234567890"
@@ -405,7 +451,7 @@
         "vendor_known"
       ],
       "requires_posted": null,
-      "file": "09_FAIL_invoice_unknown_vendor.pdf",
+      "file": "10_FAIL_invoice_unknown_vendor.pdf",
       "expected_post": false,
       "arrival": "pdf",
       "reference_text": "Sathorn Metalworks Co., Ltd.\r\nBangkok, Thailand\r\nTax ID: 0105566000451\r\nTAX INVOICE\r\nInvoice No.: SMW-2026-0091\r\nInvoice Date: 22 July 2026\r\nDue Date: 21 August 2026\r\nBill To\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nDescription Qty Unit Price Amount\r\nFabricated steel bracket, galvanised 200 160.00 32,000.00\r\nPowder coating 200 50.00 10,000.00\r\nSubtotal 42,000.00 THB\r\nVAT 7% 2,940.00 THB\r\nAmount Due 44,940.00 THB\r\nPayment Terms: Net 30\r\nRemit to Account No: 7730099001"
@@ -453,10 +499,58 @@
         "invoice_totals_consistent"
       ],
       "requires_posted": null,
-      "file": "10_FAIL_invoice_total_transposed.png",
+      "file": "11_FAIL_invoice_total_transposed.png",
       "expected_post": false,
       "arrival": "png",
       "reference_text": "Chao Phraya Print & Pack Co., Ltd.\r\nBangkok, Thailand\r\nINVOICE\r\nBILLED TO\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nInvoice # CPP-2026-0702\r\nIssued Jul 27, 2026\r\nPayment Due Aug 26, 2026\r\nPO PO-2026-9105\r\nSupplier Tax ID 0105559000188\r\nDescription Qty Unit Price Amount\r\nPrinted carton, 3-ply, B-flute 8000 14.00 112,000.00\r\nLabel printing, 4-colour 1 16,000.00 16,000.00\r\nSubtotal 128,000.00 THB\r\nVAT 7% 8,960.00 THB\r\nAmount Due 139,660.00 THB\r\nTerms: Net 30\r\nBank Account: 6680033445"
+    },
+    {
+      "doc_id": "demo_invoice_purchase_order_closed",
+      "doc_type": "invoice",
+      "layout": "classic",
+      "title": "Chao Phraya Print invoice against a purchase order that was closed",
+      "demonstrates": "The block half of the pair, and the only document in the set that no built-in rule objects to. PO-2026-9108 was closed on 2026-06-30; this invoice is dated a month later and bills 21,000.00 against it, which is inside the 21,300.00 that was ordered. Arithmetic, vendor, bank account and amount are all correct. The status is not printed on the invoice and no fixed rule reads it - the agent rule is the only thing in the system that stops this being paid.",
+      "ground_truth": {
+        "invoice_number": "CPP-2026-0815",
+        "invoice_date": "2026-07-30",
+        "due_date": "2026-08-29",
+        "vendor_name": "Chao Phraya Print & Pack Co., Ltd.",
+        "vendor_tax_id": "0105559000188",
+        "buyer_name": "Mirtphol Industries PCL",
+        "purchase_order_ref": "PO-2026-9108",
+        "currency": "THB",
+        "subtotal": 21000.0,
+        "tax_rate": 7.0,
+        "tax_amount": 1470.0,
+        "total_amount": 22470.0,
+        "payment_terms": "Net 30",
+        "bank_account": "6680033445"
+      },
+      "line_items": [
+        {
+          "description": "Operator manual, perfect bound",
+          "quantity": 1500,
+          "unit_price": 12.0,
+          "amount": 18000.0
+        },
+        {
+          "description": "Setup and plate charge",
+          "quantity": 1,
+          "unit_price": 3000.0,
+          "amount": 3000.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [
+        "purchase_order_still_has_room"
+      ],
+      "requires_posted": null,
+      "file": "12_FAIL_invoice_purchase_order_closed.pdf",
+      "expected_post": false,
+      "arrival": "pdf",
+      "reference_text": "Chao Phraya Print & Pack Co., Ltd.\r\nBangkok, Thailand\r\nTax ID: 0105559000188\r\nTAX INVOICE\r\nInvoice No.: CPP-2026-0815\r\nInvoice Date: 30 July 2026\r\nDue Date: 29 August 2026\r\nPO Reference: PO-2026-9108\r\nBill To\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nDescription Qty Unit Price Amount\r\nOperator manual, perfect bound 1500 12.00 18,000.00\r\nSetup and plate charge 1 3,000.00 3,000.00\r\nSubtotal 21,000.00 THB\r\nVAT 7% 1,470.00 THB\r\nAmount Due 22,470.00 THB\r\nPayment Terms: Net 30\r\nRemit to Account No: 6680033445"
     }
   ],
   "master_data": {
@@ -576,6 +670,24 @@
         "amount": 35000.0,
         "status": "open",
         "description": "Inbound freight, late July"
+      },
+      {
+        "po_number": "PO-2026-9107",
+        "vendor_id": "V-9001",
+        "po_date": "2026-07-08",
+        "currency": "THB",
+        "amount": 48900.0,
+        "status": "open",
+        "description": "Rack rails and cable management, phase 1"
+      },
+      {
+        "po_number": "PO-2026-9108",
+        "vendor_id": "V-9006",
+        "po_date": "2026-05-14",
+        "currency": "THB",
+        "amount": 21300.0,
+        "status": "closed",
+        "description": "Printed manuals, spring run - closed 2026-06-30"
       }
     ],
     "contracts": []
