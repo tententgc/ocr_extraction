@@ -168,6 +168,56 @@ class TestThaiClassification:
         assert classify_by_keywords(text)[0] == doc_type
 
 
+class TestReferenceKeysInThai:
+    """`reference_key` resolves purchase orders and contracts against the
+    register, so a collision does not fail loudly - it matches the **wrong**
+    record, and every check downstream then compares the document against a
+    contract that is not its own.
+
+    `str.isalnum()` is False for every Thai vowel sign and tone mark: they are
+    category `Mn`, nonspacing marks. Filtering on it deleted them.
+    """
+
+    @pytest.mark.parametrize(
+        "left,right",
+        [
+            ("เก่า", "เก้า"),      # old / nine
+            ("ไม่", "ไม้"),        # not / wood
+            ("มา", "ม้า"),         # come / horse
+            ("ที", "ที่"),         # differ by a vowel sign alone
+            ("เสือ", "เสื้อ"),     # tiger / shirt
+        ],
+    )
+    def test_two_different_thai_words_get_different_keys(self, left: str, right: str) -> None:
+        assert reference_key(left) != reference_key(right)
+
+    def test_a_thai_reference_survives_intact(self) -> None:
+        assert "ที่" in reference_key("สัญญาเลขที่ ก-001")
+
+    @pytest.mark.parametrize(
+        "left,right",
+        [
+            ("INV-2024/0142", "inv 20240142"),
+            ("#249872", "249872"),
+            (THAI_DIGITS, ARABIC_DIGITS),
+            ("สัญญาเลขที่ ก-๐๐๑", "สัญญาเลขที่ ก 001"),
+        ],
+    )
+    def test_what_must_still_compare_equal_does(self, left: str, right: str) -> None:
+        """Keeping the marks must not stop punctuation, case, spacing and Thai
+        numerals from being ignored - that is the whole job of the key."""
+        assert reference_key(left) == reference_key(right)
+
+    def test_a_decomposed_thai_string_keys_the_same_as_a_composed_one(self) -> None:
+        """Two encodings of one word are one word."""
+        import unicodedata
+
+        word = "สัญญาที่ ก-001"
+        assert reference_key(unicodedata.normalize("NFD", word)) == reference_key(
+            unicodedata.normalize("NFC", word)
+        )
+
+
 class TestThaiTextMatching:
     def test_thai_numerals_convert(self) -> None:
         assert thai_digits_to_arabic("๒๕๖๙") == "2569"

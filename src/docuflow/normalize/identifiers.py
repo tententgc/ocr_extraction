@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 
 from docuflow.normalize.text import collapse_whitespace, thai_digits_to_arabic
 
@@ -98,12 +99,36 @@ def normalize_reference(text: str | None) -> str | None:
     return cleaned.upper() or None
 
 
+def _is_key_character(char: str) -> bool:
+    """Whether a character carries identity for a reference key.
+
+    Alphanumerics, plus the combining marks that are part of the letter before
+    them. `str.isalnum()` alone is False for every Thai vowel sign and tone
+    mark - they are category `Mn`, nonspacing marks - so filtering on it
+    silently deletes them and collapses words that are not the same word:
+
+        เก่า  and  เก้า   both become  เกา
+        ไม่   and  ไม้    both become  ไม
+        เสื้อ and  เสือ   both become  เสอ
+
+    This key resolves purchase orders and contracts against the register, so a
+    collision does not fail loudly - it matches the *wrong* record, and every
+    check downstream then compares a document against a contract that is not
+    its own.
+    """
+    return char.isalnum() or unicodedata.category(char).startswith("M")
+
+
 def reference_key(text: str | None) -> str:
     """Comparison key for references: uppercase alphanumerics only.
 
     `INV-2024/0142`, `inv 20240142` and `INV20240142` all collapse to the same
     key, which is what duplicate detection needs.
+
+    NFC first, so a Thai string that arrives decomposed keys the same as the
+    composed form of the same word.
     """
     if not text:
         return ""
-    return "".join(char for char in thai_digits_to_arabic(str(text)).upper() if char.isalnum())
+    folded = unicodedata.normalize("NFC", thai_digits_to_arabic(str(text))).upper()
+    return "".join(char for char in folded if _is_key_character(char))
