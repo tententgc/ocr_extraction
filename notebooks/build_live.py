@@ -436,7 +436,8 @@ display(HTML(f"""
 code(r'''
 #@title ติดตั้ง + คีย์  { display-mode: "form" }
 # สามอย่าง: ตัวเรียก Typhoon OCR, OpenAI SDK (ใช้คุยกับ Typhoon), Anthropic SDK
-%pip install -q typhoon-ocr openai anthropic
+# pypdfium2 เรนเดอร์หน้า PDF ให้ขั้น ① — ขาดตัวนี้แล้ว PDF ตายตั้งแต่ cell แรก
+%pip install -q typhoon-ocr openai anthropic pypdfium2
 
 import os, getpass
 
@@ -492,19 +493,23 @@ code(r'''
 from pathlib import Path
 
 DOCS = Path("/content/docs"); DOCS.mkdir(exist_ok=True)
-existing = sorted(p for p in DOCS.iterdir() if p.is_file())
 
-if existing:
-    DOC_PATH = existing[0]
-    print(f"ใช้ไฟล์ที่มีอยู่แล้ว: {DOC_PATH.name}")
-    print("(ลบไฟล์ใน /content/docs ออกก่อน ถ้าอยากอัปโหลดใหม่)")
-else:
-    from google.colab import files
-    got = files.upload()
-    name = next(iter(got))
-    DOC_PATH = DOCS / name
-    DOC_PATH.write_bytes(got[name])
-    print(f"อัปโหลดแล้ว: {DOC_PATH.name}")
+# ถามทุกครั้ง ไม่หยิบไฟล์เก่าในโฟลเดอร์มาใช้เอง
+# เคยเขียนให้ใช้ไฟล์ที่มีอยู่แล้วถ้าเจอ ซึ่งทำให้รันรอบสองอ่านไฟล์ของรอบแรก
+# เงียบๆ แล้วผลลัพธ์ที่ออกมาก็ไม่ใช่เอกสารที่เพิ่งเลือก — เดาผิดฝั่งที่แพงกว่า
+from google.colab import files
+got = files.upload()
+if not got:
+    raise SystemExit("ไม่ได้เลือกไฟล์ — รัน cell นี้ใหม่แล้วเลือกเอกสาร")
+name = next(iter(got))
+DOC_PATH = DOCS / name
+DOC_PATH.write_bytes(got[name])
+print(f"อัปโหลดแล้ว: {DOC_PATH.name}")
+
+# ไฟล์เก่าจากรอบก่อนถูกเก็บไว้ ไม่ลบ แต่บอกให้รู้ว่ามันไม่ได้ถูกใช้
+others = [p.name for p in sorted(DOCS.iterdir()) if p.is_file() and p.name != name]
+if others:
+    print(f"(ไฟล์เก่าที่ยังอยู่ในโฟลเดอร์ ไม่ได้ถูกใช้: {', '.join(others)})")
 
 print(f"\nไฟล์   : {DOC_PATH.name}")
 print(f"ขนาด   : {DOC_PATH.stat().st_size:,} bytes")
@@ -1096,10 +1101,12 @@ code(f'''
 #  prompt ของ classifier — agents/prompts.py คัดมาตรงๆ
 #  ใช้เฉพาะตอนคะแนนคำสำคัญสูสี ซึ่งบนเอกสารส่วนใหญ่ไม่เกิดขึ้นเลย
 # ═══════════════════════════════════════════════════════════════════════════
+SCHEMA_NAMES = ("invoice", "receipt", "purchase_order", "contract", "form")
+
 CLASSIFIER_SYSTEM = {literal(real_prompts.CLASSIFIER_SYSTEM)}
 
 
-{source_of(real_prompts.classification_prompt).replace("schema_names()", '"invoice, receipt, purchase_order, contract, form"')}
+{source_of(real_prompts.classification_prompt).replace("schema_names()", 'SCHEMA_NAMES')}
 
 
 print("SYSTEM:"); print("  " + CLASSIFIER_SYSTEM)
@@ -1112,7 +1119,7 @@ SYSTEM:
   You classify business documents. Output JSON only.
 
 USER (ตัดข้อความเอกสารออกให้สั้น):
-  Classify as one of: i, n, v, o, i, c, e, ,,  , r, e, c, e, i, p, t, ,,  , 
+  Classify as one of: invoice, receipt, purchase_order, contract, form.
   
   - invoice: a supplier requests payment
   - receipt: payment already made
@@ -1233,6 +1240,36 @@ md(r"""
 | **Agent 2** | `agents/verify_extractor.py` | `VERIFY_SYSTEM` | **ไล่ตามป้าย** — "หาป้ายก่อน แล้วดูว่าอะไรอยู่ข้างๆ" |
 
 เข้าหาคนละทาง**โดยตั้งใจ** — สอง prompt ที่คิดเหมือนกันจะพลาดเหมือนกัน และตัวที่สองจะ**ไม่เคยเห็น**คำตอบของตัวแรก ถ้าให้เห็น มันจะเห็นด้วย แล้วสัญญาณที่มันมีไว้ตรวจก็หายไปทั้งหมด
+
+### สอง prompt ต่างกันตรงไหน — ตัวอย่างจากใบเสร็จจริง
+
+ใบเสร็จน้ำมันไทยใบหนึ่ง พิมพ์แค่นี้:
+
+```
+น้ำมันดีเซล B7
+50 x 40.00        2,000.00
+มูลค่าสินค้า       2,000.00
+ภาษีมูลค่าเพิ่ม      140.00
+รวมทั้งสิ้น        2,140.00
+```
+
+| ช่อง | **Agent 1** ไล่ตาม schema | **Agent 2** ไล่ตามป้าย |
+|---|---|---|
+| `subtotal` | `2000.00` ← ป้าย «มูลค่าสินค้า» | `2000.00` ← ป้ายเดียวกัน ✓ |
+| `total_amount` | `2140.00` ← ป้าย «รวมทั้งสิ้น» | `2140.00` ✓ |
+| `currency` | **`THB`** ← evidence «2,140.00» | **`null`** |
+| `expense_category` | **`fuel`** ← evidence «น้ำมันดีเซล B7» | **`null`** |
+
+สองแถวล่างคือทั้งหมดที่การอ่านครั้งที่สองมีไว้จับ
+
+`currency` — ใบเสร็จ**ไม่ได้พิมพ์สกุลเงินไว้เลย** agent 1 รู้ว่ามันเป็นบาทเพราะเอกสารเป็นภาษาไทย ซึ่ง*น่าจะถูก* แต่มัน**อนุมาน** ไม่ได้อ่าน · `expense_category` — คำว่า `fuel` ไม่ได้อยู่บนหน้ากระดาษที่ไหนเลย agent 1 แปลจาก "น้ำมันดีเซล B7" เอง
+
+agent 2 ที่ถูกสั่งให้ *"find where the label appears, then report the value printed next to that label"* หาป้ายพวกนั้นไม่เจอ ก็เลยตอบ `null` **ตามที่สั่ง**
+
+> ### agent 2 ตอบน้อยกว่า ≠ agent 2 พัง
+> มันคือ**ตัวเดียวในระบบที่มีหน้าที่บอกว่า "อันนี้ไม่ได้อยู่บนกระดาษ"** — ค่าที่มีตัวเดียวรองรับได้ **30%** และผ่านเกณฑ์ 84% ไปไม่ได้ ต่างจากค่าที่ทั้งคู่ยืนยันซึ่งได้ 97%
+>
+> ถ้าอยากได้ agent 2 ที่ตอบครบทุกช่องเท่า agent 1 วิธีเดียวคือให้มันเดา — แล้วก็ไม่เหลืออะไรให้เทียบอีกเลย
 
 ### สองบรรทัดที่ทำงานจริงใน `EXTRACTION_SYSTEM`
 
@@ -1361,6 +1398,15 @@ def extract_json(raw):
     start, end = raw.find("{"), raw.rfind("}")
     return json.loads(raw[start:end + 1]) if start >= 0 else {}
 
+def answer_text(reply):
+    """ข้อความจากคำตอบของ Claude — ต่อทุก text block เข้าด้วยกัน
+
+    `reply.content` เป็น *ลิสต์ของ block* ไม่ใช่ข้อความก้อนเดียว และบนโมเดลที่คิด
+    ก่อนตอบ block แรกคือ thinking ไม่ใช่คำตอบ — `reply.content[0].text` จึงพัง
+    ด้วย AttributeError ทันทีที่เปลี่ยนรุ่นโมเดล ทั้งที่โค้ดไม่ได้แตะเลย
+    """
+    return "".join(b.text for b in reply.content if b.type == "text")
+
 def parse_fields(payload, schema):
     """อ่าน {"fields": {ชื่อ: {value, evidence}}} — logic เดียวกับ _parse_fields
 
@@ -1406,29 +1452,58 @@ AGENT2 = {}
 if ANTHROPIC_KEY:
     import anthropic
     claude = anthropic.Anthropic(api_key=ANTHROPIC_KEY)
-    CLAUDE_MODEL = "claude-sonnet-4-5-20250929"
+    CLAUDE_MODEL = "claude-opus-5"
+    # ไม่ส่ง temperature — Opus 5 ตอบ 400 ถ้าส่งมา ไม่ใช่แค่เตือน
+    # (Typhoon ยังรับอยู่ ฝั่งนั้นจึงยังส่ง temperature=0.0 เหมือนเดิม)
     t0 = time.perf_counter()
     reply = claude.messages.create(
-        model=CLAUDE_MODEL, max_tokens=MAX_OUTPUT_TOKENS, temperature=0.0,
+        model=CLAUDE_MODEL, max_tokens=MAX_OUTPUT_TOKENS,
         system=VERIFY_SYSTEM,
         messages=[{"role": "user",
                    "content": verification_prompt(SCHEMA, OCR_TEXT[:MAX_DOCUMENT_CHARS])}],
     )
-    AGENT2 = parse_fields(extract_json(reply.content[0].text), SCHEMA)
+    AGENT2 = parse_fields(extract_json(answer_text(reply)), SCHEMA)
     print()
     report("AGENT 2", CLAUDE_MODEL, time.perf_counter() - t0, AGENT2, SCHEMA)
+
+    # ── ตรงนี้คือสิ่งที่การอ่านครั้งที่สองซื้อมาให้ ────────────────────────
+    only_1 = [n for n in AGENT1 if n not in AGENT2]
+    only_2 = [n for n in AGENT2 if n not in AGENT1]
+    print("\n" + "─" * 78)
+    print("ตัวไหนตอบอะไรที่อีกตัวไม่ตอบ")
+    print("─" * 78)
+    if only_1:
+        print(f"\n  agent 1 ตอบ · agent 2 ปฏิเสธ  ({len(only_1)} ช่อง)")
+        for n in only_1:
+            print(f"    {n:20} = {str(AGENT1[n]['value'])[:22]:24} "
+                  f"«{AGENT1[n]['evidence'][:36]}»")
+        print("\n    ↑ ดูที่ evidence: ถ้ามันไม่ใช่ *ป้ายของช่องนั้น* แปลว่า agent 1")
+        print("      อนุมานเอา ไม่ได้อ่านมา — และ agent 2 ที่ไล่ตามป้าย จึงไม่เจอ")
+    if only_2:
+        print(f"\n  agent 2 ตอบ · agent 1 ไม่เห็น  ({len(only_2)} ช่อง)")
+        for n in only_2:
+            print(f"    {n:20} = {str(AGENT2[n]['value'])[:22]:24} "
+                  f"«{AGENT2[n]['evidence'][:36]}»")
+        print("\n    ↑ ป้ายที่ agent 1 มองข้ามไป เพราะไล่ตามรายการช่องแทนที่จะไล่ตามหน้า")
+    if not only_1 and not only_2:
+        print("\n  ทั้งสองตอบชุดช่องเดียวกัน — เอกสารใบนี้พิมพ์ป้ายไว้ครบทุกช่องที่มีค่า")
+
+    print(f"\n  **agent 2 ตอบน้อยกว่าไม่ใช่ agent 2 พัง** — prompt สั่งไว้ว่า")
+    print(f"  \"If no label for an item appears anywhere, return null.\"")
+    print(f"  ค่าที่มีตัวเดียวรองรับจะได้คะแนนต่ำในขั้นถัดไป ซึ่งคือสิ่งที่ควรเกิด")
 else:
     print("\nAGENT 2 · ข้าม (ไม่มี ANTHROPIC_API_KEY) — ทุกช่องจะเหลือหลักฐานชั้นเดียว")
 ''', """
-AGENT 1 · typhoon-v2.5-30b-a3b-instruct — 6.8 วินาที · ตอบมา 13/14 ช่อง
+AGENT 1 · typhoon-v2.5-30b-a3b-instruct — 5.0 วินาที · ตอบมา 13/14 ช่อง
 
   FIELD                ค่า                      อ้างอิงจากหน้าเอกสาร
-  invoice_number       STS-2026-0318            «STS-2026-0318»
-  invoice_date         2026-07-24               «24 July 2026»
+  invoice_number       STS-2026-0318            «Invoice No .: STS-2026-0318»
+  invoice_date         2026-07-24               «Invoice Date: 24 July 2026»
   vendor_name          Siam Tech Supply Co., L  «Siam Tech Supply Co., Ltd.»
-  vendor_tax_id        0105543000129            «0105543000129»
-  buyer_name           Mirtphol Industries PCL  «Mirtphol Industries PCL»
-  purchase_order_ref   PO-2026-0567             «PO-2026-0567»
+  vendor_tax_id        0105543000129            «Tax ID: 0105543000129»
+  buyer_name           Mirtphol Industries PCL  «Bill To
+Mirtphol Industries PCL»
+  purchase_order_ref   PO-2026-0567             «PO Reference: PO-2026-0567»
   currency             THB                      «»
   subtotal             135,000.00               «Subtotal 135,000.00»
   tax_rate             7%                       «VAT 7%»
@@ -1439,15 +1514,13 @@ AGENT 1 · typhoon-v2.5-30b-a3b-instruct — 6.8 วินาที · ตอบ
 
   ตอบ null (= ไม่ได้พิมพ์บนหน้านี้): due_date
 
-AGENT 2 · claude-sonnet-4-5-20250929 — 6.3 วินาที · ตอบมา 12/14 ช่อง
+AGENT 2 · claude-opus-5 — 11.3 วินาที · ตอบมา 11/14 ช่อง
 
   FIELD                ค่า                      อ้างอิงจากหน้าเอกสาร
   invoice_number       STS-2026-0318            «Invoice No .: STS-2026-0318»
   invoice_date         24 July 2026             «Invoice Date: 24 July 2026»
-  vendor_name          Siam Tech Supply Co., L  «Siam Tech Supply Co., Ltd.»
   vendor_tax_id        0105543000129            «Tax ID: 0105543000129»
-  buyer_name           Mirtphol Industries PCL  «Bill To
-Mirtphol Industries PCL»
+  buyer_name           Mirtphol Industries PCL  «Bill To Mirtphol Industries PCL»
   purchase_order_ref   PO-2026-0567             «PO Reference: PO-2026-0567»
   subtotal             135,000.00               «Subtotal 135,000.00»
   tax_rate             7%                       «VAT 7% 9,450.00»
@@ -1456,7 +1529,22 @@ Mirtphol Industries PCL»
   payment_terms        Net 30                   «Payment Terms: Net 30»
   bank_account         1234567890               «Remit to Account No: 1234567890»
 
-  ตอบ null (= ไม่ได้พิมพ์บนหน้านี้): due_date, currency
+  ตอบ null (= ไม่ได้พิมพ์บนหน้านี้): due_date, vendor_name, currency
+
+──────────────────────────────────────────────────────────────────────────────
+ตัวไหนตอบอะไรที่อีกตัวไม่ตอบ
+──────────────────────────────────────────────────────────────────────────────
+
+  agent 1 ตอบ · agent 2 ปฏิเสธ  (2 ช่อง)
+    vendor_name          = Siam Tech Supply Co.,    «Siam Tech Supply Co., Ltd.»
+    currency             = THB                      «»
+
+    ↑ ดูที่ evidence: ถ้ามันไม่ใช่ *ป้ายของช่องนั้น* แปลว่า agent 1
+      อนุมานเอา ไม่ได้อ่านมา — และ agent 2 ที่ไล่ตามป้าย จึงไม่เจอ
+
+  **agent 2 ตอบน้อยกว่าไม่ใช่ agent 2 พัง** — prompt สั่งไว้ว่า
+  "If no label for an item appears anywhere, return null."
+  ค่าที่มีตัวเดียวรองรับจะได้คะแนนต่ำในขั้นถัดไป ซึ่งคือสิ่งที่ควรเกิด
 """)
 
 # ================================================================= merge ====
@@ -1620,9 +1708,26 @@ def grounded(evidence, page):
     squash = lambda s: "".join(str(s).lower().split())
     return bool(evidence) and squash(evidence) in squash(page)
 
+PUNCT_RE = re.compile(r"[^\w\s]", re.UNICODE)
+
+def for_comparison(text):
+    """รูปแบบที่ใช้ *เทียบ* เท่านั้น — จาก normalize_for_match
+
+    ตัดวรรคตอนทิ้งก่อนเทียบ เพราะสอง agent ลอกป้ายมาคนละครึ่ง: ตัวหนึ่งอ่าน
+    `#249872` ตามที่พิมพ์ อีกตัวอ่าน `249872` — เลขใบเสร็จใบเดียวกัน
+    ถ้าไม่ตัด จะรายงานว่าขัดกัน แล้วช่องนั้นร่วงจาก 97% เหลือ 45%
+    ทั้งที่ทั้งคู่อ่านถูก
+    """
+    folded = str(text).casefold().translate(THAI_DIGITS)
+    return " ".join(PUNCT_RE.sub(" ", folded).split())
+
 def same_value(left, right):
-    return (str(left).casefold() == str(right).casefold()) if not (
-        isinstance(left, float) and isinstance(right, float)) else abs(left - right) < 1e-9
+    """ตรงกันไหม — ตัวเลขเทียบเป็นตัวเลข ข้อความเทียบแบบตัดวรรคตอน"""
+    if left is None or right is None:
+        return False
+    if isinstance(left, (int, float)) and isinstance(right, (int, float)):
+        return abs(float(left) - float(right)) < 0.005
+    return for_comparison(left) == for_comparison(right)
 
 FIELDS = {}
 for spec in SCHEMA.fields:
@@ -1733,7 +1838,7 @@ else:
 ────────────────────────────────────────────────────────────────────────────────────────
 ★ invoice_number       STS-2026-0318                97%     ใช่  ทั้งสองตรงกัน
   invoice_date         2026-07-24                   97%     ใช่  ทั้งสองตรงกัน
-★ vendor_name          Siam Tech Supply Co., Ltd    97%     ใช่  ทั้งสองตรงกัน
+★ vendor_name          Siam Tech Supply Co., Ltd    86%     ใช่  agent เดียว
   vendor_tax_id        0105543000129                97%     ใช่  ทั้งสองตรงกัน
   buyer_name           Mirtphol Industries PCL      97%     ใช่  ทั้งสองตรงกัน
 ★ purchase_order_ref   PO-2026-0567                 97%     ใช่  ทั้งสองตรงกัน
@@ -1747,7 +1852,7 @@ else:
 
 ★ = ช่องสำคัญ (ถ้าค่านี้ผิด มีคนได้เงินผิด · ถ่วงน้ำหนัก 3 เท่า)
 ไม่ได้พิมพ์บนหน้านี้: due_date
-ความมั่นใจทั้งใบ    : 95%
+ความมั่นใจทั้งใบ    : 93%
 
 ────────────────────────────────────────────────────────────────────────────────────────
 สอง agent พิมพ์คนละแบบ — ทำเป็นมาตรฐานตามชนิดของช่องก่อน แล้วค่อยเทียบ:
@@ -2441,11 +2546,11 @@ def authoring_request(sentence, doc_type):
 def compile_rule(sentence, doc_type):
     """แปลประโยคเป็นกฎ **ครั้งเดียว** — ไม่ได้เรียกต่อเอกสารหนึ่งใบ"""
     reply = claude.messages.create(
-        model=CLAUDE_MODEL, max_tokens=1200, temperature=0.0,
+        model=CLAUDE_MODEL, max_tokens=1200,
         system=AUTHORING_SYSTEM,
         messages=[{"role": "user", "content": authoring_request(sentence, doc_type)}],
     )
-    got = extract_json(reply.content[0].text)
+    got = extract_json(answer_text(reply))
     plan = [str(s) for s in got.get("plan", []) if str(s).strip()]
     tools = [t for t in got.get("tools", []) if t in {x.name for x in TOOLBOX}]
     if not got.get("instruction") or not (2 <= len(plan) <= 5) or not tools:
@@ -2523,15 +2628,15 @@ print("เอกสารใบต่อไปอีกหมื่นใบเ�
 
 กฎที่ได้ (โมเดลแปลให้ ณ ตอนนี้ ครั้งเดียว):
 
-  id        : check_po_budget_and_duplicate_posting
+  id        : po_open_within_limit_not_already_posted
   severity  : blocking
   instruction:
-      Verify that the purchase order is still open, that the cumulative amount invoiced (including this invoice) does not exceed the PO limit, and that this invoice number has not been posted before.
+      For an invoice quoting a PO reference, decide whether the purchase order is still open, whether the amounts already billed against it plus this invoice stay within the PO value, and whether this invoice number has not already been posted.
   plan      : 4 ขั้น
-      1. Look up the purchase order using the PO reference to get its status, approved amount, an
-      2. Check if this invoice number has already been posted in downstream systems
-      3. Calculate the cumulative invoiced amount by adding this invoice total to any previously 
-      4. Compare the cumulative amount with the PO limit to ensure it does not exceed the approve
+      1. Fetch the purchase order named in the PO Reference field and confirm its status is still
+      2. Find records already posted against that purchase order and add up the amounts billed to
+      3. Add this invoice's total to that billed-to-date figure and compare the sum with the purc
+      4. Check whether this invoice number has already been posted downstream.
   tools     : lookup_purchase_order, find_posted_records
 
   ⚠ สิ่งที่คนอนุมัติควรเห็นก่อนกดอนุมัติ:
@@ -2628,7 +2733,7 @@ else:
     messages = [{"role": "user", "content": task}]
     for turn in range(1, 8):
         reply = claude.messages.create(
-            model=CLAUDE_MODEL, max_tokens=1200, temperature=0,
+            model=CLAUDE_MODEL, max_tokens=1200,
             system=AGENT_RULE_SYSTEM, tools=TOOL_SCHEMAS, messages=messages,
         )
         messages.append({"role": "assistant", "content": reply.content})
@@ -2696,13 +2801,13 @@ else:
 }
   … อีก 1 ตัวรูปแบบเดียวกัน
 ──────────────────────────────────────────────────────────────────────────────
-CHECK: Verify that the purchase order is still open, that the cumulative amount invoiced (including this invoice) does not exceed the PO limit, and that this invoice number has not been posted before.
+CHECK: For an invoice quoting a PO reference, decide whether the purchase order is still open, whether the amounts already billed against it plus this invoice stay within the PO value, and whether this invoice number has not already been posted.
 
 PLAN:
-1. Look up the purchase order using the PO reference to get its status, approved amount, and currency
-2. Check if this invoice number has already been posted in downstream systems
-3. Calculate the cumulative invoiced amount by adding this invoice total to any previously posted amounts against the same PO
-4. Compare the cumulative amount with the PO limit to ensure it does not exceed the approved budget
+1. Fetch the purchase order named in the PO Reference field and confirm its status is still open.
+2. Find records already posted against that purchase order and add up the amounts billed to date.
+3. Add this invoice's total to that billed-to-date figure and compare the sum with the purchase order value.
+4. Check whether this invoice number has already been posted downstream.
 
 DOCUMENT invoice_test.png
 Facts:
@@ -2730,19 +2835,22 @@ Work through the plan, then return the verdict JSON.
 
   รอบ 1 · เรียก lookup_purchase_order({"po_number": "PO-2026-0567"})
            ได้ → {"found": true, "po_number": "PO-2026-0567", "vendor_id": "V-1001", "amount": 135000.0, "currency": "THB", "status": "open", "billed_so_far": 0.0, "vendor_name": "Siam Tech Supply Co., Ltd."}
-  รอบ 1 · เรียก find_posted_records({"reference": "STS-2026-0318", "vendor_id": "V-1001"})
-           ได้ → {"found": false, "note": "nothing posted under reference STS-2026-0318", "scoped_to_vendor": "Siam Tech Supply Co., Ltd."}
+  รอบ 1 · เรียก find_posted_records({"reference": "STS-2026-0318"})
+           ได้ → {"found": false, "note": "nothing posted under reference STS-2026-0318"}
+  รอบ 1 · เรียก find_posted_records({"reference": "PO-2026-0567"})
+           ได้ → {"found": false, "note": "nothing posted under reference PO-2026-0567"}
 
-  เดินไป 2 รอบ · เรียก tool 2 ครั้ง
+  เดินไป 2 รอบ · เรียก tool 3 ครั้ง
 
-  คำตอบ  : FAIL
-  เพราะ  : Cumulative invoiced amount of 144,450.00 THB exceeds the PO limit of 135,000.00 THB by 9,450.00 THB
-  หลักฐาน: PO-2026-0567 status: open, amount: 135000.0 THB, billed_so_far: 0.0
-  หลักฐาน: Invoice STS-2026-0318 not previously posted
-  หลักฐาน: Invoice total from document: 144450.0 THB (subtotal 135000.0 + tax 9450.0)
-  หลักฐาน: Cumulative amount (0.0 + 144450.0 = 144450.0) exceeds PO limit (135000.0)
+  คำตอบ  : UNSURE
+  เพราะ  : PO is open and this invoice number is not yet posted, but the invoice total (THB 144,450) exceeds the PO value (THB 135,000) by exactly the 7% VAT, and the PO record does not say whether its value is tax-inclusive, so the within-PO test cannot be settled here.
+  หลักฐาน: lookup_purchase_order('PO-2026-0567') -> {found: true, vendor_id: 'V-1001', amount: 135000.0, currency: 'THB', status: 'open', billed_so_far: 0.0, vendor_name: 'Siam Tech Supply Co., Ltd.'}
+  หลักฐาน: find_posted_records('STS-2026-0318') -> {found: false, note: 'nothing posted under reference STS-2026-0318'}
+  หลักฐาน: find_posted_records('PO-2026-0567') -> {found: false, note: 'nothing posted under reference PO-2026-0567'}
+  หลักฐาน: Page values: subtotal = 135000.0, tax_amount = 9450.0, total_amount = 144450.0 (subtotal equals PO value exactly)
+  หลักฐาน: No check_arithmetic tool was available in this run, so the comparison rests on the tool-returned figures above
 
-  บันทึกเป็น: check_po_budget_and_duplicate_posting · ไม่ผ่าน · ระดับ blocking
+  บันทึกเป็น: po_open_within_limit_not_already_posted · ไม่ผ่าน · ระดับ warning
 """)
 
 # ================================================================ decide ====
@@ -2842,7 +2950,7 @@ print(json.dumps(RESULT, ensure_ascii=False, indent=2)[:1200])
   FIELD                ค่า                          มั่นใจ   บนหน้า
 ★ invoice_number       STS-2026-0318                  97%      ใช่
   invoice_date         2026-07-24                     97%      ใช่
-★ vendor_name          Siam Tech Supply Co., Ltd.     97%      ใช่
+★ vendor_name          Siam Tech Supply Co., Ltd.     86%      ใช่
   vendor_tax_id        0105543000129                  97%      ใช่
   buyer_name           Mirtphol Industries PCL        97%      ใช่
 ★ purchase_order_ref   PO-2026-0567                   97%      ใช่
@@ -2861,22 +2969,19 @@ print(json.dumps(RESULT, ensure_ascii=False, indent=2)[:1200])
   ผ่าน                   tax_rate_consistent            ภาษี 9,450.00 ตรงกับอัตรา 7%
   ผ่าน                   line_items_sum_to_subtotal     2 แถวรวมได้ 135,000.00 ตรงกับ subtotal
   ผ่าน                   bank_account_matches           เลขบัญชี 1234567890 ตรงกับทะเบียน
-  ไม่ผ่าน [blocking]     check_po_budget_and_duplicate_posting Cumulative invoiced amount of 144,450.00 THB exceeds the PO 
+  ไม่ผ่าน [warning]      po_open_within_limit_not_already_posted PO is open and this invoice number is not yet posted, but th
 
 ── สรุป ──────────────────────────────────────────────────────────────────
-  Confidence      : 95%   (เกณฑ์ 84%)
+  Confidence      : 93%   (เกณฑ์ 84%)
   กฎที่ไม่ผ่าน      : 1 จาก 5
-  เรียกโมเดล      : OCR 1 + agent อ่าน 2 + agent กฎ (tool 2 ครั้ง)
+  เรียกโมเดล      : OCR 1 + agent อ่าน 2 + agent กฎ (tool 3 ครั้ง)
   โมเดลในการตัดสิน : 0
 
 ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃  POST = False                                                              ┃
+┃  POST = True                                                               ┃
 ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
 
-ไม่ POST เพราะ:
-  • Cumulative invoiced amount of 144,450.00 THB exceeds the PO limit of 135,000.00 THB by 9,450.00 THB
-
-→ เข้าคิวให้คนตรวจ
+→ เขียนลงบัญชีอัตโนมัติ ไม่ต้องมีคนดู
 
 ── ผลลัพธ์เป็น JSON (พร้อมส่งต่อ) ──────────────────────────────────────────
 {
@@ -2920,15 +3025,15 @@ print(json.dumps(RESULT, ensure_ascii=False, indent=2)[:1200])
       "severity": "blocking"
     },
     {
-      "rule": "check_po_budget_and_duplicate_posting",
+      "rule": "po_open_within_limit_not_already_posted",
       "ok": false,
-      "severity": "blocking"
+      "severity": "warning"
     }
   ],
-  "confidence": 0.946,
-  "post": false,
-  "reasons": [
-    "Cumulative invoiced amount of 144,450.00 THB exceeds the PO limit of 135,000.00
+  "confidence": 0.934,
+  "post": true,
+  "reasons": []
+}
 """)
 
 # =============================================================== closing ====

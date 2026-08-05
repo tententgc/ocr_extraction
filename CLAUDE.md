@@ -168,6 +168,25 @@ field it was not given from a `.env` in the working directory, so a notebook
 stating its thresholds but not `disabled_rules` silently runs whichever checks
 that machine has switched off — and prints the result as the system's.
 
+**Claude in the notebook is `claude-opus-5`, and two things follow from that.**
+It rejects `temperature` with a 400 rather than warning, so the Claude calls
+pass none; Typhoon still takes it. And its reply carries a thinking block first,
+so `reply.content[0].text` raises `AttributeError` — `answer_text()` joins the
+`text` blocks instead. Both break a working notebook on a model change without
+any code being touched.
+
+**Agent 2 answering fewer fields is the system working.** On a Thai fuel receipt
+the first pass returns `currency=THB` quoting «2,140.00» and
+`expense_category=fuel` quoting «น้ำมันดีเซล B7»; the second returns null for
+both, because neither label is on the page. Verified against the real
+`verify_with_llm` — 9 fields against 7, and the two extra are the two inferred.
+The notebook prints which fields only one pass answered, with the evidence, so
+the difference reads as the signal it is rather than as a broken agent.
+
+**Compare the two channels with punctuation stripped**, as `_values_agree` does.
+`#249872` against `249872` is one receipt number read twice; raw string equality
+calls it a disagreement and drops the field from 97% to 45%.
+
 Corpus filenames carry the `_True`/`_False` suffix, so a notebook reaching for a
 sample must glob `f"{name}_*"`. Globbing `f"{name}.*"` matches nothing and
 `next()` raises `StopIteration` — it broke both notebooks silently at the rename.
