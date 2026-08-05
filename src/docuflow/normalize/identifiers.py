@@ -53,16 +53,37 @@ def parse_tax_id(text: str | None) -> str | None:
 
 
 def normalize_account_number(text: str | None) -> str | None:
-    """Bank account numbers: keep digits, preserve IBAN-style alphanumerics."""
+    """Bank account numbers: keep digits, preserve IBAN-style alphanumerics.
+
+    Thai numerals are converted first, and the IBAN branch demands ASCII
+    letters. Both of those are load-bearing, because Python answers the
+    obvious questions about Thai script the unhelpful way.
+
+    `"๑๒๓๔๕๖๗๘๙๐".isdigit()` is **True**, so the early return fired and the
+    account reached the ledger in Thai numerals. `bank_account_matches_vendor`
+    still passed - it compares through `reference_key`, which converts - so the
+    document auto-posted, nobody looked at it, and the export handed another
+    system an account number it cannot pay.
+
+    `"เลขที่บัญชี"[:2].isalpha()` is **also True**, so a labelled Thai account
+    took the IBAN path and the label was stored as part of the number.
+    """
     if not text:
         return None
-    raw = collapse_whitespace(str(text)).replace(" ", "").replace("-", "")
+    raw = collapse_whitespace(thai_digits_to_arabic(str(text))).replace(" ", "").replace("-", "")
     if not raw:
         return None
     if raw.isdigit():
         return raw if 6 <= len(raw) <= 24 else None
     upper = raw.upper()
-    if 10 <= len(upper) <= 34 and upper[:2].isalpha() and any(c.isdigit() for c in upper):
+    if (
+        10 <= len(upper) <= 34
+        # `isascii()` is the whole guard: an IBAN country code is two Latin
+        # letters, and any non-Latin script here means this is not an IBAN.
+        and upper[:2].isascii()
+        and upper[:2].isalpha()
+        and any(char.isdigit() for char in upper)
+    ):
         return upper
     digits = digits_only(raw)
     return digits if 6 <= len(digits) <= 24 else None
