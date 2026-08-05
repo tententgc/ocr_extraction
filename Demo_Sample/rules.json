@@ -5,7 +5,7 @@
       "rule_id": "purchase_order_still_has_room",
       "title": "The purchase order must still be open and have budget left",
       "prompt": "Before paying an invoice against a purchase order, check the order is still open and that what we have already paid against it plus this invoice does not exceed it.",
-      "message": "This invoice cannot be paid against the purchase order it quotes.",
+      "message": "This invoice would take the purchase order it quotes over its value.",
       "doc_types": [
         "invoice"
       ],
@@ -15,13 +15,13 @@
         "field": "purchase_order_ref",
         "op": "present"
       },
-      "instruction": "Decide whether this invoice may be paid against the purchase order it quotes. It may not if the order is closed or cancelled, or if everything already posted against it plus this invoice exceeds the order value. Answer pass only if the order is open and there is room.",
+      "instruction": "Decide whether this invoice may be paid against the purchase order it quotes. It may not if the order is closed or cancelled, or if everything already posted against it plus this invoice comes to MORE than the order value. Billing an order exactly in full is the ordinary case and passes - an order for 135,000 invoiced at 135,000 has been used up, not overspent. Answer fail only when the running total is strictly greater than the order value; answer pass when the order is open and the total is at or below it.",
       "plan": [
-        "Look up the purchase order quoted on the invoice and note its status, value and currency.",
+        "Look up the purchase order quoted on the invoice with lookup_purchase_order, passing this invoice's subtotal as invoice_subtotal. Note its status and the within_order_value the tool returns.",
         "If the status is anything other than open, that alone is a fail - say which status it is.",
         "Find the records already posted against this purchase order and add up their amounts.",
-        "Add this invoice's subtotal to that sum and compare it with the order value.",
-        "Answer fail if the total exceeds the order value, pass if it does not, and unsure if a lookup returned nothing."
+        "Read within_order_value from the lookup rather than working the comparison out yourself. It is true when this invoice fits, including when it bills the order exactly in full.",
+        "Answer fail only if within_order_value is false, or if the amounts already posted take the order over on top of this invoice. A total equal to the order value passes: the order has been billed in full, which is what a purchase order is for. Answer unsure if a lookup returned nothing."
       ],
       "tools": [
         "lookup_purchase_order",

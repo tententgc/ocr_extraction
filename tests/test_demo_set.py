@@ -320,3 +320,62 @@ class TestTheAgentRulePair:
         assert rule["kind"] == "agent", "a fixed expression cannot read the register"
         assert rule["severity"] == "blocking", "a warning would let document 12 post"
         assert "invoice" in rule["doc_types"]
+
+
+class TestTheRuleStatesItsBoundary:
+    """Billing a purchase order exactly in full must pass.
+
+    The rule shipped with two sentences that disagreed at exactly that point.
+    Its plan said "fail if the total **exceeds** the order value, pass if it
+    does not" - which is `<=`. Its instruction closed with "answer pass only if
+    the order is open and **there is room**" - which reads as `<`, and it is the
+    last sentence the model sees before deciding.
+
+    An invoice for exactly the ordered amount is the most ordinary invoice
+    there is: you raise an order for 135,000 and the supplier bills 135,000.
+    Eight of the fifty-one corpus documents do it and three of them must post.
+    The model resolved the ambiguity differently on different runs - the same
+    document passed in the evaluation and failed in the UI - which is worse
+    than either answer, because an inconsistent gate cannot be reasoned about.
+
+    A rule a model writes is a rule nobody proof-read. The boundary has to be
+    written down, in both places, in words that cannot be read two ways.
+    """
+
+    @staticmethod
+    def _rule() -> dict:
+        payload = json.loads((ROOT / "real_samples" / "rules.json").read_text(encoding="utf-8"))
+        return next(
+            rule for rule in payload["rules"]
+            if rule["rule_id"] == "purchase_order_still_has_room"
+        )
+
+    def test_the_instruction_says_which_side_of_equal_passes(self) -> None:
+        instruction = self._rule()["instruction"].lower()
+        assert "exactly in full" in instruction
+        assert "strictly greater" in instruction or "more than" in instruction
+
+    def test_the_plan_hands_the_comparison_to_the_tool(self) -> None:
+        """Rewording was not enough, and that is the real lesson here.
+
+        With the boundary spelled out in both the instruction and the plan, the
+        same input still came back `pass` and `fail` on consecutive runs. A
+        model asked to add two numbers and compare them does it in prose, and
+        prose is unreliable at exactly the point where the two numbers are
+        equal.
+
+        So `lookup_purchase_order` now takes `invoice_subtotal` and returns
+        `within_order_value`, computed in Python. The agent reads a fact rather
+        than deriving one, and still decides what to do about it - which is
+        judgement, and judgement is what it is for.
+        """
+        plan = " ".join(self._rule()["plan"]).lower()
+        assert "invoice_subtotal" in plan
+        assert "within_order_value" in plan
+        assert "rather than working the comparison out yourself" in plan
+        assert "equal to the order value passes" in plan
+
+    def test_no_wording_that_reads_as_needing_headroom(self) -> None:
+        """"there is room" is the phrase that caused it."""
+        text = (self._rule()["instruction"] + " " + " ".join(self._rule()["plan"])).lower()
+        assert "there is room" not in text

@@ -209,10 +209,50 @@ def _lookup_purchase_order(
             return {"found": False,
                     "note": f"purchase order {number} is not in the system", **warning}
         vendor = master.get_vendor(order["vendor_id"])
+
+        # The comparison, done here rather than in the agent's head.
+        #
+        # Asked to "add this to that and compare", a model does the arithmetic
+        # in prose and is unreliable at the boundary: on an invoice for exactly
+        # the order value - the most ordinary invoice there is - the same input
+        # came back `pass` and `fail` on consecutive runs. Rewording the rule
+        # did not fix it, because the flaw is not in the wording. A verdict
+        # that changes between identical runs cannot be reasoned about, and an
+        # inconsistent gate is worse than a wrong one.
+        #
+        # So the tool answers the numeric question outright. The agent still
+        # decides what to *do* about it - fail, pass, or say it could not tell -
+        # which is judgement, and judgement is what it is for.
+        fit: dict[str, Any] = {}
+        subtotal = args.get("invoice_subtotal")
+        if subtotal is not None:
+            try:
+                proposed = float(subtotal)
+            except (TypeError, ValueError):
+                fit = {"comparison_error": f"invoice_subtotal {subtotal!r} is not a number"}
+            else:
+                value = float(order["amount"])
+                over_by = round(proposed - value, 2)
+                fit = {
+                    "invoice_subtotal": round(proposed, 2),
+                    "order_value": round(value, 2),
+                    # Computed, not judged. Equal is *within*: an order billed
+                    # exactly in full has been used up, not overspent.
+                    "within_order_value": proposed <= value + 0.005,
+                    "over_by": max(0.0, over_by),
+                    "comparison": (
+                        f"{proposed:,.2f} against an order value of {value:,.2f}: "
+                        + ("within the order"
+                           if proposed <= value + 0.005
+                           else f"over by {over_by:,.2f}")
+                    ),
+                }
+
         return {
             "found": True,
             **order,
             "vendor_name": vendor["legal_name"] if vendor else None,
+            **fit,
             # A purchase order records what was agreed, before tax. An invoice
             # total includes it. An agent handed a bare `amount` has no way to
             # know that, compares the total against it, and reports every
@@ -443,7 +483,14 @@ def build_toolbox(
             description="Fetch a purchase order: its vendor, amount, currency and status.",
             parameters={
                 "type": "object",
-                "properties": {"po_number": _string("Purchase order number, e.g. PO-2026-0412")},
+                "properties": {
+                    "po_number": _string("Purchase order number, e.g. PO-2026-0412"),
+                    "invoice_subtotal": _number(
+                        "This invoice's subtotal, net of tax. Pass it and the answer "
+                        "will include `within_order_value`, computed here - do not "
+                        "work the comparison out yourself"
+                    ),
+                },
                 "required": ["po_number"],
             },
             run=_lookup_purchase_order(master, ocr_text),

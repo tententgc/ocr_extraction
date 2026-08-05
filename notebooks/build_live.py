@@ -2723,13 +2723,16 @@ PINNED_RULE = {
     "id": "purchase_order_still_has_room",
     "instruction": "Before paying against a purchase order, confirm it is still "
                    "open and that everything billed so far plus this invoice "
-                   "stays within the ordered amount.",
+                   "does not come to MORE than the ordered amount. Billing an "
+                   "order exactly in full is the ordinary case and passes: an "
+                   "order for 135,000 invoiced at 135,000 has been used up, "
+                   "not overspent.",
     "severity": "blocking",
     "plan": [
-        "Look up the purchase order this invoice references; note its amount, status and how much has been billed.",
+        "Look up the purchase order with lookup_purchase_order, passing this invoice's subtotal as invoice_subtotal; note its status and the within_order_value it returns.",
         "If the status is not open, answer fail and say what the status is.",
         "Add the amount billed so far to this invoice's subtotal using check_arithmetic.",
-        "Compare that sum against the ordered amount - over is fail, within is pass, not found is unsure.",
+        "Read within_order_value rather than working the comparison out yourself. It is true when the invoice fits, including when it bills the order exactly in full.",
         "Confirm this invoice number has not already been posted.",
     ],
     "tools": ["lookup_purchase_order", "check_arithmetic",

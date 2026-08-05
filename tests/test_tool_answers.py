@@ -70,3 +70,67 @@ class TestPurchaseOrderLookup:
         """The note explains the number; it must not quietly alter it."""
         answer = _tool(toolbox, "lookup_purchase_order").run({"po_number": PO})
         assert answer["amount"] == pytest.approx(float(master.get_purchase_order(PO)["amount"]))
+
+
+class TestThePurchaseOrderComparisonIsComputed:
+    """The tool owns the number, because the agent could not be trusted with it.
+
+    Asked to add the invoice subtotal to what was already posted and compare
+    the result with the order value, the model did the arithmetic in prose -
+    and on an invoice for *exactly* the order value, the most ordinary invoice
+    there is, the same input returned `pass` and `fail` on consecutive runs.
+    Rewording the rule did not fix it. A verdict that changes between identical
+    runs cannot be reasoned about.
+
+    Eight of the fifty-one corpus documents bill their order exactly in full
+    and three of them must post, so this is not an edge case - it is the
+    common case sitting on the boundary.
+    """
+
+    @staticmethod
+    def _lookup(master, **args):
+        from docuflow.agents.tools import build_toolbox
+
+        tools = {t.name: t for t in build_toolbox("", master, None, "invoice", "DOC")}
+        return tools["lookup_purchase_order"].run(args)
+
+    def test_billing_an_order_exactly_in_full_is_within_it(self, master) -> None:
+        """An order used up is not an order overspent."""
+        answer = self._lookup(master, po_number="PO-2026-0412", invoice_subtotal=187_000.00)
+        assert answer["within_order_value"] is True
+        assert answer["over_by"] == 0.0
+
+    def test_a_single_unit_over_is_over(self, master) -> None:
+        answer = self._lookup(master, po_number="PO-2026-0412", invoice_subtotal=187_001.00)
+        assert answer["within_order_value"] is False
+        assert answer["over_by"] == 1.0
+
+    def test_comfortably_under_is_within(self, master) -> None:
+        answer = self._lookup(master, po_number="PO-2026-0412", invoice_subtotal=100_000.00)
+        assert answer["within_order_value"] is True
+
+    def test_the_comparison_is_stated_in_words_too(self, master) -> None:
+        """The agent reads prose. Giving it only a boolean invites it to
+        re-derive the number it was handed."""
+        answer = self._lookup(master, po_number="PO-2026-0412", invoice_subtotal=187_000.00)
+        assert "within the order" in answer["comparison"]
+        over = self._lookup(master, po_number="PO-2026-0412", invoice_subtotal=200_000.00)
+        assert "over by" in over["comparison"]
+
+    def test_omitting_the_subtotal_still_returns_the_order(self, master) -> None:
+        """The argument is optional: other rules look an order up without
+        wanting a comparison, and they must not start erroring."""
+        answer = self._lookup(master, po_number="PO-2026-0412")
+        assert answer["found"] is True
+        assert "within_order_value" not in answer
+
+    def test_a_subtotal_that_is_not_a_number_says_so(self, master) -> None:
+        answer = self._lookup(master, po_number="PO-2026-0412", invoice_subtotal="lots")
+        assert "comparison_error" in answer
+        assert "within_order_value" not in answer
+
+    def test_rounding_noise_does_not_tip_it_over(self, master) -> None:
+        """A subtotal reconstructed from line items lands a fraction of a
+        satang out, and that must not read as overspending."""
+        answer = self._lookup(master, po_number="PO-2026-0412", invoice_subtotal=187_000.004)
+        assert answer["within_order_value"] is True
