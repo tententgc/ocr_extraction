@@ -75,12 +75,36 @@ a wrong number wearing a suggestion's confidence is worse than no suggestion.
 
 ## Quick start
 
-Nothing to install — two Colab notebooks, both running the real pipeline against
-Typhoon Cloud and Claude with two API keys and no GPU. Both ship with their
-outputs, so they can be read without running anything.
+Four Colab notebooks, all shipping with their outputs so they can be read
+without running anything.
+
+**[`notebooks/docuflow_live.ipynb`](notebooks/docuflow_live.ipynb) — upload your
+own document and watch the real pipeline run on it.** No repository and no
+install: two API keys from Colab's secret store, a file, and it goes. Typhoon
+OCR reads the page; two different models read the text independently with both
+prompts printed in full before either is called; a tool-calling agent checks the
+rule that cannot be written as a condition, showing every call and what came
+back; and code — only code — ends it at `POST = True` or `False`, with every
+field, its confidence, and whether it could be traced to the page. Thai.
+
+**[`notebooks/docuflow_miniature.ipynb`](notebooks/docuflow_miniature.ipynb) —
+start here. It needs nothing at all.** No repository, no install, no API key:
+the whole architecture is reimplemented inside the notebook in a few hundred
+lines of standard-library Python. Press Run all and watch four invoices travel
+from arrival to posted record — one clean, one whose VAT contradicts its own
+stated rate, one in Thai, and one that is perfect on the page and must still not
+be paid because the bank account does not match the register. Written in Thai.
+
+A regex is not Typhoon OCR, and the miniature does not pretend otherwise. What
+it reproduces exactly is the *shape*: two independent readers, grounding,
+severity tiers, the two tolerances that must never be one number, and a routing
+decision made only in code.
+
+The other two run the real pipeline against Typhoon Cloud and Claude — two API
+keys, no GPU.
 
 **[`notebooks/docuflow_explained.ipynb`](notebooks/docuflow_explained.ipynb) —
-start here if you want to understand how it works.** One document followed
+the same walk, on the real thing.** One document followed
 through all nine stages, with a map printed at each one showing where in the
 pipeline you are and what that stage was handed. Then three rules written by
 typing sentences at it, and three documents ending in three different outcomes —
