@@ -64,10 +64,11 @@ a wrong number wearing a suggestion's confidence is worse than no suggestion.
   proven and improved before scaling.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — the mechanics: pipeline stages,
   confidence model, plugin system, data model.
-- [docs/architecture.drawio.xml](docs/architecture.drawio.xml) — three diagrams,
+- [docs/architecture.drawio.xml](docs/architecture.drawio.xml) — four diagrams,
   openable at [diagrams.net](https://app.diagrams.net): where a model is called
   and what it is allowed to decide, the pipeline end to end with the human loop,
-  and the agents with their tools.
+  the agents with their tools, and a one-page overview in Thai for showing the
+  whole system to somebody who has not seen it.
 - [docs/EVALUATION.md](docs/EVALUATION.md) — the numbers, per document, with
   what was read wrong and why.
 
