@@ -87,6 +87,12 @@ rule that cannot be written as a condition, showing every call and what came
 back; and code — only code — ends it at `POST = True` or `False`, with every
 field, its confidence, and whether it could be traced to the page. Thai.
 
+The prompts and the field table in it are not a retelling. `EXTRACTION_SYSTEM`,
+`VERIFY_SYSTEM`, `CLASSIFIER_SYSTEM`, `RULE_AGENT_SYSTEM` and every `FieldSpec`
+are lifted out of the running system when the notebook is generated, so the text
+a reader sees is the text the models are sent — while the notebook itself still
+imports nothing and clones nothing.
+
 **[`notebooks/docuflow_miniature.ipynb`](notebooks/docuflow_miniature.ipynb) —
 start here. It needs nothing at all.** No repository, no install, no API key:
 the whole architecture is reimplemented inside the notebook in a few hundred

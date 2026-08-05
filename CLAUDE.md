@@ -88,7 +88,7 @@ real models.
 | Notebook | Builder | Repo? | Models? | For |
 |---|---|---|---|---|
 | `docuflow_miniature.ipynb` | `build_miniature.py` | no | no | **needs nothing at all.** Whole architecture in stdlib Python, regexes standing in for the models. Thai. |
-| `docuflow_live.ipynb` | `build_live.py` | no | **yes** | **upload your own document.** Real Typhoon OCR, two real agents with both prompts printed, a tool-calling rule agent, ends at `POST = True/False`. Thai. |
+| `docuflow_live.ipynb` | `build_live.py` | no | **yes** | **upload your own document.** Real Typhoon OCR, the system's own prompts and schema printed in full, two real agents, a tool-calling rule agent, ends at `POST = True/False`. Thai. |
 | `docuflow_explained.ipynb` | `build_explained.py` | yes | yes | the real pipeline, nine stages with a printed map, rules written from sentences. |
 | `docuflow_walkthrough.ipynb` | `build_walkthrough.py` | yes | yes | the reference. Full production rule set, every option stated. |
 
@@ -101,10 +101,29 @@ environment cells (clone, upload, pip, getpass, the `Path("/content/…")` worki
 directory) for local equivalents, executes, then restores those five sources,
 clears their outputs and drops `stderr`.
 
-`live` **cannot be executed locally** — it needs an uploaded document and live
-keys. Its outputs were captured from a real Colab run and are spliced in by the
-builder itself (`code(source, output)`), so regenerating keeps them. Re-run it in
-Colab to refresh.
+`live` **cannot be executed by nbclient** — its first three cells want Colab's
+secret store, an uploaded file, and OCR against it. Those three carry what a real
+Colab run printed; every cell from the schema onward was run locally against the
+real APIs, seeded with that run's OCR text, and its stdout captured. Outputs are
+spliced in by the builder itself (`code(source, output)`), so regenerating keeps
+them. Re-run in Colab to refresh all of it.
+
+**`live` writes nothing about the system in its own words.** The four system
+prompts and the whole `FieldSpec` table are lifted out of `docuflow` by
+`build_live.py` at build time — `literal()`, `source_of()`, `field_literals()` —
+and the notebook still imports nothing. The hand-transcribed version drifted
+within a day: it told both models to *omit* absent fields while the system asked
+for an explicit `null`, a different instruction with a different failure mode,
+taught to people learning the system as if it were the system.
+`tests/test_notebook_prompts.py` reads the built `.ipynb` and fails on a stale
+build or a hand edit.
+
+Two things the notebook must keep doing because they are load-bearing, not
+cosmetic: **normalise before comparing the two channels** (agent 1 is told to
+emit `YYYY-MM-DD`, agent 2 to report the page verbatim — raw string comparison
+reports every document as a disagreement and buries the real ones), and **store
+the normalised value**, or `"7%"` reaches the arithmetic rules and
+`tax_rate_consistent` skips in silence.
 
 **Pin the rule set in any notebook that constructs `Settings`.** It fills any
 field it was not given from a `.env` in the working directory, so a notebook
