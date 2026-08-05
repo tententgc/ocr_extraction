@@ -51,6 +51,7 @@ from docuflow.ocr.quality import score_document_text
 from docuflow.routing import decide
 from docuflow.rules import RuleContext, run_rules
 from docuflow.schemas.registry import DocumentSchema, get_schema
+from docuflow.store.corrections import UNRELIABLE_FIELD_FACTOR, CorrectionStore
 from docuflow.store.custom_rules import CustomRuleStore
 from docuflow.store.documents import DocumentStore
 from docuflow.store.records import RecordStore, reference_field_for
@@ -77,6 +78,7 @@ class Pipeline:
         self.documents = DocumentStore(settings.db_path)
         self.records = RecordStore(settings.db_path)
         self.custom_rules = CustomRuleStore(settings.db_path)
+        self.corrections = CorrectionStore(settings.db_path)
 
     # --- entry points ------------------------------------------------------
     def process_bytes(
@@ -535,6 +537,58 @@ class Pipeline:
             )
         )
 
+    def _distrust_proven_fields(self, run: DocumentRun, vendor_id: str | None) -> DocumentRun:
+        """Lower confidence in fields reviewers keep having to fix here.
+
+        This is the whole of what the correction history is allowed to do. It
+        does not suggest a value, because a correction records the right answer
+        for one document and says nothing about the next - carrying a past
+        value forward would put one invoice's total on another.
+
+        What it does is stop claiming certainty that the evidence contradicts.
+        A field that three separate documents from this vendor needed fixing is
+        one this extractor cannot read on this layout, and saying so drops the
+        document into the queue where somebody looks at it.
+
+        A note is attached rather than the score quietly moving, so a reviewer
+        asking "why is this one flagged" gets an answer.
+        """
+        if not vendor_id:
+            return run
+        unreliable = self.corrections.unreliable_fields(run.doc_type, vendor_id)
+        if not unreliable:
+            return run
+
+        updated = []
+        for field in run.fields:
+            documents = unreliable.get(field.name)
+            if not documents or field.is_empty:
+                updated.append(field)
+                continue
+            updated.append(
+                field.model_copy(
+                    update={
+                        "confidence": round(field.confidence * UNRELIABLE_FIELD_FACTOR, 4),
+                        "notes": (
+                            *field.notes,
+                            f"reviewers corrected this field on {documents} other documents "
+                            f"from this vendor; read with care",
+                        ),
+                    }
+                )
+            )
+        return run.evolve(fields=tuple(updated)).with_step(
+            TraceStep(
+                step="validate",
+                status="warning",
+                summary=(
+                    f"{len(unreliable)} field(s) have a correction history with this vendor; "
+                    f"their confidence was lowered"
+                ),
+                detail={"fields": unreliable},
+            )
+        )
+
     def _stage_validate(
         self,
         run: DocumentRun,
@@ -551,6 +605,11 @@ class Pipeline:
         vendor_match = self.master.find_vendor(
             str(vendor_name) if vendor_name else None, str(tax_id) if tax_id else None
         )
+
+        # The vendor is only known here, which is why this is not in `extract`:
+        # what reviewers keep correcting is a property of one supplier's layout,
+        # and until the supplier is identified there is nothing to look up.
+        run = self._distrust_proven_fields(run, vendor_match.vendor_id)
 
         reference = run.value(reference_field_for(run.doc_type))
         duplicate = self.records.find_duplicate(

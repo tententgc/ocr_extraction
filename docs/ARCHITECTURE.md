@@ -315,6 +315,51 @@ Backends that cannot do tool calling degrade to a single prompted turn
 automatically — including models whose advertised capabilities are wrong, which
 is detected by the first turn failing.
 
+## Two documents in one file
+
+A scanner makes one PDF from a stack of paper. Read as one document that file
+yields one invoice number and one total, and **every other invoice in the stack
+is silently never recorded** — the run looks like an ordinary single invoice
+that posted cleanly.
+
+`ingest/splitting.py` finds the boundaries, deterministically, for the same
+reason the classifier is: a boundary is a fact about the text. Signals in
+priority order:
+
+| | Signal | Meaning |
+|---|---|---|
+| 1 | `Page 2 of 5` / `หน้า 2 จาก 5` | states outright that it continues something |
+| 2 | a document reference that changed | two numbers, two documents |
+| 3 | a heading over a reference not seen before | a front page where the last had no number |
+
+The two mistakes cost differently, and the module is weighted accordingly.
+Missing a boundary is silent. Splitting where there is none is loud — page two
+becomes a fragment with no header and no total, fails half the rules, and is in
+the review queue in ten seconds. So it is **willing to split and reluctant to
+merge**, and where it cannot tell it reports `uncertain` rather than guessing;
+`docuflow split` then exits 2 without writing anything.
+
+## Learning from reviewers
+
+`corrections` recorded every edit and reported hotspots to a person. Nothing in
+the pipeline read them back until `unreliable_fields` did.
+
+**What is learned is trust, never values.** A correction says what the right
+answer was on *one* document; carrying it forward would put one invoice's total
+on another, which is the exact failure the system exists to prevent. What
+generalises is that this vendor's layout, in this field, has repeatedly defeated
+the extractor — so confidence in that field drops, the document stops
+auto-posting, and a person looks at it.
+
+Three guards keep it honest:
+
+- **counted by document, not by edit** — three fixes to one page is one person
+  fixing one page; the same field wrong on three documents is a layout
+- **scoped to the vendor and type** — one supplier's problem is not everyone's,
+  and an unattributable correction teaches nothing
+- **aged out after 180 days** — distrust sends documents to review and review
+  produces corrections, so without a window that loop only tightens
+
 ## Data model
 
 SQLite, and deliberately **two layers in one row** rather than either extreme.

@@ -87,6 +87,8 @@ docuflow master load real_samples/master     # a directory, loaded in dependency
 docuflow rules load real_samples/rules.json  # 5 expression + 2 agent rules
 docuflow real-samples --out real_samples     # regenerate the corpus
 docuflow evaluate --out report.json          # accuracy, coverage, time saved
+docuflow split <file> --out <dir>            # one PDF per document in a scanned stack
+docuflow export --doc-type invoice           # the ledger as CSV or JSONL
 docuflow serve                               # the web UI on :8000
 .venv/bin/python -m pytest -q                # 1,021 tests, no API key needed
 .venv/bin/python -m pytest -m ui -q          # + 20 browser tests, opt-in
