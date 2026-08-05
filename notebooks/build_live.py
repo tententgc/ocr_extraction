@@ -21,12 +21,19 @@ rule agent makes with the payload that came back.
 Written in Thai, because the people it is for read Thai.
 
 The outputs are spliced in at build time, because nbclient cannot run this one:
-the first three cells want Colab's secret store, an uploaded file, and Typhoon
-OCR against it. Those three carry what a real Colab run printed. Every cell from
-the schema onward was executed locally against the real APIs, seeded with that
-run's OCR text, and its stdout captured verbatim - so what a reader sees is what
-the code printed, not what it was expected to print. Re-running in Colab
-replaces all of it.
+three cells want Colab's secret store, an uploaded file, and Typhoon OCR against
+it, and those three carry what a real Colab run printed. Everything else was
+executed locally against the real APIs, seeded with that run's OCR text, and its
+stdout captured verbatim - so what a reader sees is what the code printed, not
+what it was expected to print. Re-running in Colab replaces all of it.
+
+The two preprocessing cells need a page on disk, and the uploaded PNG exists
+only in that Colab session, so a clean rendered invoice from the corpus stands
+in. Their numbers are real measurements of a real page; on that page nothing is
+applied, which is the invariant rather than a gap - a clean document must pass
+through untouched. The cell after it damages a copy on purpose so the
+measure/apply/re-measure/revert loop is visible on any upload, and ships the
+before-and-after picture as a data URI.
 """
 
 from __future__ import annotations
@@ -170,15 +177,16 @@ md(r"""
 
 | ขั้น | ทำอะไร | ใคร |
 |---|---|---|
-| ① **OCR** | รูป/PDF → ข้อความ | **Typhoon OCR 1.5** (จริง) |
-| ② **schema** | ธุรกิจต้องได้ช่องอะไรบ้าง ช่องไหนสำคัญ | ตารางจาก `schemas/registry.py` |
-| ③ **แยกประเภท** | ใบแจ้งหนี้? ใบเสร็จ? | คำสำคัญ + โมเดลถ้าสูสี |
-| ④ **Agent 1 อ่าน** | หาค่าทุกช่อง + อ้างอิงที่มา | **Typhoon** · `EXTRACTION_SYSTEM` |
-| ⑤ **Agent 2 อ่านซ้ำ** | คำถามเดียวกัน คนละโมเดล คนละ prompt | **Claude** · `VERIFY_SYSTEM` |
-| ⑥ **รวม + ตรวจ** | ทำเป็นมาตรฐาน · สองตัวตรงกันไหม · อยู่บนหน้าจริงไหม | โค้ด |
-| ⑦ **กฎ** | เลขขัดกันเองไหม · ตรงทะเบียนไหม | โค้ด |
-| ⑧ **Agent ตรวจกฎ** | เรื่องที่ต้องไปค้นข้อมูลก่อนถึงตอบได้ | **Claude + tool** · `RULE_AGENT_SYSTEM` |
-| ⑨ **ตัดสิน** | **POST True / False** | โค้ดเท่านั้น |
+| ① **เตรียมภาพ** | วัด → แก้ → วัดซ้ำ → ไม่ดีขึ้นก็ทิ้ง | โค้ด · `ocr/preprocess.py` |
+| ② **OCR** | รูป/PDF → ข้อความ | **Typhoon OCR 1.5** (จริง) |
+| ③ **schema** | ธุรกิจต้องได้ช่องอะไรบ้าง ช่องไหนสำคัญ | ตารางจาก `schemas/registry.py` |
+| ④ **แยกประเภท** | ใบแจ้งหนี้? ใบเสร็จ? | คำสำคัญ + โมเดลถ้าสูสี |
+| ⑤ **Agent 1 อ่าน** | หาค่าทุกช่อง + อ้างอิงที่มา | **Typhoon** · `EXTRACTION_SYSTEM` |
+| ⑥ **Agent 2 อ่านซ้ำ** | คำถามเดียวกัน คนละโมเดล คนละ prompt | **Claude** · `VERIFY_SYSTEM` |
+| ⑦ **รวม + ตรวจ** | ทำเป็นมาตรฐาน · สองตัวตรงกันไหม · อยู่บนหน้าจริงไหม | โค้ด |
+| ⑧ **กฎ** | เลขขัดกันเองไหม · ตรงทะเบียนไหม | โค้ด |
+| ⑨ **Agent ตรวจกฎ** | เรื่องที่ต้องไปค้นข้อมูลก่อนถึงตอบได้ | **Claude + tool** · `RULE_AGENT_SYSTEM` |
+| ⑩ **ตัดสิน** | **POST True / False** | โค้ดเท่านั้น |
 
 > รัน cell ถัดไปเพื่อดูแผนภาพ — สีบอกว่าขั้นไหนเป็นโมเดล ขั้นไหนเป็นโค้ด
 
@@ -198,9 +206,9 @@ POST             : True / False
 
 > ## โมเดล**อ่าน** · โค้ด**ตัดสิน**
 
-โมเดลเก่งเรื่องหาตัวเลขบนหน้าที่ไม่เคยเห็น แต่**ผิดคน**ที่จะถามว่าจ่ายได้ไหม เพราะเอกสารเองพูดโน้มน้าวมันได้ — ขั้น ⑨ จึงไม่มีโมเดลอยู่เลย
+โมเดลเก่งเรื่องหาตัวเลขบนหน้าที่ไม่เคยเห็น แต่**ผิดคน**ที่จะถามว่าจ่ายได้ไหม เพราะเอกสารเองพูดโน้มน้าวมันได้ — ขั้น ⑩ จึงไม่มีโมเดลอยู่เลย
 
-**เวลารันทั้งหมด ~40–60 วินาที** (เรียก API 4–6 ครั้ง)
+**เวลารันทั้งหมด ~45–70 วินาที** (เรียก API 4–6 ครั้ง · ขั้น ① ไม่เรียกเลย)
 """)
 
 # ---------------------------------------------------------------- diagram ---
@@ -215,18 +223,20 @@ from IPython.display import HTML, display
 
 # (สัญลักษณ์, ชื่อขั้น, [คำอธิบาย 1-2 บรรทัด], ใครทำ, หมายเหตุ)
 STAGES = [
-    ("①", "OCR",        ["รูป/PDF → ข้อความ"],        "model", "Typhoon OCR 1.5"),
-    ("②", "schema",     ["จะหาช่องอะไรบ้าง"],         "code",  "registry.py"),
-    ("③", "classify",   ["เอกสารชนิดไหน"],            "both",  "คำสำคัญ → โมเดล"),
-    ("④", "agent 1",    ["อ่านตาม schema"],           "model", "Typhoon"),
-    ("⑤", "agent 2",    ["อ่านตามป้าย"],               "model", "Claude"),
-    ("⑥", "merge",      ["ทำมาตรฐาน · ตรงกัน?",
+    ("①", "preprocess", ["วัด → แก้ → วัดซ้ำ",
+                              "ไม่ดีขึ้นก็ทิ้ง"],           "code",  "ไม่มีโมเดล"),
+    ("②", "OCR",        ["รูป/PDF → ข้อความ"],        "model", "Typhoon OCR 1.5"),
+    ("③", "schema",     ["จะหาช่องอะไรบ้าง"],         "code",  "registry.py"),
+    ("④", "classify",   ["เอกสารชนิดไหน"],            "both",  "คำสำคัญ → โมเดล"),
+    ("⑤", "agent 1",    ["อ่านตาม schema"],           "model", "Typhoon"),
+    ("⑥", "agent 2",    ["อ่านตามป้าย"],               "model", "Claude"),
+    ("⑦", "merge",      ["ทำมาตรฐาน · ตรงกัน?",
                               "ground กับหน้าจริง"],       "code",  "ไม่มีโมเดล"),
-    ("⑦", "rules",      ["ขัดกันเองไหม",
+    ("⑧", "rules",      ["ขัดกันเองไหม",
                               "ตรงทะเบียนไหม"],        "code",  "ไม่มีโมเดล"),
-    ("⑧", "agent rule", ["ค้น → คำนวณ",
+    ("⑨", "agent rule", ["ค้น → คำนวณ",
                               "→ ตัดสิน"],                  "model", "Claude + 4 tools"),
-    ("⑨", "decide",     ["POST True / False"],        "code",  "ไม่มีโมเดล"),
+    ("⑩", "decide",     ["POST True / False"],        "code",  "ไม่มีโมเดล"),
 ]
 FILL = {"model": "#7c3aed", "code": "#0d9488", "both": "#b45309"}
 BOX, GAP, LEFT = 112, 12, 22
@@ -279,7 +289,7 @@ display(HTML(f"""
     orient="auto"><path d="M0 0 L7 3.5 L0 7 z" fill="currentColor"
     fill-opacity="0.35"/></marker></defs>
   <text x="{LEFT}" y="36" font-size="18" font-weight="700" fill="currentColor">
-    เอกสารหนึ่งใบ เดินผ่าน 9 ขั้น</text>
+    เอกสารหนึ่งใบ เดินผ่าน 10 ขั้น</text>
   <text x="{LEFT}" y="60" font-size="12" fill="currentColor" opacity="0.7">
     โมเดลถูกเรียก 4 ครั้ง — และไม่มีครั้งไหนอยู่ในขั้นที่ตัดสิน</text>
   <rect x="{LEFT-10}" y="78" width="{W - 2*(LEFT-10)}" height="128" rx="14" fill="none"
@@ -287,67 +297,67 @@ display(HTML(f"""
   {arrows}
   {"".join(box(i, s) for i, s in enumerate(STAGES))}
   <text x="{LEFT}" y="230" font-size="12" font-weight="600" fill="{FILL['code']}">
-    ขั้น ⑨ ตัดสินด้วยโค้ดล้วน — เพราะสิ่งเดียวที่โน้มน้าวโมเดลได้ คือเอกสารที่กำลังถูกตัดสินนั่นเอง</text>
+    ขั้น ⑩ ตัดสินด้วยโค้ดล้วน — เพราะสิ่งเดียวที่โน้มน้าวโมเดลได้ คือเอกสารที่กำลังถูกตัดสินนั่นเอง</text>
   {legend}
 </svg></div>"""))
 ''', "", html=r"""
 <div style="overflow-x:auto">
-<svg viewBox="0 0 1148 300" width="100%" style="max-width:1148px;min-width:940px;
+<svg viewBox="0 0 1272 300" width="100%" style="max-width:1272px;min-width:940px;
      font-family:ui-sans-serif,system-ui,sans-serif;color:#334155">
   <defs><marker id="a" markerWidth="7" markerHeight="7" refX="6" refY="3.5"
     orient="auto"><path d="M0 0 L7 3.5 L0 7 z" fill="currentColor"
     fill-opacity="0.35"/></marker></defs>
   <text x="22" y="36" font-size="18" font-weight="700" fill="currentColor">
-    เอกสารหนึ่งใบ เดินผ่าน 9 ขั้น</text>
+    เอกสารหนึ่งใบ เดินผ่าน 10 ขั้น</text>
   <text x="22" y="60" font-size="12" fill="currentColor" opacity="0.7">
     โมเดลถูกเรียก 4 ครั้ง — และไม่มีครั้งไหนอยู่ในขั้นที่ตัดสิน</text>
-  <rect x="12" y="78" width="1124" height="128" rx="14" fill="none"
+  <rect x="12" y="78" width="1248" height="128" rx="14" fill="none"
         stroke="currentColor" stroke-opacity="0.12"/>
-  <path d="M134 142 l9 0" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.4" marker-end="url(#a)"/><path d="M258 142 l9 0" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.4" marker-end="url(#a)"/><path d="M382 142 l9 0" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.4" marker-end="url(#a)"/><path d="M506 142 l9 0" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.4" marker-end="url(#a)"/><path d="M630 142 l9 0" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.4" marker-end="url(#a)"/><path d="M754 142 l9 0" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.4" marker-end="url(#a)"/><path d="M878 142 l9 0" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.4" marker-end="url(#a)"/><path d="M1002 142 l9 0" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.4" marker-end="url(#a)"/>
+  <path d="M134 142 l9 0" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.4" marker-end="url(#a)"/><path d="M258 142 l9 0" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.4" marker-end="url(#a)"/><path d="M382 142 l9 0" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.4" marker-end="url(#a)"/><path d="M506 142 l9 0" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.4" marker-end="url(#a)"/><path d="M630 142 l9 0" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.4" marker-end="url(#a)"/><path d="M754 142 l9 0" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.4" marker-end="url(#a)"/><path d="M878 142 l9 0" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.4" marker-end="url(#a)"/><path d="M1002 142 l9 0" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.4" marker-end="url(#a)"/><path d="M1126 142 l9 0" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.4" marker-end="url(#a)"/>
   
     <g>
       <rect x="22" y="88" width="112" height="108" rx="10"
-            fill="#7c3aed" fill-opacity="0.13" stroke="#7c3aed" stroke-width="1.6"/>
+            fill="#0d9488" fill-opacity="0.13" stroke="#0d9488" stroke-width="1.6"/>
       <text x="78.0" y="114" text-anchor="middle" font-size="17"
-            fill="#7c3aed" font-weight="700">①</text>
+            fill="#0d9488" font-weight="700">①</text>
       <text x="78.0" y="136" text-anchor="middle" font-size="12.5"
-            fill="#7c3aed" font-weight="700">OCR</text>
-      <text x="78.0" y="158" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.85">รูป/PDF → ข้อความ</text>
+            fill="#0d9488" font-weight="700">preprocess</text>
+      <text x="78.0" y="152" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.85">วัด → แก้ → วัดซ้ำ</text><text x="78.0" y="165" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.85">ไม่ดีขึ้นก็ทิ้ง</text>
       <text x="78.0" y="186" text-anchor="middle" font-size="8.5"
-            fill="currentColor" opacity="0.5">Typhoon OCR 1.5</text>
+            fill="currentColor" opacity="0.5">ไม่มีโมเดล</text>
     </g>
     <g>
       <rect x="146" y="88" width="112" height="108" rx="10"
-            fill="#0d9488" fill-opacity="0.13" stroke="#0d9488" stroke-width="1.6"/>
+            fill="#7c3aed" fill-opacity="0.13" stroke="#7c3aed" stroke-width="1.6"/>
       <text x="202.0" y="114" text-anchor="middle" font-size="17"
-            fill="#0d9488" font-weight="700">②</text>
+            fill="#7c3aed" font-weight="700">②</text>
       <text x="202.0" y="136" text-anchor="middle" font-size="12.5"
-            fill="#0d9488" font-weight="700">schema</text>
-      <text x="202.0" y="158" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.85">จะหาช่องอะไรบ้าง</text>
+            fill="#7c3aed" font-weight="700">OCR</text>
+      <text x="202.0" y="158" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.85">รูป/PDF → ข้อความ</text>
       <text x="202.0" y="186" text-anchor="middle" font-size="8.5"
-            fill="currentColor" opacity="0.5">registry.py</text>
+            fill="currentColor" opacity="0.5">Typhoon OCR 1.5</text>
     </g>
     <g>
       <rect x="270" y="88" width="112" height="108" rx="10"
-            fill="#b45309" fill-opacity="0.13" stroke="#b45309" stroke-width="1.6"/>
+            fill="#0d9488" fill-opacity="0.13" stroke="#0d9488" stroke-width="1.6"/>
       <text x="326.0" y="114" text-anchor="middle" font-size="17"
-            fill="#b45309" font-weight="700">③</text>
+            fill="#0d9488" font-weight="700">③</text>
       <text x="326.0" y="136" text-anchor="middle" font-size="12.5"
-            fill="#b45309" font-weight="700">classify</text>
-      <text x="326.0" y="158" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.85">เอกสารชนิดไหน</text>
+            fill="#0d9488" font-weight="700">schema</text>
+      <text x="326.0" y="158" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.85">จะหาช่องอะไรบ้าง</text>
       <text x="326.0" y="186" text-anchor="middle" font-size="8.5"
-            fill="currentColor" opacity="0.5">คำสำคัญ → โมเดล</text>
+            fill="currentColor" opacity="0.5">registry.py</text>
     </g>
     <g>
       <rect x="394" y="88" width="112" height="108" rx="10"
-            fill="#7c3aed" fill-opacity="0.13" stroke="#7c3aed" stroke-width="1.6"/>
+            fill="#b45309" fill-opacity="0.13" stroke="#b45309" stroke-width="1.6"/>
       <text x="450.0" y="114" text-anchor="middle" font-size="17"
-            fill="#7c3aed" font-weight="700">④</text>
+            fill="#b45309" font-weight="700">④</text>
       <text x="450.0" y="136" text-anchor="middle" font-size="12.5"
-            fill="#7c3aed" font-weight="700">agent 1</text>
-      <text x="450.0" y="158" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.85">อ่านตาม schema</text>
+            fill="#b45309" font-weight="700">classify</text>
+      <text x="450.0" y="158" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.85">เอกสารชนิดไหน</text>
       <text x="450.0" y="186" text-anchor="middle" font-size="8.5"
-            fill="currentColor" opacity="0.5">Typhoon</text>
+            fill="currentColor" opacity="0.5">คำสำคัญ → โมเดล</text>
     </g>
     <g>
       <rect x="518" y="88" width="112" height="108" rx="10"
@@ -355,21 +365,21 @@ display(HTML(f"""
       <text x="574.0" y="114" text-anchor="middle" font-size="17"
             fill="#7c3aed" font-weight="700">⑤</text>
       <text x="574.0" y="136" text-anchor="middle" font-size="12.5"
-            fill="#7c3aed" font-weight="700">agent 2</text>
-      <text x="574.0" y="158" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.85">อ่านตามป้าย</text>
+            fill="#7c3aed" font-weight="700">agent 1</text>
+      <text x="574.0" y="158" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.85">อ่านตาม schema</text>
       <text x="574.0" y="186" text-anchor="middle" font-size="8.5"
-            fill="currentColor" opacity="0.5">Claude</text>
+            fill="currentColor" opacity="0.5">Typhoon</text>
     </g>
     <g>
       <rect x="642" y="88" width="112" height="108" rx="10"
-            fill="#0d9488" fill-opacity="0.13" stroke="#0d9488" stroke-width="1.6"/>
+            fill="#7c3aed" fill-opacity="0.13" stroke="#7c3aed" stroke-width="1.6"/>
       <text x="698.0" y="114" text-anchor="middle" font-size="17"
-            fill="#0d9488" font-weight="700">⑥</text>
+            fill="#7c3aed" font-weight="700">⑥</text>
       <text x="698.0" y="136" text-anchor="middle" font-size="12.5"
-            fill="#0d9488" font-weight="700">merge</text>
-      <text x="698.0" y="152" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.85">ทำมาตรฐาน · ตรงกัน?</text><text x="698.0" y="165" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.85">ground กับหน้าจริง</text>
+            fill="#7c3aed" font-weight="700">agent 2</text>
+      <text x="698.0" y="158" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.85">อ่านตามป้าย</text>
       <text x="698.0" y="186" text-anchor="middle" font-size="8.5"
-            fill="currentColor" opacity="0.5">ไม่มีโมเดล</text>
+            fill="currentColor" opacity="0.5">Claude</text>
     </g>
     <g>
       <rect x="766" y="88" width="112" height="108" rx="10"
@@ -377,35 +387,46 @@ display(HTML(f"""
       <text x="822.0" y="114" text-anchor="middle" font-size="17"
             fill="#0d9488" font-weight="700">⑦</text>
       <text x="822.0" y="136" text-anchor="middle" font-size="12.5"
-            fill="#0d9488" font-weight="700">rules</text>
-      <text x="822.0" y="152" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.85">ขัดกันเองไหม</text><text x="822.0" y="165" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.85">ตรงทะเบียนไหม</text>
+            fill="#0d9488" font-weight="700">merge</text>
+      <text x="822.0" y="152" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.85">ทำมาตรฐาน · ตรงกัน?</text><text x="822.0" y="165" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.85">ground กับหน้าจริง</text>
       <text x="822.0" y="186" text-anchor="middle" font-size="8.5"
             fill="currentColor" opacity="0.5">ไม่มีโมเดล</text>
     </g>
     <g>
       <rect x="890" y="88" width="112" height="108" rx="10"
-            fill="#7c3aed" fill-opacity="0.13" stroke="#7c3aed" stroke-width="1.6"/>
+            fill="#0d9488" fill-opacity="0.13" stroke="#0d9488" stroke-width="1.6"/>
       <text x="946.0" y="114" text-anchor="middle" font-size="17"
-            fill="#7c3aed" font-weight="700">⑧</text>
+            fill="#0d9488" font-weight="700">⑧</text>
       <text x="946.0" y="136" text-anchor="middle" font-size="12.5"
-            fill="#7c3aed" font-weight="700">agent rule</text>
-      <text x="946.0" y="152" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.85">ค้น → คำนวณ</text><text x="946.0" y="165" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.85">→ ตัดสิน</text>
+            fill="#0d9488" font-weight="700">rules</text>
+      <text x="946.0" y="152" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.85">ขัดกันเองไหม</text><text x="946.0" y="165" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.85">ตรงทะเบียนไหม</text>
       <text x="946.0" y="186" text-anchor="middle" font-size="8.5"
-            fill="currentColor" opacity="0.5">Claude + 4 tools</text>
+            fill="currentColor" opacity="0.5">ไม่มีโมเดล</text>
     </g>
     <g>
       <rect x="1014" y="88" width="112" height="108" rx="10"
-            fill="#0d9488" fill-opacity="0.13" stroke="#0d9488" stroke-width="1.6"/>
+            fill="#7c3aed" fill-opacity="0.13" stroke="#7c3aed" stroke-width="1.6"/>
       <text x="1070.0" y="114" text-anchor="middle" font-size="17"
-            fill="#0d9488" font-weight="700">⑨</text>
+            fill="#7c3aed" font-weight="700">⑨</text>
       <text x="1070.0" y="136" text-anchor="middle" font-size="12.5"
-            fill="#0d9488" font-weight="700">decide</text>
-      <text x="1070.0" y="158" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.85">POST True / False</text>
+            fill="#7c3aed" font-weight="700">agent rule</text>
+      <text x="1070.0" y="152" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.85">ค้น → คำนวณ</text><text x="1070.0" y="165" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.85">→ ตัดสิน</text>
       <text x="1070.0" y="186" text-anchor="middle" font-size="8.5"
+            fill="currentColor" opacity="0.5">Claude + 4 tools</text>
+    </g>
+    <g>
+      <rect x="1138" y="88" width="112" height="108" rx="10"
+            fill="#0d9488" fill-opacity="0.13" stroke="#0d9488" stroke-width="1.6"/>
+      <text x="1194.0" y="114" text-anchor="middle" font-size="17"
+            fill="#0d9488" font-weight="700">⑩</text>
+      <text x="1194.0" y="136" text-anchor="middle" font-size="12.5"
+            fill="#0d9488" font-weight="700">decide</text>
+      <text x="1194.0" y="158" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.85">POST True / False</text>
+      <text x="1194.0" y="186" text-anchor="middle" font-size="8.5"
             fill="currentColor" opacity="0.5">ไม่มีโมเดล</text>
     </g>
   <text x="22" y="230" font-size="12" font-weight="600" fill="#0d9488">
-    ขั้น ⑨ ตัดสินด้วยโค้ดล้วน — เพราะสิ่งเดียวที่โน้มน้าวโมเดลได้ คือเอกสารที่กำลังถูกตัดสินนั่นเอง</text>
+    ขั้น ⑩ ตัดสินด้วยโค้ดล้วน — เพราะสิ่งเดียวที่โน้มน้าวโมเดลได้ คือเอกสารที่กำลังถูกตัดสินนั่นเอง</text>
   <rect x="22" y="248" width="12" height="12" rx="3" fill="#7c3aed" fill-opacity="0.35" stroke="#7c3aed"/><text x="40" y="258" font-size="11" fill="currentColor" opacity="0.8">เรียกโมเดล</text><rect x="252" y="248" width="12" height="12" rx="3" fill="#0d9488" fill-opacity="0.35" stroke="#0d9488"/><text x="270" y="258" font-size="11" fill="currentColor" opacity="0.8">โค้ดล้วน ไม่มีโมเดล</text><rect x="482" y="248" width="12" height="12" rx="3" fill="#b45309" fill-opacity="0.35" stroke="#b45309"/><text x="500" y="258" font-size="11" fill="currentColor" opacity="0.8">โค้ดก่อน โมเดลเฉพาะตอนสูสี</text>
 </svg></div>
 """)
@@ -505,9 +526,345 @@ except Exception as exc:
 ชนิด   : PNG
 """)
 
+# ============================================================ preprocess ====
+md(r"""
+## ① เตรียมภาพ — วัดก่อน แก้ แล้ววัดซ้ำ
+
+ขั้นแรกของระบบจริงไม่ใช่ OCR แต่เป็นขั้นนี้ (`ocr/preprocess.py`) รูปถ่ายจากมือถือกับ PDF ที่ export มาตรงๆ ไม่ใช่เอกสารชนิดเดียวกันสำหรับโมเดลอ่านเอกสาร
+
+### กฎข้อเดียวที่ทั้งขั้นนี้ยืนอยู่บนมัน
+
+> **การแก้ต้องไม่ทำให้หน้าแย่ลง**
+
+ทุกการแก้จึงเดินสี่จังหวะเสมอ — **วัด → แก้ → วัดใหม่ → ถ้าตัวเลขที่มันมีไว้แก้ไม่ดีขึ้น ให้ทิ้งผลนั้นไป**
+
+ไม่ใช่ "ถ้าดูเอียงก็หมุน" เพราะบางทีมันหมุนแล้วเอียงกว่าเดิม และไม่มีใครรู้ ถ้าไม่วัดซ้ำ
+
+| แก้อะไร | วัดด้วยอะไร | ผ่านเมื่อ |
+|---|---|---|
+| แสงไม่สม่ำเสมอ | ระดับ**กระดาษ**ต่างกันแค่ไหนระหว่างมุมหน้า | ต่างน้อยลง |
+| หน้าเอียง | เส้นบรรทัดแยกกันชัดแค่ไหน | มุมเอียงน้อยลง |
+| ความต่างจาง | หมึกห่างจากกระดาษแค่ไหน | ห่างขึ้น |
+| ภาพเบลอ | ความแปรปรวนของ Laplacian | สูงขึ้น |
+
+### ลำดับเป็นเรื่องเป็นเรื่องตาย: **แสงก่อน แล้วค่อยวัดความเอียง**
+
+ความเอียงประเมินจาก mask ว่าหมึกอยู่ตรงไหน และ mask นั้นตัดด้วยความสว่าง*เฉลี่ยของหน้าเอง* — หน้าที่มีแสงเข้าด้านเดียว mask จะไป**มาร์กเงา** ไม่ใช่มาร์กตัวหนังสือ แล้วมุมที่ได้จะอธิบาย*ความชันของแสง* ไม่ใช่ความเอียงของบรรทัด
+
+เจอจริงในชุดเอกสาร: ประเมินได้ `-2.8°` หมุนแล้ววัดใหม่ได้ `+2.8°` — เอียงเท่าเดิมแต่กลับข้าง ซึ่งคือสิ่งที่เกิดขึ้นเวลาหมุน*ความชันของแสง*แทนที่จะหมุน*ย่อหน้า* (ตาข่ายนิรภัยจับได้ ย้อนกลับถูก แต่หน้าก็ยังเอียงอยู่ดี) พอแบนแสงก่อน หน้าเดียวกันประเมินได้ `-2.7°` และแก้ลงเหลือ `0.0°`
+
+### สองอย่างที่ต้องวัดให้ถูกตัว
+
+**ความต่าง (contrast)** วัดระหว่าง*หมึกกับกระดาษ* ไม่ใช่ percentile ของทุกพิกเซล — หน้ากระดาษส่วนใหญ่คือกระดาษ ใบแจ้งหนี้สะอาดๆ percentile ที่ 5 กับ 95 ขาวทั้งคู่ วัดแบบนั้นแล้ว**ทุกหน้าที่สะอาดถูกรายงานว่าไม่มีความต่างเลย**
+
+**ความสม่ำเสมอของแสง** อ่านระดับ*กระดาษ*ในแต่ละช่องตาราง ไม่ใช่ค่าเฉลี่ยของช่อง — เฉลี่ยทั้งช่องคือการวัด*ความหนาแน่นของหมึก* ช่องที่เป็นตารางแน่นๆ จะเฉลี่ยมืดกว่าขอบว่างเสมอ แล้วใบที่แสงสม่ำเสมอจะถูกรายงานว่ามีไฟส่องอยู่ครึ่งเดียว
+
+> **ไฟล์ที่เตรียมแล้วเขียน*ข้างๆ* ของเดิม ไม่ทับ** — คนตรวจต้องเห็นสิ่งที่ส่งเข้ามาจริงๆ
+""")
+
+code(r'''
+import numpy as np
+from PIL import Image as PILImage, ImageFilter
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  ocr/preprocess.py — เกณฑ์และการวัด คัดมาตรงๆ
+# ═══════════════════════════════════════════════════════════════════════════
+SKEW_WORTH_FIXING  = 0.4       # องศา — ต่ำกว่านี้ไม่คุ้มหมุน
+MAX_SKEW_DEGREES   = 12.0      # เกินนี้ไม่ใช่สแกนเบี้ยว แต่เป็นหน้าที่วางผิด
+SHARPNESS_FLOOR    = 1.2e-3
+CONTRAST_FLOOR     = 0.18
+ILLUMINATION_FLOOR = 0.18
+MEASURE_DIM = 900              # ย่อก่อนวัด — วัดที่ความละเอียดเต็มไม่ได้อะไรเพิ่ม
+GRID, PAPER_PERCENTILE = 16, 90.0
+
+def luma(image, max_dim=MEASURE_DIM):
+    grey = image.convert("L")
+    if max(grey.size) > max_dim:
+        s = max_dim / float(max(grey.size))
+        grey = grey.resize((max(1, int(grey.width*s)), max(1, int(grey.height*s))),
+                           PILImage.Resampling.BILINEAR)
+    return np.asarray(grey, dtype=np.float32) / 255.0
+
+def ink_mask(l):
+    """หมึก = 1 กระดาษ = 0 · ตัดเทียบกับสถิติของหน้าเอง ไม่ใช่ค่าคงที่
+    เพราะแฟกซ์กับเลเซอร์พรินต์เถียงกันเรื่องคำว่า "เข้ม" และต้องใช้ได้ทั้งคู่"""
+    return (l < l.mean() - 0.5 * l.std()).astype(np.float32)
+
+def sharpness(l):
+    """ความแปรปรวนของ Laplacian — ตัวหนังสือคือขอบล้วนๆ คมแล้วค่าสูง เบลอแล้วดิ่ง"""
+    if l.shape[0] < 3 or l.shape[1] < 3:
+        return 0.0
+    mid = l[1:-1, 1:-1]
+    lap = 4.0*mid - l[:-2,1:-1] - l[2:,1:-1] - l[1:-1,:-2] - l[1:-1,2:]
+    return float(lap.var())
+
+def contrast(l):
+    """หมึกห่างจากกระดาษแค่ไหน — วัดระหว่างสองกลุ่ม ไม่ใช่ percentile ทั้งหน้า"""
+    ink = ink_mask(l).astype(bool)
+    paper = ~ink
+    if ink.sum() < 50 or paper.sum() < 50:
+        return 1.0                       # ไม่มีหมึกให้อ่าน — เพิ่ม contrast ไม่ช่วย
+    return float(l[paper].mean() - l[ink].mean())
+
+def illumination_spread(l):
+    """ระดับ *กระดาษ* ต่างกันแค่ไหนจากมุมหนึ่งไปอีกมุม
+
+    อ่าน percentile 90 ของแต่ละช่อง = ระดับกระดาษของช่องนั้น ไม่ใช่ค่าเฉลี่ย
+    ซึ่งจะกลายเป็นการวัดความหนาแน่นของหมึกแทน
+    """
+    h, w = l.shape
+    if h < GRID or w < GRID:
+        return 0.0
+    ch, cw = h // GRID, w // GRID
+    cells = l[:ch*GRID, :cw*GRID].reshape(GRID, ch, GRID, cw).transpose(0, 2, 1, 3)
+    paper = np.percentile(cells.reshape(GRID*GRID, -1), PAPER_PERCENTILE, axis=1)
+    low, high = np.percentile(paper, [10.0, 90.0])
+    return float(high - low)
+
+def line_score(binary):
+    """เส้นบรรทัดแยกกันชัดแค่ไหน — บวกหมึกในแต่ละแถว แล้ววัดว่ากระโดดแรงแค่ไหน
+    บรรทัดตรง = ที่ราบสลับร่องลึก · หน้าเอียง = บรรทัดเลอะทับกันจนเกือบแบน"""
+    profile = binary.sum(axis=1)
+    return float(np.square(np.diff(profile)).sum()) if profile.size > 1 else 0.0
+
+def estimate_skew(image):
+    """กวาดหยาบหาย่าน แล้วกวาดละเอียดหาค่า · ไม่ชนะก็ตอบ 0.0 ตามตรง"""
+    l = luma(image)
+    ink = ink_mask(l)
+    if ink.sum() < 50:
+        return 0.0
+    source = PILImage.fromarray((ink * 255).astype(np.uint8))
+    def score(angle):
+        if angle == 0.0:
+            return line_score(ink)
+        turned = source.rotate(angle, resample=PILImage.Resampling.BILINEAR, fillcolor=0)
+        return line_score(np.asarray(turned, dtype=np.float32) / 255.0)
+    best = max(np.arange(-MAX_SKEW_DEGREES, MAX_SKEW_DEGREES + 1.0, 1.0), key=score)
+    best = max(np.arange(best - 1.0, best + 1.1, 0.1), key=score)
+    return float(round(-best, 2))        # มุมที่ทำให้บรรทัดตรง = ลบของความเอียง
+
+def measure(image):
+    l = luma(image)
+    return {"skew": estimate_skew(image), "sharpness": sharpness(l),
+            "contrast": contrast(l), "illumination": illumination_spread(l)}
+
+def remeasure(image, previous, skew=False):
+    """วัดใหม่หลังแก้ · ประเมินมุมแพงที่สุด และมีแค่การหมุนที่เปลี่ยนมัน"""
+    l = luma(image)
+    return {"skew": estimate_skew(image) if skew else previous["skew"],
+            "sharpness": sharpness(l), "contrast": contrast(l),
+            "illumination": illumination_spread(l)}
+
+# ── ตัวแก้ ────────────────────────────────────────────────────────────────
+def flatten_illumination(image):
+    """หารหน้าด้วยพื้นหลังของตัวเอง — เอาเงาและแสงที่ตกไม่เท่ากันออก
+    พื้นหลังคือสิ่งที่เหลือหลังเบลอกว้างพอจะลบตัวอักษรทุกตัว แต่แคบพอจะตามแสงทัน"""
+    grey = image.convert("L")
+    radius = max(8.0, min(grey.size) * 0.04)
+    background = np.asarray(grey.filter(ImageFilter.GaussianBlur(radius)), dtype=np.float32)
+    foreground = np.asarray(grey, dtype=np.float32)
+    ratio = foreground / np.maximum(background, 1.0)   # กันหารด้วยศูนย์
+    return PILImage.fromarray(np.clip(ratio*255.0, 0, 255).astype(np.uint8)).convert(image.mode)
+
+def deskew(image, degrees):
+    """หมุนให้ตรง ขยายผืนผ้าใบไม่ให้ตัวหนังสือโดนตัด และเติมมุมด้วย *สีกระดาษ*
+    มุมดำบนสแกนที่หมุนแล้วไม่ใช่กลางๆ — มันเปลี่ยน contrast ที่วัดได้ และให้
+    ขอบคมๆ ให้โมเดลไปไล่หาตัวหนังสือตามนั้น"""
+    fill = int(round(float(np.percentile(luma(image, 200), 90)) * 255))
+    return image.rotate(-degrees, resample=PILImage.Resampling.BICUBIC, expand=True,
+                        fillcolor=(fill,)*3 if image.mode == "RGB" else fill)
+
+def stretch_contrast(image):
+    grey = np.asarray(image.convert("L"), dtype=np.float32)
+    low, high = np.percentile(grey, [2.0, 98.0])
+    if high - low < 1.0:
+        return image
+    out = np.clip((grey - low) * (255.0/(high-low)), 0, 255).astype(np.uint8)
+    return PILImage.fromarray(out).convert(image.mode)
+
+def sharpen(image):
+    return image.filter(ImageFilter.UnsharpMask(radius=1.6, percent=130, threshold=3))
+
+# ── ขั้นตอนเต็ม: แก้ทุกอย่างที่ *การวัดของหน้าเอง* ร้องขอ ──────────────────
+def prepare_image(image):
+    before = measure(image)
+    current, state = image, dict(before)
+    actions, reverted, notes = [], [], []
+
+    # แสงก่อน — ลำดับนี้ไม่ได้เรียงมั่ว ดูคำอธิบายด้านบน
+    if state["illumination"] > ILLUMINATION_FLOOR:
+        candidate = flatten_illumination(current)
+        got = remeasure(candidate, state, skew=True)
+        if got["illumination"] < state["illumination"]:
+            current, state = candidate, got; actions.append("แบนแสงให้สม่ำเสมอ")
+        else:
+            reverted.append("แบนแสง")
+
+    if abs(state["skew"]) > MAX_SKEW_DEGREES:
+        notes.append(f"หน้าดูเอียง {state['skew']:.1f}° ซึ่งไกลเกินกว่าจะเป็นสแกนเบี้ยว — ปล่อยไว้")
+    elif abs(state["skew"]) > SKEW_WORTH_FIXING:
+        angle = state["skew"]
+        candidate = deskew(current, angle)
+        got = remeasure(candidate, state, skew=True)
+        # เกณฑ์คือ *บรรทัดตรงขึ้นจริงไหม* ไม่ใช่ *ตอนประเมินบอกว่าจะตรงขึ้นไหม*
+        if abs(got["skew"]) < abs(state["skew"]):
+            current, state = candidate, got; actions.append(f"หมุนแก้เอียง {angle:+.1f}°")
+        else:
+            reverted.append("แก้เอียง")
+
+    if state["contrast"] < CONTRAST_FLOOR:
+        candidate = stretch_contrast(current)
+        got = remeasure(candidate, state)
+        if got["contrast"] > state["contrast"]:
+            current, state = candidate, got; actions.append("ดึงความต่างขึ้น")
+        else:
+            reverted.append("ดึงความต่าง")
+
+    # ลับคมท้ายสุด — ทั้งการหมุนและการดึงความต่างเปลี่ยนค่าความคมที่วัดได้
+    # ถามก่อนหน้านั้นคือถามคำถามผิดข้อ
+    if state["sharpness"] < SHARPNESS_FLOOR:
+        candidate = sharpen(current)
+        got = remeasure(candidate, state)
+        if got["sharpness"] > state["sharpness"]:
+            current, state = candidate, got; actions.append("ลับคม")
+        else:
+            reverted.append("ลับคม")
+
+    return current, before, state, actions, reverted, notes
+
+# ── รันกับหน้าที่อัปโหลดมาจริง ─────────────────────────────────────────────
+def first_page(path):
+    if path.suffix.lower() == ".pdf":
+        import pypdfium2 as pdfium
+        doc = pdfium.PdfDocument(str(path))
+        try:
+            return doc[0].render(scale=2.0).to_pil().convert("RGB")
+        finally:
+            doc.close()
+    return PILImage.open(path).convert("RGB")
+
+page = first_page(DOC_PATH)
+prepared, before, after, ACTIONS, REVERTED, NOTES = prepare_image(page)
+
+LABELS = {"skew": ("มุมเอียง (องศา)", "{:+.2f}", None),
+          "illumination": ("แสงไม่สม่ำเสมอ", "{:.3f}", ILLUMINATION_FLOOR),
+          "contrast": ("หมึกห่างกระดาษ", "{:.3f}", CONTRAST_FLOOR),
+          "sharpness": ("ความคม", "{:.5f}", SHARPNESS_FLOOR)}
+
+print(f"หน้าเอกสาร : {page.width} × {page.height} px\n")
+print(f"  {'วัดอะไร':22} {'ก่อน':>10} {'หลัง':>10}   เกณฑ์")
+print("  " + "─" * 62)
+for key, (label, fmt, floor) in LABELS.items():
+    gate = ("ไม่มี" if floor is None else
+            f"{'<' if key in ('contrast','sharpness') else '>'} {floor:g}")
+    print(f"  {label:22} {fmt.format(before[key]):>10} {fmt.format(after[key]):>10}   {gate}")
+
+print(f"\n  แก้จริง   : {' · '.join(ACTIONS) if ACTIONS else 'ไม่ได้แก้อะไรเลย'}")
+print(f"  ทิ้งผลไป  : {' · '.join(REVERTED) if REVERTED else 'ไม่มี'}"
+      + ("   ← วัดใหม่แล้วไม่ดีขึ้น จึงใช้ภาพเดิม" if REVERTED else ""))
+for n in NOTES:
+    print(f"  หมายเหตุ  : {n}")
+
+if ACTIONS:
+    # เขียน *ข้างๆ* ของเดิม ไม่ทับ — คนตรวจต้องเห็นสิ่งที่ส่งเข้ามาจริงๆ
+    OCR_PATH = DOC_PATH.with_name(f"{DOC_PATH.stem}-prepared.jpg")
+    prepared.save(OCR_PATH, quality=92)
+    print(f"\n  ภาพที่จะส่งให้ OCR: {OCR_PATH.name}  (ของเดิมยังอยู่ครบ)")
+else:
+    OCR_PATH = DOC_PATH
+    print(f"\n  ภาพที่จะส่งให้ OCR: {OCR_PATH.name}  (หน้าสะอาดพอ ไม่ต้องแตะ "
+          f"— ไม่เขียนไฟล์ที่สองด้วย)")
+''', """
+หน้าเอกสาร : 1489 × 2105 px
+
+  วัดอะไร                      ก่อน       หลัง   เกณฑ์
+  ──────────────────────────────────────────────────────────────
+  มุมเอียง (องศา)             +0.00      +0.00   ไม่มี
+  แสงไม่สม่ำเสมอ              0.000      0.000   > 0.18
+  หมึกห่างกระดาษ              0.677      0.677   < 0.18
+  ความคม                    0.01132    0.01132   < 0.0012
+
+  แก้จริง   : ไม่ได้แก้อะไรเลย
+  ทิ้งผลไป  : ไม่มี
+
+  ภาพที่จะส่งให้ OCR: invoice_test.png  (หน้าสะอาดพอ ไม่ต้องแตะ — ไม่เขียนไฟล์ที่สองด้วย)
+""")
+
+md(r"""
+### พิสูจน์ว่ากลไกทำงาน แม้หน้าที่อัปโหลดมาจะสะอาดอยู่แล้ว
+
+ถ้าเอกสารของคุณเป็น PDF ที่ export มาตรงๆ ขั้นบนจะไม่แก้อะไรเลย — **ซึ่งถูกแล้ว** แต่ก็แปลว่ายังไม่เห็นวงจรทำงาน
+
+cell ข้างล่างเลยจงใจ**ทำหน้าให้แย่ลง** (เอียง 3° + ไฟส่องด้านเดียว) แล้วปล่อยให้ `prepare_image` แก้กลับ — ไม่เรียก API ไม่แตะไฟล์ต้นฉบับ
+""")
+
+code(r'''
+# ── ทำให้แย่ลงก่อน แล้วดูว่ามันกู้กลับได้ไหม ──────────────────────────────
+def add_shadow(image, strength=0.55):
+    """ไล่เฉดจากซ้ายไปขวา — เลียนแบบไฟส่องด้านเดียวหรือเงามือตอนถ่าย"""
+    grey = np.asarray(image.convert("L"), dtype=np.float32)
+    gradient = np.linspace(1.0, 1.0 - strength, grey.shape[1])[None, :]
+    return PILImage.fromarray(
+        np.clip(grey * gradient, 0, 255).astype(np.uint8)).convert("RGB")
+
+damaged = add_shadow(page.rotate(-3.0, resample=PILImage.Resampling.BICUBIC,
+                                 expand=True, fillcolor=(255, 255, 255)))
+fixed, d_before, d_after, d_actions, d_reverted, _ = prepare_image(damaged)
+
+print("ทำให้แย่ลง : หมุน -3.0° + ไล่เงาจากซ้ายไปขวา\n")
+print(f"  {'วัดอะไร':22} {'เดิม':>10} {'ทำให้แย่':>10} {'แก้แล้ว':>10}")
+print("  " + "─" * 58)
+for key, (label, fmt, _) in LABELS.items():
+    print(f"  {label:22} {fmt.format(before[key]):>10} "
+          f"{fmt.format(d_before[key]):>10} {fmt.format(d_after[key]):>10}")
+
+print(f"\n  แก้จริง  : {' · '.join(d_actions) if d_actions else 'ไม่ได้แก้'}")
+print(f"  ทิ้งผลไป : {' · '.join(d_reverted) if d_reverted else 'ไม่มี'}")
+
+recovered = abs(d_before["skew"]) - abs(d_after["skew"])
+print(f"\n  มุมเอียงหายไป {recovered:+.2f}° · แสงต่างลดลง "
+      f"{d_before['illumination'] - d_after['illumination']:+.3f}")
+print("\n  สังเกตลำดับ: **แบนแสงมาก่อน** ถ้าหมุนก่อน มุมที่ประเมินได้จะอธิบาย")
+print("  ความชันของแสง ไม่ใช่ความเอียงของบรรทัด แล้วตาข่ายนิรภัยจะย้อนผลทิ้ง")
+print("  ทั้งที่หน้ายังเอียงอยู่ — เอกสารสองใบในชุดจริงเป็นแบบนี้เป๊ะ")
+
+try:
+    from IPython.display import display
+    side = PILImage.new("RGB", (damaged.width + fixed.width + 24,
+                                max(damaged.height, fixed.height)), "white")
+    side.paste(damaged, (0, 0)); side.paste(fixed, (damaged.width + 24, 0))
+    side.thumbnail((900, 900))
+    print("\n  ซ้าย = หน้าที่ทำให้แย่ · ขวา = หลัง prepare_image")
+    display(side)
+except Exception as exc:
+    print("แสดงภาพไม่ได้:", exc)
+''', """
+ทำให้แย่ลง : หมุน -3.0° + ไล่เงาจากซ้ายไปขวา
+
+  วัดอะไร                      เดิม   ทำให้แย่    แก้แล้ว
+  ──────────────────────────────────────────────────────────
+  มุมเอียง (องศา)             +0.00      -3.00      +0.00
+  แสงไม่สม่ำเสมอ              0.000      0.447      0.000
+  หมึกห่างกระดาษ              0.677      0.341      0.527
+  ความคม                    0.01132    0.00550    0.00942
+
+  แก้จริง  : แบนแสงให้สม่ำเสมอ · หมุนแก้เอียง -3.0°
+  ทิ้งผลไป : ไม่มี
+
+  มุมเอียงหายไป +3.00° · แสงต่างลดลง +0.447
+
+  สังเกตลำดับ: **แบนแสงมาก่อน** ถ้าหมุนก่อน มุมที่ประเมินได้จะอธิบาย
+  ความชันของแสง ไม่ใช่ความเอียงของบรรทัด แล้วตาข่ายนิรภัยจะย้อนผลทิ้ง
+  ทั้งที่หน้ายังเอียงอยู่ — เอกสารสองใบในชุดจริงเป็นแบบนี้เป๊ะ
+
+  ซ้าย = หน้าที่ทำให้แย่ · ขวา = หลัง prepare_image
+""", html=r"""
+<img src="data:image/jpeg;base64,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qjOqaqPu2JbnAPlMMjHXrxk8e3U0AF7c6sskPkLLtaIGXbEDtPHK56nqMfp3rYgMjW0ZmAWUqN4HQHHNY0mp6w6MYtP8sAKPmQk5xk4GegIx75FTahc6hHLEbeORlKqQEj+82eQ2fugD6d+eKANeiuYjv9dNugaOYTYY5MGVI2jjOBzuyBwBx37vS+8Qqgd7MuM7gAo3YCg7T7tng+uR6UAdJRXMvd+IY3AMRYqCvyxjDkYG7p35I5H49Kd9t18SoJLdl+X955abgOTkqcc4G3HcknjjgA6SisCS61xVhIi3bjGWAj5HB3Dv3A54xn8afNc6skqriTH7wMUhyAAzbWHXnAXj36HsAblFc/Lda6sETrFl28slRH0JU7gevGevSq5v9fIzHDIUZTtLw7WHJ5YY6gAcD16NigDqKKwJLrXVSFli3FvKyojxglfmBPPGfp2rfoAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigApKXtSUANNMPSnntTD3oAfF90/Wn0yLofrT6ACiiigBpphp5phoAYaYaeaYaAGGmGnmmGgBhphp5phoAYaYaeaYaAGGmGnmmGgBpphp5phoAYajNSGozQA00w080w0AMNMNPNMNADDTDTzTDQAw0w080w0AMNMNPNMNADDTDTzTDQAw0w080w0AMNMNPNMNADDTDTzTDQAw0w080w0AMNMNPNMNADDTDTzTDQAw0w080w0AMNMNPNMNADDTDTzTDQAw0w080w0ANNMNPNMNAEZphp5phoAYaktP+Qhb/wDXVP8A0IVGaktP+Qhb/wDXVP8A0IUAfTNFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAdqTv+NL2pKAGnoKae9OPSmnrQAsXepKji6mpKACiiigBpphp5phoAYaYaeaYaAGGmGnmmGgBhphp5phoAYaYaeaYaAGGmGnmmGgBpphp5phoAYajNSGozQA00w080w0AMNMNPNMNADDTDTzTDQAw0w080w0AMNMNPNMNADDTDTzTDQAw0w080w0AMNMNPNMNADDTDTzTDQAw0w080w0AMNMNPNMNADDTDTzTDQAw0w080w0AMNMNPNMNADDTDTzTDQAw0w080w0ANNMNPNMNAEZphp5phoAYaktP+Qhb/8AXVP/AEIVGaktP+Qhb/8AXVP/AEIUAfTNFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUlLSdqAEP9aYetPP8AWmHrQARfeNS1FH98/SpaACiiigBpphp5phoAYaYaeaYaAGGmGnmmGgBhphp5phoAYaYaeaYaAGGmGnmmGgBpphp5phoAYajNSGozQA00w080w0AMNMNPNMNADDTDTzTDQAw0w080w0AMNMNPNMNADDTDTzTDQAw0w080w0AMNMNPNMNADDTDTzTDQAw0w080w0AMNMNPNMNADDTDTzTDQAw0w080w0AMNMNPNMNADDTDTzTDQAw0w080w0ANNMNPNMNAEZphp5phoAYaktP+Qhb/APXVP/QhUZqS0/5CFv8A9dU/9CFAH0zRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFJ2/ClpKAEPemHrTz3ph60AEf8ArKlqJP8AWCpaACiiigBpphp5phoAYaYaeaYaAGGmGnmmGgBhphp5phoAYaYaeaYaAGGmGnmmGgBpphp5phoAYajNSGozQA00w080w0AMNMNPNMNADDTDTzTDQAw0w080w0AMNMNPNMNADDTDTzTDQAw0w080w0AMNMNPNMNADDTDTzTDQAw0w080w0AMNMNPNMNADDTDTzTDQAw0w080w0AMNMNPNMNADDTDTzTDQAw0w080w0ANNMNPNMNAEZphp5phoAYaktP+Qhb/APXVP/QhUZqS0/5CFv8A9dU/9CFAH0zRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFJS0negBD/SmGn/AOFNNADV/wBYKmqEffH1qagAooooAaaYaeaYaAGGmGnmmGgBhphp5phoAYaYaeaYaAGGmGnmmGgBhphp5phoAaaYaeaYaAGGozUhqM0ANNMNPNMNADDTDTzTDQAw0w080w0AMNMNPNMNADDTDTzTDQAw0w080w0AMNMNPNMNADDTDTzTDQAw0w080w0AMNMNPNMNADDTDTzTDQAw0w080w0AMNMNPNMNADDTDTzTDQAw0w080w0AMNMNPNMNADTTDTzTDQBGaYaeaYaAGGpLT/kIW/8A11T/ANCFRmpLT/kIW/8A11T/ANCFAH0zRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFJ3paQ0AJTTTv/AK9NPSgBv8YqaoD1FT0AFFFFADTTDTzTDQAw0w080w0AMNMNPNMNADDTDTzTDQAw0w080w0AMNMNPNMNADTTDTzTDQAw1GakNRmgBpphp5phoAYaYaeaYaAGGmGnmmGgBhphp5phoAYaYaeaYaAGGmGnmmGgBhphp5phoAYaYaeaYaAGGmGnmmGgBhphp5phoAYaYaeaYaAGGmGnmmGgBhphp5phoAYaYaeaYaAGGmGnmmGgBhphp5phoAaaYaeaYaAIzTDTzTDQAw1Jaf8AIQt/+uqf+hCozUlp/wAhC3/66p/6EKAPpmiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKQ0tIaAE7009Kf3/ABph6UAMap6gbpU46UAFFFFADTTDTzTDQAw0w080w0AMNMNPNMNADDTDTzTDQAw0w080w0AMNMNPNMNADTTDTzTDQAw1GakNRmgBpphp5phoAYaYaeaYaAGGmGnmmGgBhphp5phoAYaYaeaYaAGGmGnmmGgBhphp5phoAYaYaeaYaAGGmGnmmGgBhphp5phoAYaYaeaYaAGGmGnmmGgBhphp5phoAYaYaeaYaAGGmGnmmGgBhphp5phoAaaYaeaYaAIzTDTzTDQAw1Jaf8hC3/66p/6EKjNSWn/IQt/+uqf+hCgD6ZooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACkNLSGgAPX8aYelPNNPegCNqmX7o+lRHpUqfcH0oAWiiigBpphp5phoAYaYaeaYaAGGmGnmmGgBhphp5phoAYaYaeaYaAGGmGnmmGgBpphp5phoAYajNSGozQA00w080w0AMNMNPNMNADDTDTzTDQAw0w080w0AMNMNPNMNADDTDTzTDQAw0w080w0AMNMNPNMNADDTDTzTDQAw0w080w0AMNMNPNMNADDTDTzTDQAw0w080w0AMNMNPNMNADDTDTzTDQAw0w080w0ANNMNPNMNAEZphp5phoAYaktP+Qhb/APXVP/QhUZqS0/5CFv8A9dU/9CFAH0zRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFBoooAaen4Uh70vb8KQ0AMPSpE+4KjPSpI/uCgB1FFFADTTDTzTDQAw0w080w0AMNMNPNMNADDTDTzTDQAw0w080w0AMNMNPNMNADTTDTzTDQAw1GakNRmgBpphp5phoAYaYaeaYaAGGmGnmmGgBhphp5phoAYaYaeaYaAGGmGnmmGgBhphp5phoAYaYaeaYaAGGmGnmmGgBhphp5phoAYaYaeaYaAGGmGnmmGgBhphp5phoAYaYaeaYaAGGmGnmmGgBhphp5phoAaaYaeaYaAIzTDTzTDQAw1Jaf8AIQt/+uqf+hCozUlp/wAhC3/66p/6EKAPpmiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKDRR2oATtTTTv/r000AMPSnxfcph6U+L7v40APooooAaaYaeaYaAGGmGnmmGgBhphp5phoAYaYaeaYaAGGmGnmmGgBhphp5phoAaaYaeaYaAGGozUhqM0ANNMNPNMNADDTDTzTDQAw0w080w0AMNMNPNMNADDTDTzTDQAw0w080w0AMNMNPNMNADDTDTzTDQAw0w080w0AMNMNPNMNADDTDTzTDQAw0w080w0AMNMNPNMNADDTDTzTDQAw0w080w0AMNMNPNMNADTTDTzTDQBGaYaeaYaAGGpLT/AJCFv/11T/0IVGaktP8AkIW//XVP/QhQB9M0UUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABR2oo7UAJTT2p3f8aaegoAYe9Pi+6frTT3pYu9AElFFFADTTDTzTDQAw0w080w0AMNMNPNMNADDTDTzTDQAw0w080w0AMNMNPNMNADTTDTzTDQAw1GakNRmgBpphp5phoAYaYaeaYaAGGmGnmmGgBhphp5phoAYaYaeaYaAGGmGnmmGgBhphp5phoAYaYaeaYaAGGmGnmmGgBhphp5phoAYaYaeaYaAGGmGnmmGgBhphp5phoAYaYaeaYaAGGmGnmmGgBhphp5phoAaaYaeaYaAIzTDTzTDQAw1Jaf8hC3/AOuqf+hCozUlp/yELf8A66p/6EKAPpmiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKO1FFACf40006kP9aAGHrSxdTSHrRF940AS0UUUANNMNPNMNADDTDTzTDQAw0w080w0AMNMNPNMNADDTDTzTDQAw0w080w0ANNMNPNMNADDUZqQ1GaAGmmGnmmGgBhphp5phoAYaYaeaYaAGGmGnmmGgBhphp5phoAYaYaeaYaAGGmGnmmGgBhphp5phoAYaYaeaYaAGGmGnmmGgBhphp5phoAYaYaeaYaAGGmGnmmGgBhphp5phoAYaYaeaYaAGGmGnmmGgBpphp5phoAjNMNPNMNADDUlp/yELf8A66p/6EKjNSWn/IQt/wDrqn/oQoA+maKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooATtSH+tL2/CkPegBh60R/fP0oPWiP/WUAS0UUUANNMNPNMNADDTDTzTDQAw0w080w0AMNMNPNMNADDTDTzTDQAw0w080w0ANNMNPNMNADDUZqQ1GaAGmmGnmmGgBhphp5phoAYaYaeaYaAGGmGnmmGgBhphp5phoAYaYaeaYaAGGmGnmmGgBhphp5phoAYaYaeaYaAGGmGnmmGgBhphp5phoAYaYaeaYaAGGmGnmmGgBhphp5phoAYaYaeaYaAGGmGnmmGgBpphp5phoAjNMNPNMNADDUlp/yELf/rqn/oQqM1Jaf8hC3/66p/6EKAPpmiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKAEpD3paQ/0oAYetCf6wUGkX/WCgCaiiigBpphp5phoAYaYaeaYaAGGmGnmmGgBhphp5phoAYaYaeaYaAGGmGnmmGgBpphp5phoAYajNSGozQA00w080w0AMNMNPNMNADDTDTzTDQAw0w080w0AMNMNPNMNADDTDTzTDQAw0w080w0AMNMNPNMNADDTDTzTDQAw0w080w0AMNMNPNMNADDTDTzTDQAw0w080w0AMNMNPNMNADDTDTzTDQAw0w080w0ANNMNPNMNAEZphp5phoAYaktP+Qhb/8AXVP/AEIVGaktP+Qhb/8AXVP/AEIUAfTNFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAJ3pP8KXvSUANNNH+sFONN/jH1oAmooooAaaYaeaYaAGGmGnmmGgBhphp5phoAYaYaeaYaAGGmGnmmGgBhphp5phoAaaYaeaYaAGGozUhqM0ANNMNPNMNADDTDTzTDQAw0w080w0AMNMNPNMNA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RphrWOhXH/PSL9f8KadAuf8AnrF+v+FAGQaYa2D4euT/AMtYvzP+FIfDl0f+WsX6/wCFAGKaYa2z4buj/wAtYfzP+FNPhm7P/LaH8z/hQBhmmGt0+F7v/ntD+Z/wpp8K3h/5bQ/mf8KAME0w10B8KXh/5bwfmf8ACmnwlen/AJbwfmf8KAOeNMNdEfCF6f8AlvB+Z/wpp8HX3/Pe3/M/4UAc4aYa6Q+DL4/8vFv+bf4U0+C74/8ALxb/AJt/hQBzRphrpz4Jvz/y8W/5t/hTT4Hvz/y8235t/hQBy5phrqT4F1A/8vNt+bf4U0+BNQP/AC8235t/hQBypphrqz4C1E/8vNr+bf4Uh8Aaif8Al6tfzb/CgDkjTDXXH4fakf8Al6tfzb/Cmn4e6kf+Xq1/Nv8ACgDkDTDXYH4d6n/z9Wn5t/hSH4c6mf8Al7tPzb/CgDjTTDXZn4b6of8Al7tPzb/Cmn4a6of+Xu0/Nv8ACgDizTDXan4aaqf+Xyz/ADb/AApp+GWqn/l8s/zb/CgDiTTDXbn4Yasf+Xyz/Nv8KQ/C7Vj/AMvll+bf4UAcMaYa7o/CzVz/AMvtl+b/AOFNPwr1c/8AL7Zfm/8A8TQBwpphruz8KdYP/L7Zfm//AMTTT8J9Y/5/bH83/wDiaAOCNMNd8fhNrJ/5frH83/8AiaQ/CTWT/wAv1j+b/wDxNAHn5qS0/wCQhb/9dU/9CFd0fhFrR/5frH83/wDiadB8JNZiuYpDfWJCOrHBfsc/3aAPXaKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAO1J3/Gl7UmKAG9hTT3p+2kKH1oAjBxRTvKP96igCWiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKAP/Z" style="max-width:100%;height:auto" alt="before and after">
+""")
+
 # =================================================================== OCR ====
 md(r"""
-## ① OCR — Typhoon OCR 1.5 (ของจริง)
+## ② OCR — Typhoon OCR 1.5 (ของจริง)
 
 ภาพหรือ PDF เข้าไป ข้อความออกมา
 
@@ -529,7 +886,7 @@ from typhoon_ocr import ocr_document
 
 started = time.perf_counter()
 OCR_TEXT = ocr_document(
-    pdf_or_image_path=str(DOC_PATH),
+    pdf_or_image_path=str(OCR_PATH),      # ← ผลของขั้น ① ไม่ใช่ไฟล์ที่อัปโหลด
     task_type="v1.5",          # โหมดที่คืนโครงสร้าง (ตาราง = HTML) ไม่ใช่แค่ตัวอักษร
     target_image_dim=1800,     # ย่อ/ขยายให้ด้านยาวเท่านี้ก่อนส่ง
     page_num=1,
@@ -608,7 +965,7 @@ Remit to Account No: 1234567890
 
 # ============================================================== classify ====
 md(r"""
-## ② schema — รายการช่องที่ธุรกิจต้องได้
+## ③ schema — รายการช่องที่ธุรกิจต้องได้
 
 ก่อนอ่านอะไร ต้องรู้ว่า**จะหาอะไร** ตรงนี้คือ `src/docuflow/schemas/registry.py` ยกมาทั้งดุ้น ไม่ได้ย่อ
 
@@ -712,7 +1069,7 @@ receipt    10 ช่อง · สำคัญ 5 · บังคับ 4
 
 # ============================================================== classify ====
 md(r"""
-## ③ แยกประเภทเอกสาร — สองช่องทาง ช่องที่ถูกกว่ามาก่อน
+## ④ แยกประเภทเอกสาร — สองช่องทาง ช่องที่ถูกกว่ามาก่อน
 
 คำตอบตรงนี้เลือกว่าจะใช้ schema ไหน
 
@@ -820,7 +1177,7 @@ schema ที่ใช้ : Invoice / Tax Invoice · 14 ช่อง
 
 # ============================================================== two reads ===
 md(r"""
-## ④⑤ Agent 2 ตัวอ่านเอกสาร — คนละโมเดล คนละ prompt
+## ⑤⑥ Agent 2 ตัวอ่านเอกสาร — คนละโมเดล คนละ prompt
 
 หัวใจของระบบอยู่ตรงนี้
 
@@ -1010,7 +1367,7 @@ if ANTHROPIC_KEY:
 else:
     print("\nAGENT 2 · ข้าม (ไม่มี ANTHROPIC_API_KEY) — ทุกช่องจะเหลือหลักฐานชั้นเดียว")
 ''', """
-AGENT 1 · typhoon-v2.5-30b-a3b-instruct — 6.3 วินาที · ตอบมา 13/14 ช่อง
+AGENT 1 · typhoon-v2.5-30b-a3b-instruct — 4.3 วินาที · ตอบมา 13/14 ช่อง
 
   FIELD                ค่า                      อ้างอิงจากหน้าเอกสาร
   invoice_number       STS-2026-0318            «STS-2026-0318»
@@ -1020,16 +1377,16 @@ AGENT 1 · typhoon-v2.5-30b-a3b-instruct — 6.3 วินาที · ตอบ
   buyer_name           Mirtphol Industries PCL  «Mirtphol Industries PCL»
   purchase_order_ref   PO-2026-0567             «PO-2026-0567»
   currency             THB                      «»
-  subtotal             135,000.00               «Subtotal 135,000.00»
+  subtotal             135,000.00               «135,000.00»
   tax_rate             7%                       «VAT 7%»
-  tax_amount           9,450.00                 «VAT 7% 9,450.00»
-  total_amount         144,450.00               «Amount Due 144,450.00»
-  payment_terms        Net 30                   «Payment Terms: Net 30»
-  bank_account         1234567890               «Remit to Account No: 1234567890»
+  tax_amount           9,450.00                 «9,450.00»
+  total_amount         144,450.00               «144,450.00»
+  payment_terms        Net 30                   «Net 30»
+  bank_account         1234567890               «1234567890»
 
   ตอบ null (= ไม่ได้พิมพ์บนหน้านี้): due_date
 
-AGENT 2 · claude-sonnet-4-5-20250929 — 5.8 วินาที · ตอบมา 12/14 ช่อง
+AGENT 2 · claude-sonnet-4-5-20250929 — 6.6 วินาที · ตอบมา 12/14 ช่อง
 
   FIELD                ค่า                      อ้างอิงจากหน้าเอกสาร
   invoice_number       STS-2026-0318            «Invoice No .: STS-2026-0318»
@@ -1051,7 +1408,7 @@ Mirtphol Industries PCL»
 
 # ================================================================= merge ====
 md(r"""
-## ⑥ รวม · ตรวจว่าอยู่บนหน้าจริง · ให้คะแนน
+## ⑦ รวม · ตรวจว่าอยู่บนหน้าจริง · ให้คะแนน
 
 สามเรื่อง และต้องแยกกันให้ชัดเพราะพังคนละแบบ
 
@@ -1059,7 +1416,7 @@ md(r"""
 
 **ตรวจว่าอยู่บนหน้า (grounding)** — เอา `evidence` ที่ agent แนบมา ไปหาบนข้อความ OCR จริง เช็ค ไม่ใช่เชื่อ
 
-**ให้คะแนน** — ความมั่นใจตอบ**คำถามเดียว**: *เราอ่านค่านี้ถูกไหม* ไม่ใช่ "ใบนี้จ่ายได้ไหม" ซึ่งเป็นงานของขั้น ⑨
+**ให้คะแนน** — ความมั่นใจตอบ**คำถามเดียว**: *เราอ่านค่านี้ถูกไหม* ไม่ใช่ "ใบนี้จ่ายได้ไหม" ซึ่งเป็นงานของขั้น ⑩
 
 > ตอนที่มันเป็นตัวเลขเดียวกัน คำเตือนสามข้อลากเอกสารที่อ่านถูกทุกช่องจาก 95% ลงมา 72% ใต้เกณฑ์ 84% แล้วส่งไปให้คนดูทั้งที่ไม่มีอะไรให้แก้ — **คำเตือนที่หยุดเอกสารได้ คือกฎ blocking ที่ยังไม่ยอมรับตัวเอง**
 
@@ -1067,7 +1424,7 @@ md(r"""
 
 พิสูจน์ได้แค่ว่าค่ามาจากข้อความบนหน้า — **ถ้า OCR อ่านผิด ค่าที่ผิดก็อยู่บนหน้าจริงในสายตา grounding** และ evidence ก็ผิดตามกัน agent สองตัวที่อ่านข้อความ OCR ชุดเดียวกันก็จับไม่ได้เหมือนกัน
 
-สิ่งที่กันการอ่านผิดคือ**กฎเลขคณิตในขั้น ⑦** ไม่ใช่ grounding
+สิ่งที่กันการอ่านผิดคือ**กฎเลขคณิตในขั้น ⑧** ไม่ใช่ grounding
 """)
 
 code(r'''
@@ -1193,7 +1550,7 @@ def normalize(value, kind):
     ทุกใบจะรายงานว่าสอง agent ขัดกัน แล้วสัญญาณที่ตัวที่สองมีไว้ให้ ก็จมหายไป
     ในเสียงรบกวนที่เราสร้างขึ้นเอง
 
-    และมันคือเหตุผลที่กฎ ⑦ ทำงานได้: `"7%"` บวกลบกับอะไรไม่ได้ `7.0` ได้
+    และมันคือเหตุผลที่กฎ ⑧ ทำงานได้: `"7%"` บวกลบกับอะไรไม่ได้ `7.0` ได้
     """
     s = str(value).strip().translate(THAI_DIGITS)
     if kind == "date":
@@ -1357,7 +1714,7 @@ else:
 
 # ================================================================= rules ====
 md(r"""
-## ⑦ กฎ — เอาแค่ 4 ข้อ (เดโม)
+## ⑧ กฎ — เอาแค่ 4 ข้อ (เดโม)
 
 ระบบจริงมี **26 กฎในตัว** ที่นี่เอามา 4 ข้อ เลือกให้ครบทุก*ประเภทของคำถาม*
 
@@ -1390,7 +1747,7 @@ code(r'''
 # ═══════════════════════════════════════════════════════════════════════════
 #  ทะเบียนกลาง — ระบบจริงคือ CSV ที่ ERP ส่งออก โหลดเข้า SQLite
 #  ที่นี่เป็น dict เพราะ notebook ไม่มีฐานข้อมูล แต่ *รูปร่างข้อมูลเหมือนกัน*
-#  และมันคือสิ่งที่ tool ทั้ง 8 ตัวในขั้น ⑧ จะไปค้น
+#  และมันคือสิ่งที่ tool ทั้ง 8 ตัวในขั้น ⑨ จะไปค้น
 # ═══════════════════════════════════════════════════════════════════════════
 VENDORS = {
     "V-1001": {"vendor_id": "V-1001", "legal_name": "Siam Tech Supply Co., Ltd.",
@@ -1527,7 +1884,7 @@ for f in FINDINGS:
 
 # =========================================================== agent + tools ==
 md(r"""
-## ⑧ Agent ตรวจกฎ — เรียก tool จริง
+## ⑨ Agent ตรวจกฎ — เรียก tool จริง
 
 3 กฎข้างบนเขียนเป็นเงื่อนไขได้เพราะ**ทุกอย่างที่ต้องรู้อยู่บนหน้ากระดาษหรืออยู่ในทะเบียนแถวเดียว**
 
@@ -2122,18 +2479,18 @@ Work through the plan, then return the verdict JSON.
   เดินไป 4 รอบ · เรียก tool 3 ครั้ง
 
   คำตอบ  : PASS
-  เพราะ  : PO-2026-0567 is open with 135,000 THB ordered; this invoice for 135,000 THB subtotal brings total billed to exactly the PO amount, and the invoice has not been posted before.
-  หลักฐาน: PO lookup returned: status='open', amount=135000.0, billed_so_far=0.0, currency='THB'
+  เพราะ  : PO-2026-0567 is open with 135,000 THB ordered; this invoice for 135,000 THB subtotal brings total billed to exactly the ordered amount and has not been posted before.
+  หลักฐาน: PO lookup returned: status=open, amount=135000.0, billed_so_far=0.0, currency=THB
   หลักฐาน: Invoice subtotal: 135000.0
-  หลักฐาน: Total to be billed: 0.0 + 135000.0 = 135000.0, which equals PO amount of 135000.0
-  หลักฐาน: Posted records check returned: found=false for STS-2026-0318
+  หลักฐาน: Total to be billed: 0.0 + 135000.0 = 135000.0, which equals ordered amount 135000.0
+  หลักฐาน: find_posted_records returned: found=false for STS-2026-0318
 
   บันทึกเป็น: purchase_order_still_has_room · ผ่าน · ระดับ blocking
 """)
 
 # ================================================================ decide ====
 md(r"""
-## ⑨ ตัดสิน — POST หรือไม่ POST
+## ⑩ ตัดสิน — POST หรือไม่ POST
 
 สองตัวเลขมาเจอกันตรงนี้ และมัน**คนละเรื่อง**
 
@@ -2357,7 +2714,7 @@ md(r"""
 
 **6. ปิด agent ตัวที่สอง** ลบ `ANTHROPIC_API_KEY` ออกจาก 🔑 panel → ช่องที่เคยได้ 97% เหลือ 86% และช่องที่ชี้ที่มาไม่ได้ร่วงไป 30% เพราะเหลือหลักฐานชั้นเดียว **ระยะห่างนั้นคือมูลค่าของการอ่านครั้งที่สอง**
 
-**7. อ่าน prompt ให้จบ** เลื่อนขึ้นไปที่ cell ④⑤ — สองก้อนนั้นคือสิ่งที่ระบบจริงส่งเข้าโมเดลทุกใบ ไม่มีอะไรถูกตัดออก
+**7. อ่าน prompt ให้จบ** เลื่อนขึ้นไปที่ cell ⑤⑥ — สองก้อนนั้นคือสิ่งที่ระบบจริงส่งเข้าโมเดลทุกใบ ไม่มีอะไรถูกตัดออก
 
 ---
 
@@ -2392,12 +2749,11 @@ from IPython.display import HTML, display
 BANDS = [
     ("ก่อนถึง pipeline", "#0369a1", [
         ("รับเอกสารเข้า", "อัปโหลด · ดึงจาก URL · โฟลเดอร์เฝ้าดู · คิวงาน"),
-        ("ปรับภาพก่อน OCR", "แก้เอียง · ปรับแสง · คมชัด — วัดก่อน-หลัง ถ้าไม่ดีขึ้นย้อนกลับ"),
         ("เรนเดอร์หลายหน้า", "PDF → รูปทีละหน้า · หน้าที่เกินโควตาถูกนับและรายงาน"),
         ("ทะเบียนกลาง", "CSV จาก ERP → SQLite · ผู้ขาย ใบสั่งซื้อ สัญญา"),
     ]),
     ("ขั้นที่ notebook นี้ครอบคลุม", "#7c3aed", [
-        ("OCR → schema → classify", "มี fallback chain: cloud → local → vision model"),
+        ("เตรียมภาพ → OCR → schema → classify", "ขั้นเตรียมภาพเหมือนกัน · OCR มี fallback chain"),
         ("agent อ่าน 2 ตัว → merge → ground", "เหมือนกันทุกบรรทัด"),
         ("กฎ + agent ตรวจกฎ", "26 กฎในตัว + กฎที่ผู้ใช้เขียนเอง แทนที่จะเป็น 3"),
         ("confidence → ตัดสิน POST", "บวกคุณภาพ OCR และการหักคะแนนจากกฎที่บอกว่าอ่านผิด"),
@@ -2447,7 +2803,7 @@ print("ตัวเลขของระบบจริง")
 for label, value in [
     ("กฎในตัว", "26 ข้อ (+ กฎที่ผู้ใช้เขียนเอง)"),
     ("ชนิดเอกสาร", "5 (invoice, receipt, purchase_order, contract, form)"),
-    ("tool", "8 — ชุดเดียวกับที่เขียนไว้ในขั้น ⑧"),
+    ("tool", "8 — ชุดเดียวกับที่เขียนไว้ในขั้น ⑨"),
     ("OCR fallback", "typhoon cloud → typhoon local → ollama → vision model"),
     ("เทส", "800+ ข้อ ไม่ต้องใช้ API key"),
     ("ชุดวัดผล", "เอกสาร 30 ใบ ที่ประกาศคำตอบไว้ก่อนถาม"),
@@ -2457,20 +2813,20 @@ for label, value in [
 ตัวเลขของระบบจริง
   กฎในตัว        26 ข้อ (+ กฎที่ผู้ใช้เขียนเอง)
   ชนิดเอกสาร     5 (invoice, receipt, purchase_order, contract, form)
-  tool           8 — ชุดเดียวกับที่เขียนไว้ในขั้น ⑧
+  tool           8 — ชุดเดียวกับที่เขียนไว้ในขั้น ⑨
   OCR fallback   typhoon cloud → typhoon local → ollama → vision model
   เทส            800+ ข้อ ไม่ต้องใช้ API key
   ชุดวัดผล       เอกสาร 30 ใบ ที่ประกาศคำตอบไว้ก่อนถาม
 """, html=r"""
 <div style="overflow-x:auto">
-<svg viewBox="0 0 1080 594" width="100%" style="max-width:1080px;min-width:860px;
+<svg viewBox="0 0 1080 568" width="100%" style="max-width:1080px;min-width:860px;
      font-family:ui-sans-serif,system-ui,sans-serif;color:#334155">
   <text x="20" y="28" font-size="17" font-weight="700" fill="currentColor">
     notebook นี้คือแถบกลาง — ระบบจริงคือทั้งสามแถบ</text>
   <text x="20" y="46" font-size="11.5" fill="currentColor" opacity="0.7">
     แถบกลางเป็นตรรกะเดียวกันจริงๆ · แถบบนกับล่างคือสิ่งที่ทำให้แถบกลาง
     อยู่รอดในแผนกบัญชีจริง</text>
-  <rect x="20" y="52" width="1040" height="154" rx="12" fill="#0369a1" fill-opacity="0.08" stroke="#0369a1" stroke-width="1.5"/><text x="38" y="75" font-size="13.5" font-weight="700" fill="#0369a1">ก่อนถึง pipeline</text><circle cx="44" cy="94" r="3" fill="#0369a1"/><text x="58" y="98" font-size="11.5" font-weight="600" fill="currentColor">รับเอกสารเข้า</text><text x="330" y="98" font-size="11" fill="currentColor" opacity="0.7">อัปโหลด · ดึงจาก URL · โฟลเดอร์เฝ้าดู · คิวงาน</text><circle cx="44" cy="120" r="3" fill="#0369a1"/><text x="58" y="124" font-size="11.5" font-weight="600" fill="currentColor">ปรับภาพก่อน OCR</text><text x="330" y="124" font-size="11" fill="currentColor" opacity="0.7">แก้เอียง · ปรับแสง · คมชัด — วัดก่อน-หลัง ถ้าไม่ดีขึ้นย้อนกลับ</text><circle cx="44" cy="146" r="3" fill="#0369a1"/><text x="58" y="150" font-size="11.5" font-weight="600" fill="currentColor">เรนเดอร์หลายหน้า</text><text x="330" y="150" font-size="11" fill="currentColor" opacity="0.7">PDF → รูปทีละหน้า · หน้าที่เกินโควตาถูกนับและรายงาน</text><circle cx="44" cy="172" r="3" fill="#0369a1"/><text x="58" y="176" font-size="11.5" font-weight="600" fill="currentColor">ทะเบียนกลาง</text><text x="330" y="176" font-size="11" fill="currentColor" opacity="0.7">CSV จาก ERP → SQLite · ผู้ขาย ใบสั่งซื้อ สัญญา</text><rect x="20" y="230" width="1040" height="154" rx="12" fill="#7c3aed" fill-opacity="0.08" stroke="#7c3aed" stroke-width="1.5"/><text x="38" y="253" font-size="13.5" font-weight="700" fill="#7c3aed">ขั้นที่ notebook นี้ครอบคลุม</text><circle cx="44" cy="272" r="3" fill="#7c3aed"/><text x="58" y="276" font-size="11.5" font-weight="600" fill="currentColor">OCR → schema → classify</text><text x="330" y="276" font-size="11" fill="currentColor" opacity="0.7">มี fallback chain: cloud → local → vision model</text><circle cx="44" cy="298" r="3" fill="#7c3aed"/><text x="58" y="302" font-size="11.5" font-weight="600" fill="currentColor">agent อ่าน 2 ตัว → merge → ground</text><text x="330" y="302" font-size="11" fill="currentColor" opacity="0.7">เหมือนกันทุกบรรทัด</text><circle cx="44" cy="324" r="3" fill="#7c3aed"/><text x="58" y="328" font-size="11.5" font-weight="600" fill="currentColor">กฎ + agent ตรวจกฎ</text><text x="330" y="328" font-size="11" fill="currentColor" opacity="0.7">26 กฎในตัว + กฎที่ผู้ใช้เขียนเอง แทนที่จะเป็น 3</text><circle cx="44" cy="350" r="3" fill="#7c3aed"/><text x="58" y="354" font-size="11.5" font-weight="600" fill="currentColor">confidence → ตัดสิน POST</text><text x="330" y="354" font-size="11" fill="currentColor" opacity="0.7">บวกคุณภาพ OCR และการหักคะแนนจากกฎที่บอกว่าอ่านผิด</text><rect x="20" y="408" width="1040" height="154" rx="12" fill="#0d9488" fill-opacity="0.08" stroke="#0d9488" stroke-width="1.5"/><text x="38" y="431" font-size="13.5" font-weight="700" fill="#0d9488">หลังตัดสินแล้ว</text><circle cx="44" cy="450" r="3" fill="#0d9488"/><text x="58" y="454" font-size="11.5" font-weight="600" fill="currentColor">เขียนลง ledger</text><text x="330" y="454" font-size="11" fill="currentColor" opacity="0.7">บันทึกที่โพสต์แล้ว · ตรวจซ้ำ · ย้อนรอยได้ทุกใบ</text><circle cx="44" cy="476" r="3" fill="#0d9488"/><text x="58" y="480" font-size="11.5" font-weight="600" fill="currentColor">คิวรีวิว</text><text x="330" y="480" font-size="11" fill="currentColor" opacity="0.7">คนแก้ค่า → ตรวจกฎใหม่ทั้งชุด → โพสต์หรือปฏิเสธ</text><circle cx="44" cy="502" r="3" fill="#0d9488"/><text x="58" y="506" font-size="11.5" font-weight="600" fill="currentColor">REST API + หน้าเว็บ</text><text x="330" y="506" font-size="11" fill="currentColor" opacity="0.7">อัปโหลด ติดตาม แก้ไข อนุมัติ · เห็น trace ทุกขั้น</text><circle cx="44" cy="528" r="3" fill="#0d9488"/><text x="58" y="532" font-size="11.5" font-weight="600" fill="currentColor">วัดผล</text><text x="330" y="532" font-size="11" fill="currentColor" opacity="0.7">อ่านถูกกี่ % · กฎแต่ละข้อยิงถูกไหม · ประหยัดเวลาไปเท่าไร</text>
+  <rect x="20" y="52" width="1040" height="128" rx="12" fill="#0369a1" fill-opacity="0.08" stroke="#0369a1" stroke-width="1.5"/><text x="38" y="75" font-size="13.5" font-weight="700" fill="#0369a1">ก่อนถึง pipeline</text><circle cx="44" cy="94" r="3" fill="#0369a1"/><text x="58" y="98" font-size="11.5" font-weight="600" fill="currentColor">รับเอกสารเข้า</text><text x="330" y="98" font-size="11" fill="currentColor" opacity="0.7">อัปโหลด · ดึงจาก URL · โฟลเดอร์เฝ้าดู · คิวงาน</text><circle cx="44" cy="120" r="3" fill="#0369a1"/><text x="58" y="124" font-size="11.5" font-weight="600" fill="currentColor">เรนเดอร์หลายหน้า</text><text x="330" y="124" font-size="11" fill="currentColor" opacity="0.7">PDF → รูปทีละหน้า · หน้าที่เกินโควตาถูกนับและรายงาน</text><circle cx="44" cy="146" r="3" fill="#0369a1"/><text x="58" y="150" font-size="11.5" font-weight="600" fill="currentColor">ทะเบียนกลาง</text><text x="330" y="150" font-size="11" fill="currentColor" opacity="0.7">CSV จาก ERP → SQLite · ผู้ขาย ใบสั่งซื้อ สัญญา</text><rect x="20" y="204" width="1040" height="154" rx="12" fill="#7c3aed" fill-opacity="0.08" stroke="#7c3aed" stroke-width="1.5"/><text x="38" y="227" font-size="13.5" font-weight="700" fill="#7c3aed">ขั้นที่ notebook นี้ครอบคลุม</text><circle cx="44" cy="246" r="3" fill="#7c3aed"/><text x="58" y="250" font-size="11.5" font-weight="600" fill="currentColor">เตรียมภาพ → OCR → schema → classify</text><text x="330" y="250" font-size="11" fill="currentColor" opacity="0.7">ขั้นเตรียมภาพเหมือนกัน · OCR มี fallback chain</text><circle cx="44" cy="272" r="3" fill="#7c3aed"/><text x="58" y="276" font-size="11.5" font-weight="600" fill="currentColor">agent อ่าน 2 ตัว → merge → ground</text><text x="330" y="276" font-size="11" fill="currentColor" opacity="0.7">เหมือนกันทุกบรรทัด</text><circle cx="44" cy="298" r="3" fill="#7c3aed"/><text x="58" y="302" font-size="11.5" font-weight="600" fill="currentColor">กฎ + agent ตรวจกฎ</text><text x="330" y="302" font-size="11" fill="currentColor" opacity="0.7">26 กฎในตัว + กฎที่ผู้ใช้เขียนเอง แทนที่จะเป็น 3</text><circle cx="44" cy="324" r="3" fill="#7c3aed"/><text x="58" y="328" font-size="11.5" font-weight="600" fill="currentColor">confidence → ตัดสิน POST</text><text x="330" y="328" font-size="11" fill="currentColor" opacity="0.7">บวกคุณภาพ OCR และการหักคะแนนจากกฎที่บอกว่าอ่านผิด</text><rect x="20" y="382" width="1040" height="154" rx="12" fill="#0d9488" fill-opacity="0.08" stroke="#0d9488" stroke-width="1.5"/><text x="38" y="405" font-size="13.5" font-weight="700" fill="#0d9488">หลังตัดสินแล้ว</text><circle cx="44" cy="424" r="3" fill="#0d9488"/><text x="58" y="428" font-size="11.5" font-weight="600" fill="currentColor">เขียนลง ledger</text><text x="330" y="428" font-size="11" fill="currentColor" opacity="0.7">บันทึกที่โพสต์แล้ว · ตรวจซ้ำ · ย้อนรอยได้ทุกใบ</text><circle cx="44" cy="450" r="3" fill="#0d9488"/><text x="58" y="454" font-size="11.5" font-weight="600" fill="currentColor">คิวรีวิว</text><text x="330" y="454" font-size="11" fill="currentColor" opacity="0.7">คนแก้ค่า → ตรวจกฎใหม่ทั้งชุด → โพสต์หรือปฏิเสธ</text><circle cx="44" cy="476" r="3" fill="#0d9488"/><text x="58" y="480" font-size="11.5" font-weight="600" fill="currentColor">REST API + หน้าเว็บ</text><text x="330" y="480" font-size="11" fill="currentColor" opacity="0.7">อัปโหลด ติดตาม แก้ไข อนุมัติ · เห็น trace ทุกขั้น</text><circle cx="44" cy="502" r="3" fill="#0d9488"/><text x="58" y="506" font-size="11.5" font-weight="600" fill="currentColor">วัดผล</text><text x="330" y="506" font-size="11" fill="currentColor" opacity="0.7">อ่านถูกกี่ % · กฎแต่ละข้อยิงถูกไหม · ประหยัดเวลาไปเท่าไร</text>
 </svg></div>
 """)
 

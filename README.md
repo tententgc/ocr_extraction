@@ -80,9 +80,11 @@ without running anything.
 
 **[`notebooks/docuflow_live.ipynb`](notebooks/docuflow_live.ipynb) — upload your
 own document and watch the real pipeline run on it.** No repository and no
-install: two API keys from Colab's secret store, a file, and it goes. Typhoon
-OCR reads the page; two different models read the text independently with both
-prompts printed in full before either is called; a tool-calling agent checks the
+install: two API keys from Colab's secret store, a file, and it goes.
+Preprocessing measures the page and applies only the corrections its own
+measurements ask for, throwing away any that did not help; Typhoon OCR reads it;
+two different models read the text independently with both prompts printed in
+full before either is called; a tool-calling agent checks the
 rule that cannot be written as a condition, showing every call and what came
 back; and code — only code — ends it at `POST = True` or `False`, with every
 field, its confidence, and whether it could be traced to the page. Thai.
@@ -93,7 +95,7 @@ every `FieldSpec` and all eight tool descriptions are lifted out of the running
 system when the notebook is generated, so the text a reader sees is the text the
 models are sent — while the notebook itself still imports nothing and clones
 nothing. Two inline diagrams show where the models stop, and what production
-wraps around the nine stages the notebook covers.
+wraps around the ten stages the notebook covers.
 
 **[`notebooks/docuflow_miniature.ipynb`](notebooks/docuflow_miniature.ipynb) —
 start here. It needs nothing at all.** No repository, no install, no API key:

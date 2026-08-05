@@ -88,7 +88,7 @@ real models.
 | Notebook | Builder | Repo? | Models? | For |
 |---|---|---|---|---|
 | `docuflow_miniature.ipynb` | `build_miniature.py` | no | no | **needs nothing at all.** Whole architecture in stdlib Python, regexes standing in for the models. Thai. |
-| `docuflow_live.ipynb` | `build_live.py` | no | **yes** | **upload your own document.** Real Typhoon OCR, the system's own prompts and schema printed in full, two real agents, a tool-calling rule agent, ends at `POST = True/False`. Thai. |
+| `docuflow_live.ipynb` | `build_live.py` | no | **yes** | **upload your own document.** Ten stages: preprocessing, real Typhoon OCR, the system's own prompts, schema and eight tools printed in full, two real agents, a tool-calling rule agent, ends at `POST = True/False`. Thai. |
 | `docuflow_explained.ipynb` | `build_explained.py` | yes | yes | the real pipeline, nine stages with a printed map, rules written from sentences. |
 | `docuflow_walkthrough.ipynb` | `build_walkthrough.py` | yes | yes | the reference. Full production rule set, every option stated. |
 
@@ -101,12 +101,13 @@ environment cells (clone, upload, pip, getpass, the `Path("/content/…")` worki
 directory) for local equivalents, executes, then restores those five sources,
 clears their outputs and drops `stderr`.
 
-`live` **cannot be executed by nbclient** — its first three cells want Colab's
-secret store, an uploaded file, and OCR against it. Those three carry what a real
-Colab run printed; every cell from the schema onward was run locally against the
-real APIs, seeded with that run's OCR text, and its stdout captured. Outputs are
-spliced in by the builder itself (`code(source, output)`), so regenerating keeps
-them. Re-run in Colab to refresh all of it.
+`live` **cannot be executed by nbclient** — three cells want Colab's secret
+store, an uploaded file, and OCR against it, and those carry what a real Colab
+run printed. Everything else was run locally against the real APIs, seeded with
+that run's OCR text, and its stdout captured. Outputs are spliced in by the
+builder itself (`code(source, output, html=…)`), so regenerating keeps them.
+Re-run in Colab to refresh all of it. The preprocessing cells need a page on
+disk, so a clean corpus invoice stands in for the upload.
 
 **`live` writes nothing about the system in its own words.** The four system
 prompts and the whole `FieldSpec` table are lifted out of `docuflow` by
@@ -121,6 +122,13 @@ build or a hand edit.
 All eight tools are written out too, with `select_tools` narrowing them to the
 four the demo rule declares — the notebook would otherwise show an agent holding
 every tool in the system, which is neither what happens nor what should.
+
+Stage ① is preprocessing, with the thresholds pinned to `ocr/preprocess.py` by a
+test. On a clean page it applies nothing, which is the invariant and not a gap,
+so the cell after it damages a copy — 3° of tilt and a lighting gradient — and
+shows the loop recovering it. That cell needs no API call, works on whatever the
+reader uploaded, and is the only way the measure/apply/re-measure/revert
+discipline is visible at all on a clean document.
 
 Two things the notebook must keep doing because they are load-bearing, not
 cosmetic: **normalise before comparing the two channels** (agent 1 is told to

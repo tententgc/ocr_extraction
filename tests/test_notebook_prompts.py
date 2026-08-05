@@ -18,6 +18,7 @@ were how the system behaves.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -29,6 +30,7 @@ from docuflow.agents.prompts import (
 )
 from docuflow.agents.rule_agent import RULE_AGENT_SYSTEM
 from docuflow.agents.tools import TOOL_HELP
+from docuflow.ocr import preprocess
 from docuflow.schemas.registry import DOCUMENT_SCHEMAS
 
 NOTEBOOK = Path(__file__).resolve().parents[1] / "notebooks" / "docuflow_live.ipynb"
@@ -133,3 +135,57 @@ class TestToolboxIsTheRealOne:
     def test_arguments_are_checked_against_the_page(self, notebook_text: str) -> None:
         """An invented argument returns a true answer to a question nobody asked."""
         assert "argument_warning" in notebook_text
+
+
+class TestPreprocessingIsGatedTheSameWay:
+    """The stage exists to improve pages, so it must be able to decline."""
+
+    @pytest.mark.parametrize(
+        ("name", "value"),
+        [
+            ("SKEW_WORTH_FIXING", preprocess.SKEW_WORTH_FIXING),
+            ("MAX_SKEW_DEGREES", preprocess.MAX_SKEW_DEGREES),
+            ("SHARPNESS_FLOOR", preprocess.SHARPNESS_FLOOR),
+            ("CONTRAST_FLOOR", preprocess.CONTRAST_FLOOR),
+            ("ILLUMINATION_FLOOR", preprocess.ILLUMINATION_FLOOR),
+        ],
+    )
+    def test_threshold_matches_the_system(
+        self, notebook_text: str, name: str, value: float
+    ) -> None:
+        # Compared as a number, not as text: `1.2e-3` and `0.0012` are the same
+        # threshold, and a test that says otherwise fails on spelling.
+        match = re.search(rf"^{name}\s*=\s*([-\d.eE+]+)", notebook_text, re.M)
+        assert match, f"the notebook does not define {name}"
+        assert float(match.group(1)) == pytest.approx(value), (
+            f"{name} is {value} in the system and {match.group(1)} in the notebook"
+        )
+
+    def test_a_correction_that_did_not_help_is_thrown_away(
+        self, notebook_text: str
+    ) -> None:
+        """Without the revert the stage can make a page worse and not know.
+
+        Two corpus pages were estimated at -2.8 degrees, rotated, and measured
+        +2.8 afterwards - the same tilt mirrored, which is what rotating a
+        lighting gradient does. Only re-measuring catches that.
+        """
+        assert "def remeasure(" in notebook_text
+        assert "reverted.append" in notebook_text
+
+    def test_lighting_is_flattened_before_skew_is_estimated(
+        self, notebook_text: str
+    ) -> None:
+        """Skew is read off an ink mask thresholded against mean brightness.
+
+        On a page lit from one side that mask marks the shadow, so the angle
+        describes the gradient rather than the lines. The order is the fix.
+        """
+        body = notebook_text[notebook_text.index("def prepare_image("):]
+        flatten = body.index("flatten_illumination(current)")
+        deskew = body.index("deskew(current, angle)")
+        assert flatten < deskew, "the notebook deskews before flattening the lighting"
+
+    def test_the_original_is_never_overwritten(self, notebook_text: str) -> None:
+        """A reviewer has to be able to see what actually arrived."""
+        assert "-prepared" in notebook_text
