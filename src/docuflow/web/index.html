@@ -90,11 +90,14 @@
       <div class="card-head">
         <h3>Documents</h3>
         <div class="filters">
+          <!-- Needs human review leads and is selected: this is the queue, and
+               what it is for is the documents still waiting on a person. The
+               rest stay one click away rather than padding the list. -->
           <select id="queue-filter">
-            <option value="">All decisions</option>
-            <option value="needs_review">Needs review</option>
+            <option value="needs_review" selected>Needs human review</option>
             <option value="auto_post">Posted automatically</option>
             <option value="rejected">Rejected</option>
+            <option value="">All decisions</option>
           </select>
           <button class="btn" id="queue-recheck">Re-check under current policy</button>
           <button class="btn" id="queue-refresh">Refresh</button>

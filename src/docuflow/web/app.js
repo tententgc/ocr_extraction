@@ -783,7 +783,17 @@ async function loadQueue(page = state.pages.queue) {
   renderPager('#queue-pager', payload, loadQueue);
   const body = $('#queue-table tbody');
   if (!rows.length) {
-    body.innerHTML = '<tr><td colspan="7"><div class="empty-state">No documents yet — process one from the Process tab.</div></td></tr>';
+    /* The queue opens filtered to `needs_review`, so an empty table usually
+       means "nothing is waiting on you" rather than "nothing was processed".
+       Saying the second when the first is true reads as though the run was
+       lost. Only the unfiltered view can honestly claim there is nothing. */
+    body.innerHTML = `<tr><td colspan="7"><div class="empty-state">${
+      filter === 'needs_review'
+        ? 'Nothing is waiting for review — every document was decided automatically. Switch the filter to see them.'
+        : filter
+          ? 'No documents with this decision. Switch the filter to see the rest.'
+          : 'No documents yet — process one from the Process tab.'
+    }</div></td></tr>`;
     return;
   }
   body.innerHTML = rows.map((row) => `<tr>
