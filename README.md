@@ -75,14 +75,25 @@ a wrong number wearing a suggestion's confidence is worse than no suggestion.
 
 ## Quick start
 
-Nothing to install: [`notebooks/docuflow_walkthrough.ipynb`](notebooks/docuflow_walkthrough.ipynb)
-runs the whole pipeline in Colab against Typhoon Cloud and Claude, one stage at a
-time, printing what each one produced — the page as it arrived and as
-preprocessing handed it on, the OCR markdown, both independent readings, which
-fields they agreed on, what the rules made of it, which value the arithmetic
-blames when something fails, and why it was posted or held. It needs two API keys
-and no GPU. It defaults to a phone photograph rather than a clean PDF, because a
-clean PDF asks nothing of the system.
+Nothing to install — two Colab notebooks, both running the real pipeline against
+Typhoon Cloud and Claude with two API keys and no GPU. Both ship with their
+outputs, so they can be read without running anything.
+
+**[`notebooks/docuflow_explained.ipynb`](notebooks/docuflow_explained.ipynb) —
+start here if you want to understand how it works.** One document followed
+through all nine stages, with a map printed at each one showing where in the
+pipeline you are and what that stage was handed. Then three rules written by
+typing sentences at it, and three documents ending in three different outcomes —
+including a defect that every arithmetic check passes and only a lookup can
+catch.
+
+**[`notebooks/docuflow_walkthrough.ipynb`](notebooks/docuflow_walkthrough.ipynb)
+— the reference.** The same pipeline under the full production rule set, every
+option spelled out: the page as it arrived and as preprocessing handed it on, the
+OCR markdown, both independent readings, which fields they agreed on, which value
+the arithmetic blames when something fails, and re-checking a held document under
+a policy that changed. It defaults to a phone photograph rather than a clean PDF,
+because a clean PDF asks nothing of the system.
 
 To run it locally instead:
 

@@ -296,7 +296,10 @@ asked to do anything.
 code(r'''
 SAMPLE = "3_invoice_photo_on_a_desk"     # ← change this, or upload your own below
 
-document_path = next(CORPUS.glob(f"{SAMPLE}.*"))
+# The `_*` matches the `_True` / `_False` suffix on every corpus filename, which
+# states the expected outcome before the system is asked. Globbing `{SAMPLE}.*`
+# instead finds nothing at all.
+document_path = next(CORPUS.glob(f"{SAMPLE}_*"))
 
 # --- or upload your own ---------------------------------------------------
 UPLOAD_YOUR_OWN = False
@@ -959,7 +962,7 @@ if processed.decision == "needs_review":
     print("using the document from above, which is held\n")
 else:
     held_outcome = Pipeline(settings).process_file(
-        next(CORPUS.glob("6_invoice_unknown_vendor.*")), source_kind="path")
+        next(CORPUS.glob("6_invoice_unknown_vendor_*")), source_kind="path")
     held = held_outcome.run
     print("the document above posted, so here is one that could not\n")
 
