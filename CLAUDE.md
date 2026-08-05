@@ -7,6 +7,14 @@ documents that posted automatically while carrying a wrong critical value.
 Full docs: [README.md](README.md) · [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 · [docs/EVALUATION.md](docs/EVALUATION.md) · [docs/RULES.th.md](docs/RULES.th.md)
 
+**Before starting anything substantial, read
+[docs/TECH-DEBT.th.md](docs/TECH-DEBT.th.md).** It is the standing work list,
+ordered by how soon each item bites rather than by size. Two entries matter to
+anyone touching this code: `web/app.js` is 2,053 lines with no tests at all and
+is where every UI bug found so far has come from, and
+`po_amount_within_tolerance` blocks an underrun as loudly as an overrun — that
+one has been worked around three times instead of decided.
+
 ---
 
 ## Invariants — break these and the system stops being trustworthy
