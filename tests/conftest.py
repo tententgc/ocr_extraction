@@ -110,6 +110,22 @@ def master(settings: Settings) -> MasterDataRepository:
 
 
 @pytest.fixture
+def thai_master(settings: Settings) -> MasterDataRepository:
+    """Every vendor from both corpora, which is where the Thai aliases live.
+
+    The demo master data holds a couple of Thai names; the working corpus adds
+    the rest. A test about matching Thai vendors needs all of them - not least
+    because the interesting failure is matching the *wrong* one, and that cannot
+    happen against a register with two rows in it.
+    """
+    from docuflow.samples.real_world import master_rows
+
+    repository = MasterDataRepository(settings.db_path)
+    repository.seed(master_rows())
+    return repository
+
+
+@pytest.fixture
 def ocr_pages() -> list[tuple[int, str]]:
     """A small, realistic invoice page as recognised text."""
     return [

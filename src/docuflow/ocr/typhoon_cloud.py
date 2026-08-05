@@ -4,9 +4,29 @@ from __future__ import annotations
 
 import logging
 
-from docuflow.ocr.base import OcrProvider, OcrUnavailableError, PageImage
+from docuflow.ocr.base import OcrProvider, OcrTransientError, OcrUnavailableError, PageImage
 
 logger = logging.getLogger(__name__)
+
+# Statuses that describe the call rather than the page. 408 is the one that
+# matters here: Typhoon returns it when its own model run overruns, which some
+# pages provoke far more often than others - Thai numerals, in this corpus.
+TRANSIENT_STATUSES = (408, 409, 425, 429, 500, 502, 503, 504)
+
+
+def _is_transient(error: Exception) -> bool:
+    """Whether asking this engine again is worth doing.
+
+    The `typhoon-ocr` package surfaces the OpenAI client's errors, which carry a
+    `status_code`. When they do not, the code is still in the message, and
+    reading it there is worth the ugliness: the alternative is treating a
+    two-second timeout as a reason to spend ten minutes on a local model.
+    """
+    status = getattr(error, "status_code", None)
+    if isinstance(status, int):
+        return status in TRANSIENT_STATUSES
+    message = str(error)
+    return any(f"Error code: {code}" in message for code in TRANSIENT_STATUSES)
 
 
 class TyphoonCloudOcr(OcrProvider):
@@ -46,15 +66,20 @@ class TyphoonCloudOcr(OcrProvider):
 
         from typhoon_ocr import ocr_document
 
-        # Pages are already rendered to single images, so page_num is always 1.
-        text = ocr_document(
-            pdf_or_image_path=str(page.path),
-            task_type="v1.5",
-            target_image_dim=self.target_image_dim,
-            page_num=1,
-            base_url=self.base_url,
-            api_key=self.api_key,
-            model=self.model,
-            figure_language=self.figure_language,
-        )
+        try:
+            # Pages are already rendered to single images, so page_num is always 1.
+            text = ocr_document(
+                pdf_or_image_path=str(page.path),
+                task_type="v1.5",
+                target_image_dim=self.target_image_dim,
+                page_num=1,
+                base_url=self.base_url,
+                api_key=self.api_key,
+                model=self.model,
+                figure_language=self.figure_language,
+            )
+        except Exception as exc:  # noqa: BLE001 - re-raised either way, only the kind changes
+            if _is_transient(exc):
+                raise OcrTransientError(str(exc)) from exc
+            raise
         return (text or "").strip()

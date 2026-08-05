@@ -152,6 +152,19 @@ EXTRA_PURCHASE_ORDERS: tuple[dict[str, Any], ...] = (
         "currency": "THB", "amount": 76_500.00, "status": "open",
         "description": "Industrial solvents, drum x 20",
     },
+    # --- for the Thai documents -------------------------------------------
+    # Both are stated net of VAT, like every other order here: a PO records what
+    # was agreed, and the tax is added when the invoice is raised.
+    {
+        "po_number": "PO-2026-0567", "vendor_id": "V-1001", "po_date": "2026-07-05",
+        "currency": "THB", "amount": 135_000.00, "status": "open",
+        "description": "UPS units and installation, plant 1",
+    },
+    {
+        "po_number": "PO-2026-0578", "vendor_id": "V-1006", "po_date": "2026-07-01",
+        "currency": "THB", "amount": 88_000.00, "status": "open",
+        "description": "Hot-rolled plate and forming, 6mm",
+    },
 )
 
 
@@ -174,6 +187,16 @@ EXTRA_CONTRACTS: tuple[dict[str, Any], ...] = (
         "party_a": BUYER, "party_b": "Sunrise Electrical Co., Ltd.",
         "effective_date": "2025-01-01", "expiry_date": "2026-06-30",
         "value": 480_000.00, "currency": "THB",
+    },
+    {
+        # Registered under the Thai legal name, because that is the name the
+        # signed agreement carries. The master file is not the place to quietly
+        # translate a counterparty into English so our matcher has an easier
+        # time - if the Thai name cannot be matched, that is the bug.
+        "contract_number": "CT-2026-027", "vendor_id": "V-1004",
+        "party_a": BUYER, "party_b": "บริษัท เจ้าพระยา แฟซิลิตี้ จำกัด",
+        "effective_date": "2026-06-01", "expiry_date": "2027-05-31",
+        "value": 420_000.00, "currency": "THB",
     },
 )
 
@@ -785,8 +808,201 @@ VARIED_DOCUMENTS: tuple[tuple[str, Arrival, bool, SampleDoc], ...] = (
 )
 
 
+# --------------------------------------------------------------------------- #
+# Thai documents                                                                #
+# --------------------------------------------------------------------------- #
+# Thai was in the corpus already, but only in one shape: two invoices on the
+# `thai_tax` layout, which prints ๒๕,๖๘๐.๐๐ throughout. That is what a
+# government form looks like. It is not what a supplier's accounting package
+# emits, and the gap matters more than it sounds.
+#
+# Thai numerals are a *recognition* problem: either the OCR returns ๙ or it does
+# not, and either way the failure is loud. Arabic digits under Thai labels are a
+# *comprehension* problem - the numbers come back perfectly and the only question
+# is whether anything understood that จำนวนเงินทั้งสิ้น is the total. An
+# English-trained extractor gets that wrong quietly, which is the expensive way.
+#
+# So these six hold the language fixed and vary what is being asked of it:
+#
+#   25  Thai labels, Arabic digits, Buddhist-era dates. The common real case.
+#   26  the same, with the VAT miscalculated. Do the rules fire in Thai, and
+#       does the suggestion name the right field?
+#   27  a receipt, not an invoice. Can the classifier tell ใบเสร็จ from
+#       ใบกำกับภาษี on a page that says ภาษีมูลค่าเพิ่ม like both of them do?
+#   28  a contract in Thai prose. No arithmetic anywhere to catch a misread date.
+#   29  a supplier who is genuinely not in the master file, written หจก. rather
+#       than บริษัท. Is an unknown Thai vendor caught, or fuzzy-matched onto a
+#       registered one that merely reads alike?
+#   30  a registered vendor with no tax ID printed. The match has to be made on
+#       the Thai name alone, which is the single place a Thai vendor is most
+#       likely to be lost.
+
+THAI_DOCUMENTS: tuple[tuple[str, Arrival, bool, SampleDoc], ...] = (
+    (
+        "invoice_thai_arabic_digits", "png", True,
+        SampleDoc(
+            doc_id="invoice_thai_arabic_digits",
+            doc_type="invoice", layout="thai_modern", language="th",
+            title="ใบกำกับภาษี from Siam Tech with Arabic numerals",
+            demonstrates="Thai labels throughout, amounts in 135,000.00 rather than ๑๓๕,๐๐๐.๐๐, dates as 24 กรกฎาคม 2569. The ordinary Thai business invoice, and the shape the corpus was missing.",
+            ground_truth={
+                "invoice_number": "STS-2026-0318", "invoice_date": "2026-07-24",
+                "due_date": "2026-08-23", "vendor_name": "บริษัท สยามเทค ซัพพลาย จำกัด",
+                "vendor_tax_id": "0105543000129", "buyer_name": BUYER,
+                "purchase_order_ref": "PO-2026-0567", "currency": "THB",
+                "subtotal": 135_000.00, "tax_rate": 7.0, "tax_amount": 9_450.00,
+                "total_amount": 144_450.00, "payment_terms": "Net 30",
+                "bank_account": "1234567890",
+            },
+            line_items=(
+                {"description": "เครื่องสำรองไฟ UPS 3kVA", "quantity": 12, "unit_price": 9_500.00, "amount": 114_000.00},
+                {"description": "ติดตั้งและทดสอบระบบ", "quantity": 1, "unit_price": 21_000.00, "amount": 21_000.00},
+            ),
+        ),
+    ),
+    (
+        "invoice_thai_vat_miscalculated", "pdf", False,
+        SampleDoc(
+            doc_id="invoice_thai_vat_miscalculated",
+            doc_type="invoice", layout="thai_modern", language="th",
+            title="ใบกำกับภาษี stating 7% and charging 6%",
+            demonstrates="Says ภาษีมูลค่าเพิ่ม 7% and charges 5,280.00 on 88,000.00, which is 6%. The total agrees with the tax as printed, so only the rate is contradicted - and the tax is the only value the arithmetic can blame.",
+            ground_truth={
+                "invoice_number": "RSW-2026-1240", "invoice_date": "2026-07-27",
+                "due_date": "2026-09-25", "vendor_name": "บริษัท รุ่งเรือง สตีล เวิร์ค จำกัด",
+                "vendor_tax_id": "0105552000110", "buyer_name": BUYER,
+                "purchase_order_ref": "PO-2026-0578", "currency": "THB",
+                "subtotal": 88_000.00, "tax_rate": 7.0, "tax_amount": 5_280.00,
+                "total_amount": 93_280.00, "payment_terms": "Net 60",
+                "bank_account": "3120045678",
+            },
+            line_items=(
+                {"description": "เหล็กแผ่นรีดร้อน หนา 6 มม.", "quantity": 4, "unit_price": 16_000.00, "amount": 64_000.00},
+                {"description": "งานตัดและพับขึ้นรูป", "quantity": 1, "unit_price": 24_000.00, "amount": 24_000.00},
+            ),
+            expected_findings=("tax_rate_consistent",),
+        ),
+    ),
+    (
+        "receipt_thai_fuel_station", "photo", True,
+        SampleDoc(
+            doc_id="receipt_thai_fuel_station",
+            doc_type="receipt", layout="thai_receipt", language="th",
+            title="ใบเสร็จรับเงิน from a PTT station",
+            demonstrates="A Thai receipt, photographed. It has to be classified as a receipt rather than an invoice from ใบเสร็จ alone, on a page that also says ภาษีมูลค่าเพิ่ม - and the counterparty has to reach merchant_name, not vendor_name.",
+            # `tax_rate` and `payment_method` are deliberately absent, and both
+            # for the reason this corpus keeps relearning: ground truth must be
+            # something the system was actually asked for, in the form it was
+            # asked for it.
+            #
+            # The receipt schema has no `tax_rate` field at all - the page
+            # prints ภาษีมูลค่าเพิ่ม 7%, but nothing is looking for it, so
+            # declaring it scores a miss against a question never posed.
+            #
+            # `payment_method` is an enum: a classification, not a
+            # transcription. The page says บัตรเครดิตองค์กร and the right
+            # answer is a category, so asserting the printed Thai would mark a
+            # correct classification wrong.
+            ground_truth={
+                "receipt_number": "PTT-880451", "receipt_date": "2026-07-28",
+                "merchant_name": "บริษัท ปตท. น้ำมันและการค้าปลีก จำกัด",
+                "merchant_tax_id": "0105554000770", "currency": "THB",
+                "subtotal": 2_000.00, "tax_amount": 140.00, "total_amount": 2_140.00,
+            },
+            # Net of VAT. Pricing the line at the pump's inclusive figure makes
+            # the rows disagree with the subtotal by exactly the tax, and
+            # `line_items_sum_to_subtotal` is right to say so - a lesson this
+            # corpus has already learned once, on the English PTT receipt.
+            line_items=(
+                {"description": "น้ำมันดีเซล B7", "quantity": 50.00, "unit_price": 40.00, "amount": 2_000.00},
+            ),
+        ),
+    ),
+    (
+        "contract_thai_service", "pdf", True,
+        SampleDoc(
+            doc_id="contract_thai_service",
+            doc_type="contract", layout="thai_contract", language="th",
+            title="สัญญาจ้างบริการ with Chao Phraya Facility",
+            demonstrates="A contract in Thai prose. Every field is a phrase in running text and there is no arithmetic anywhere, so a misread Buddhist-era date has nothing at all to contradict it.",
+            # Only what the page states in a form something can read off it.
+            # `contract_type` is nowhere on the document, and the notice period
+            # is written หกสิบวัน rather than 60 - claiming either would be
+            # scoring the system against ground truth its own renderer never
+            # drew, which this corpus has already done once and paid for.
+            ground_truth={
+                "contract_number": "CT-2026-027",
+                "contract_title": "สัญญาจ้างบริการทำความสะอาดและบำรุงรักษาอาคาร",
+                "party_a": BUYER, "party_b": "บริษัท เจ้าพระยา แฟซิลิตี้ จำกัด",
+                "effective_date": "2026-06-01", "expiry_date": "2027-05-31",
+                "contract_value": 420_000.00, "currency": "THB",
+                "payment_terms": "ชำระรายเดือนภายใน 30 วัน",
+                "auto_renew": "no", "governing_law": "กฎหมายไทย",
+            },
+            body=(
+                "ข้อ 1. ขอบเขตของงาน ผู้รับจ้างตกลงให้บริการทำความสะอาดพื้นที่สำนักงานและโรงงาน "
+                "รวมถึงงานบำรุงรักษาระบบปรับอากาศและระบบไฟฟ้าส่องสว่างภายในอาคารของผู้ว่าจ้าง "
+                "ตามมาตรฐานและความถี่ที่กำหนดไว้ในเอกสารแนบท้ายสัญญา",
+                "ข้อ 2. ระยะเวลาของสัญญา สัญญานี้มีกำหนดระยะเวลาหนึ่งปี นับตั้งแต่วันที่มีผลบังคับใช้ "
+                "หากฝ่ายใดประสงค์จะบอกเลิกสัญญา ต้องแจ้งเป็นหนังสือให้อีกฝ่ายทราบล่วงหน้าไม่น้อยกว่าหกสิบวัน "
+                "สัญญานี้ไม่ต่ออายุโดยอัตโนมัติ",
+                "ข้อ 3. ค่าจ้างและการชำระเงิน ผู้ว่าจ้างตกลงชำระค่าจ้างเป็นรายเดือน "
+                "โดยผู้รับจ้างจะออกใบแจ้งหนี้ในวันทำการสุดท้ายของแต่ละเดือน "
+                "และผู้ว่าจ้างจะชำระภายในสามสิบวันนับแต่วันที่ได้รับใบแจ้งหนี้ที่ถูกต้อง",
+                "ข้อ 4. กฎหมายที่ใช้บังคับ สัญญานี้อยู่ภายใต้บังคับแห่งกฎหมายไทย "
+                "ข้อพิพาทใดอันเกิดจากสัญญานี้ให้อยู่ในเขตอำนาจของศาลไทย",
+            ),
+        ),
+    ),
+    (
+        "invoice_thai_unknown_vendor", "png", False,
+        SampleDoc(
+            doc_id="invoice_thai_unknown_vendor",
+            doc_type="invoice", layout="thai_modern", language="th",
+            title="ใบแจ้งหนี้ from หจก. สมชายการช่าง, who is not registered",
+            demonstrates="A limited partnership (หจก.) rather than a company (บริษัท), and nobody has onboarded them. Everything on the page reconciles; the only thing wrong is that we have no record of who they are. The risk is the opposite of a miss - a fuzzy match onto a registered Thai vendor that merely reads alike.",
+            ground_truth={
+                "invoice_number": "SCK-2569-0142", "invoice_date": "2026-07-29",
+                "due_date": "2026-08-28", "vendor_name": "หจก. สมชายการช่าง",
+                # Checksum-valid, so `tax_id_checksum` passes and the unknown
+                # vendor is the only thing this document is testing.
+                "vendor_tax_id": "0105566000991", "buyer_name": BUYER,
+                "currency": "THB", "subtotal": 42_000.00, "tax_rate": 7.0,
+                "tax_amount": 2_940.00, "total_amount": 44_940.00,
+                "payment_terms": "Net 30", "bank_account": "6650071234",
+            },
+            line_items=(
+                {"description": "งานเชื่อมโครงเหล็กหลังคาโรงงาน", "quantity": 1, "unit_price": 42_000.00, "amount": 42_000.00},
+            ),
+            expected_findings=("vendor_known",),
+        ),
+    ),
+    (
+        "invoice_thai_no_tax_id", "png", True,
+        SampleDoc(
+            doc_id="invoice_thai_no_tax_id",
+            doc_type="invoice", layout="thai_modern", language="th",
+            title="ใบกำกับภาษี from Sunrise Electrical with no tax ID printed",
+            demonstrates="A registered vendor named only in Thai, with a phone number where the tax ID usually goes. The exact identifier is gone, so the match has to be made on บริษัท ซันไรส์ อิเล็คทริคอล จำกัด against an English legal name and a Thai alias - and if Thai vendors are lost anywhere, it is here.",
+            ground_truth={
+                "invoice_number": "SE-2026-0498", "invoice_date": "2026-07-31",
+                "due_date": "2026-09-14", "vendor_name": "บริษัท ซันไรส์ อิเล็คทริคอล จำกัด",
+                "buyer_name": BUYER, "currency": "THB",
+                "subtotal": 36_000.00, "tax_rate": 7.0, "tax_amount": 2_520.00,
+                "total_amount": 38_520.00, "payment_terms": "Net 45",
+                "bank_account": "8890014455",
+            },
+            line_items=(
+                {"description": "หลอดไฟ LED 18W", "quantity": 300, "unit_price": 90.00, "amount": 27_000.00},
+                {"description": "ค่าแรงติดตั้ง", "quantity": 1, "unit_price": 9_000.00, "amount": 9_000.00},
+            ),
+        ),
+    ),
+)
+
+
 ALL_DOCUMENTS: tuple[tuple[str, Arrival, bool, SampleDoc], ...] = (
-    REAL_DOCUMENTS + VARIED_DOCUMENTS
+    REAL_DOCUMENTS + VARIED_DOCUMENTS + THAI_DOCUMENTS
 )
 
 

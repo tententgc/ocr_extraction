@@ -106,7 +106,14 @@ missed defect is a wrong payment, a false alarm is a wasted minute.
 
 `REAL_DOCUMENTS` are the defect cases. `VARIED_DOCUMENTS` are correct documents
 in unfamiliar layouts — they measure the false-alarm rate, which the accuracy
-figures cannot see.
+figures cannot see. `THAI_DOCUMENTS` hold the language fixed and vary what is
+asked of it.
+
+**Thai numerals and Thai labels are different problems, and only one of them is
+loud.** ๙ either comes back from OCR or it does not. Arabic digits under Thai
+labels come back perfectly and the only question is whether anything understood
+that `จำนวนเงินทั้งสิ้น` is the total — which is the shape of every real Thai
+business invoice, and the failure that is silent. Keep both in the corpus.
 
 `ground_truth.json` carries `reference_text` per document, taken from the PDF's
 text layer *before* it is photographed. That is the reference OCR is scored
@@ -143,6 +150,9 @@ code, not about one machine's `.env`.
 | Two threads rendering PDFs segfaulted | PDFium is not thread-safe; `render.py` holds a module lock. |
 | A 50% false-alarm rate that was not real | ground truth declared fields the chosen layout never draws. **Check what a renderer actually prints before writing its ground truth** — `dense` and `minimal` have no PO line, no payment terms, no tax ID. |
 | OCR "losing" every date | value recall searched for `2026-07-14`; pages print "14 July 2026". |
+| Every Thai receipt classified as an invoice | keywords matched as bare substrings. A Thai till prints `ใบกำกับภาษีอย่างย่อ` (*abbreviated* tax invoice — a receipt), which contains the invoice keyword `ใบกำกับภาษี`. Same nesting between `เลขที่` and `เลขที่ใบเสร็จ`, and in English between `No.` and `Receipt No`. **Only the most specific matched phrase votes.** Fixing it corrected two English receipts too. |
+| A Thai contract auto-posted with both parties misread | `contract_matches_master` compared dates and value but never the parties, though the register stores both and the contract number is an exact key. An invoice has `vendor_known`; a contract had nothing. Compare as *organisations* (legal form stripped, fuzzy) and resolve through the vendor register for cross-language aliases — string equality would block every one-stroke Thai misread. |
+| A document taking ten minutes instead of thirty seconds | Typhoon Cloud returned 408 on the Thai-numeral pages; the engine treated a timeout like bad text and escalated down the chain to a local 3B model. **Bad text is a verdict on the page and warrants escalation; a timeout is not and warrants a retry.** `OcrTransientError` now separates them. |
 
 When the evaluation says the system is wrong, suspect the corpus first. On this
 project it has been the corpus more often than the pipeline: a VAT that was

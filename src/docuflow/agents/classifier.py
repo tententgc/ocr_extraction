@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterable
 from dataclasses import dataclass
 
 from docuflow.agents.prompts import CLASSIFIER_SYSTEM, classification_prompt
 from docuflow.llm.base import ChatMessage, LlmProvider, extract_json
 from docuflow.normalize.text import normalize_for_match
-from docuflow.schemas.registry import DOCUMENT_SCHEMAS, schema_names
+from docuflow.schemas.registry import DOCUMENT_SCHEMAS, DocumentSchema, schema_names
 
 logger = logging.getLogger(__name__)
 
@@ -24,25 +25,54 @@ class Classification:
     reason: str = ""
 
 
+def _shadowed(phrase: str, matched: frozenset[str]) -> bool:
+    """True when a longer phrase that also matched already contains this one.
+
+    English keeps its document vocabularies apart: nothing on a receipt says
+    "tax invoice". Thai builds terms by concatenation, and the standard heading
+    on a retail receipt is `ใบกำกับภาษีอย่างย่อ` - an *abbreviated* tax invoice,
+    which is what the Revenue Department calls the slip a till prints. The
+    invoice keyword `ใบกำกับภาษี` sits inside it as a substring, so a plain
+    `in normalized` test scores every Thai receipt as an invoice on the strength
+    of its own receipt heading. The same thing happens a level down, between
+    `เลขที่` and `เลขที่ใบเสร็จ`.
+
+    The rule is the general one and it contains no language knowledge: when two
+    matched phrases are nested, only the more specific one carries a vote.
+    """
+    return any(other != phrase and phrase in other for other in matched)
+
+
+def _present(phrases: Iterable[str], normalized: str) -> frozenset[str]:
+    """The given phrases that appear on the page, in normalised form."""
+    return frozenset(
+        found
+        for phrase in phrases
+        if phrase and (found := normalize_for_match(phrase)) and found in normalized
+    )
+
+
+def _label_aliases(schema: DocumentSchema) -> tuple[str, ...]:
+    return tuple(alias for spec in schema.fields for alias in spec.aliases if alias)
+
+
 def classify_by_keywords(text: str) -> tuple[str, float, dict[str, float]]:
     """Score each document type by how many of its keywords appear."""
     normalized = normalize_for_match(text)
-    scores: dict[str, float] = {}
+    types = [name for name in DOCUMENT_SCHEMAS if name != "unknown"]
 
-    for doc_type, schema in DOCUMENT_SCHEMAS.items():
-        if doc_type == "unknown":
-            continue
-        hits = sum(
-            1.0 for keyword in schema.keywords if normalize_for_match(keyword) in normalized
-        )
+    # Matched first, across every type, because whether a phrase is the most
+    # specific one on the page cannot be answered from inside one schema.
+    keywords = {name: _present(DOCUMENT_SCHEMAS[name].keywords, normalized) for name in types}
+    labels = {name: _present(_label_aliases(DOCUMENT_SCHEMAS[name]), normalized) for name in types}
+    everything = frozenset().union(*keywords.values(), *labels.values()) if types else frozenset()
+
+    scores: dict[str, float] = {}
+    for name in types:
+        hits = sum(1.0 for phrase in keywords[name] if not _shadowed(phrase, everything))
         # Field labels are weaker evidence than the distinctive keywords.
-        label_hits = sum(
-            0.35
-            for spec in schema.fields
-            for alias in spec.aliases
-            if alias and normalize_for_match(alias) in normalized
-        )
-        scores[doc_type] = hits + min(label_hits, 3.0)
+        label_hits = sum(0.35 for phrase in labels[name] if not _shadowed(phrase, everything))
+        scores[name] = hits + min(label_hits, 3.0)
 
     if not scores or max(scores.values()) == 0:
         return "unknown", 0.0, scores

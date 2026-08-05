@@ -131,7 +131,7 @@ To work against the committed corpus and its master data instead:
 .venv/bin/docuflow reset --confirm
 .venv/bin/docuflow master load real_samples/master
 .venv/bin/docuflow rules load real_samples/rules.json
-.venv/bin/docuflow process real_samples/3_invoice_photo_on_a_desk.jpg
+.venv/bin/docuflow process real_samples/3_invoice_photo_on_a_desk_False.jpg
 ```
 
 ---
@@ -468,7 +468,7 @@ built-in twenty-six.
 docuflow reset --confirm                     # a known-empty database
 docuflow master load real_samples/master     # vendors, then POs and contracts
 docuflow rules load real_samples/rules.json  # 5 expression rules, 2 agent rules
-docuflow process real_samples/1_invoice_clean_matches_po.pdf
+docuflow process real_samples/1_invoice_clean_matches_po_True.pdf
 ```
 
 Between them the eighteen cover a transposed total, a miscalculated VAT, a

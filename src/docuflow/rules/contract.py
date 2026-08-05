@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 
+from docuflow.masterdata.repository import same_organisation
 from docuflow.models import RuleFinding
 from docuflow.normalize.text import normalize_for_match
 from docuflow.rules.context import RuleContext
@@ -110,9 +111,37 @@ def contract_parties_distinct(context: RuleContext) -> RuleFinding | None:
     return passed("contract_parties_distinct", "The two contracting parties are distinct.")
 
 
+def _same_party(context: RuleContext, extracted: str, recorded: str, vendor_id: str | None) -> bool:
+    """Whether the name on the page and the name on file are the same party.
+
+    Two comparisons, and the second is the one that matters. Written names are
+    compared as organisations rather than as strings, so a legal form dropped or
+    one Thai character misread - แฟซิลิตี้ against แฟชิลิตี้, a single stroke -
+    is still the same company.
+
+    That still cannot see that `บริษัท เจ้าพระยา แฟซิลิตี้ จำกัด` and
+    `Chao Phraya Facility Services Co., Ltd.` are one counterparty; nothing about
+    the two strings says so. The vendor register does say so, in the alias column
+    that exists for exactly this, so when the contract on file names a vendor,
+    the name on the page is resolved through it and the answer is a vendor id.
+    """
+    if same_organisation(extracted, recorded):
+        return True
+    if not vendor_id:
+        return False
+    match = context.master.find_vendor(extracted, None)
+    return bool(match.vendor) and match.vendor.get("vendor_id") == vendor_id
+
+
 @rule("contract", severity="blocking")
 def contract_matches_master(context: RuleContext) -> RuleFinding | None:
-    """Compare against the contract register when the number is known."""
+    """Compare against the contract register when the number is known.
+
+    The dates and the value, and - since a Thai contract auto-posted at 92% with
+    both parties misread - who signed it. An invoice naming the wrong company is
+    caught by `vendor_known`; a contract had no equivalent, though the contract
+    number is an exact key into a register that stores both parties.
+    """
     number = context.value("contract_number")
     if not number:
         return None
@@ -139,12 +168,20 @@ def contract_matches_master(context: RuleContext) -> RuleFinding | None:
         if not same_value(extracted, recorded, context.amount_tolerance):
             differences.append(describe_difference(field_name, extracted, recorded))
 
+    for field_name, column in (("party_a", "party_a"), ("party_b", "party_b")):
+        extracted = context.value(field_name)
+        recorded = existing.get(column)
+        if not extracted or not recorded:
+            continue
+        if not _same_party(context, str(extracted), str(recorded), existing.get("vendor_id")):
+            differences.append(describe_difference(field_name, extracted, recorded))
+
     if differences:
         return failed(
             "contract_matches_master",
             f"Contract {number} differs from the register - " + "; ".join(differences) + ".",
             severity="blocking",
-            fields=["effective_date", "expiry_date", "contract_value"],
+            fields=["effective_date", "expiry_date", "contract_value", "party_a", "party_b"],
             differences=differences,
         )
     return passed("contract_matches_master", f"Contract {number} matches the register.")

@@ -1028,6 +1028,260 @@
       "order": 24,
       "posts": true,
       "reference_text": "PTT Station Rama IV\r\nRama IV Rd, Khlong Toei, Bangkok\r\nTAX ID \r\n- - - - - - - - - - - - - - - - - - - - - - - - - - \r\nRECEIPT PTT-556890\r\n28/07/2026 14:07\r\n- - - - - - - - - - - - - - - - - - - - - - - - - - \r\nDiesel B7\r\n43 L x 32.60 1,401.87\r\n- - - - - - - - - - - - - - - - - - - - - - - - - - \r\nSub-total 1,401.87\r\nVAT 7% 98.13\r\nTOTAL 1,500.00\r\nPAID BY VISA ****4412\r\nTHANK YOU / ■■■■■■■■■"
+    },
+    {
+      "doc_id": "invoice_thai_arabic_digits",
+      "doc_type": "invoice",
+      "layout": "thai_modern",
+      "title": "ใบกำกับภาษี from Siam Tech with Arabic numerals",
+      "demonstrates": "Thai labels throughout, amounts in 135,000.00 rather than ๑๓๕,๐๐๐.๐๐, dates as 24 กรกฎาคม 2569. The ordinary Thai business invoice, and the shape the corpus was missing.",
+      "ground_truth": {
+        "invoice_number": "STS-2026-0318",
+        "invoice_date": "2026-07-24",
+        "due_date": "2026-08-23",
+        "vendor_name": "บริษัท สยามเทค ซัพพลาย จำกัด",
+        "vendor_tax_id": "0105543000129",
+        "buyer_name": "Mirtphol Industries PCL",
+        "purchase_order_ref": "PO-2026-0567",
+        "currency": "THB",
+        "subtotal": 135000.0,
+        "tax_rate": 7.0,
+        "tax_amount": 9450.0,
+        "total_amount": 144450.0,
+        "payment_terms": "Net 30",
+        "bank_account": "1234567890"
+      },
+      "line_items": [
+        {
+          "description": "เครื่องสำรองไฟ UPS 3kVA",
+          "quantity": 12,
+          "unit_price": 9500.0,
+          "amount": 114000.0
+        },
+        {
+          "description": "ติดตั้งและทดสอบระบบ",
+          "quantity": 1,
+          "unit_price": 21000.0,
+          "amount": 21000.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "th",
+      "expected_findings": [],
+      "requires_posted": null,
+      "file": "25_invoice_thai_arabic_digits_True.png",
+      "arrival": "png",
+      "order": 25,
+      "posts": true,
+      "reference_text": "บริษัท สยามเทค ซัพพลาย จำกัด\r\nBangkok, Thailand\r\nเลขประจำตัวผู้เสียภาษี 0105543000129\r\nใบกำกับภาษี / ใบแจ้งหนี้\r\nTAX INVOICE (ORIGINAL)\r\nลูกค้า\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nเลขที่เอกสาร STS-2026-0318\r\nวันที่ออก 24 กรกฎาคม 2569\r\nกำหนดชำระ 23 สิงหาคม 2569\r\nใบสั่งซื้อเลขที่ PO-2026-0567\r\nรายละเอียด จำนวน ราคา/หน่วย รวมเงิน\r\nเครื่องสำรองไฟ UPS 3kVA 12 9,500.00 114,000.00\r\nติดตั้งและทดสอบระบบ 1 21,000.00 21,000.00\r\nมูลค่าสินค้า/บริการ 135,000.00\r\nภาษีมูลค่าเพิ่ม 7% 9,450.00\r\nจำนวนเงินทั้งสิ้น (บาท) 144,450.00\r\nเงื่อนไขการชำระเงิน Net 30\r\nชำระเข้าบัญชีเลขที่ 1234567890\r\nผู้รับเงิน ______________________"
+    },
+    {
+      "doc_id": "invoice_thai_vat_miscalculated",
+      "doc_type": "invoice",
+      "layout": "thai_modern",
+      "title": "ใบกำกับภาษี stating 7% and charging 6%",
+      "demonstrates": "Says ภาษีมูลค่าเพิ่ม 7% and charges 5,280.00 on 88,000.00, which is 6%. The total agrees with the tax as printed, so only the rate is contradicted - and the tax is the only value the arithmetic can blame.",
+      "ground_truth": {
+        "invoice_number": "RSW-2026-1240",
+        "invoice_date": "2026-07-27",
+        "due_date": "2026-09-25",
+        "vendor_name": "บริษัท รุ่งเรือง สตีล เวิร์ค จำกัด",
+        "vendor_tax_id": "0105552000110",
+        "buyer_name": "Mirtphol Industries PCL",
+        "purchase_order_ref": "PO-2026-0578",
+        "currency": "THB",
+        "subtotal": 88000.0,
+        "tax_rate": 7.0,
+        "tax_amount": 5280.0,
+        "total_amount": 93280.0,
+        "payment_terms": "Net 60",
+        "bank_account": "3120045678"
+      },
+      "line_items": [
+        {
+          "description": "เหล็กแผ่นรีดร้อน หนา 6 มม.",
+          "quantity": 4,
+          "unit_price": 16000.0,
+          "amount": 64000.0
+        },
+        {
+          "description": "งานตัดและพับขึ้นรูป",
+          "quantity": 1,
+          "unit_price": 24000.0,
+          "amount": 24000.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "th",
+      "expected_findings": [
+        "tax_rate_consistent"
+      ],
+      "requires_posted": null,
+      "file": "26_invoice_thai_vat_miscalculated_False.pdf",
+      "arrival": "pdf",
+      "order": 26,
+      "posts": false,
+      "reference_text": "บริษัท รุ่งเรือง สตีล เวิร์ค จำกัด\r\nBangkok, Thailand\r\nเลขประจำตัวผู้เสียภาษี 0105552000110\r\nใบกำกับภาษี / ใบแจ้งหนี้\r\nTAX INVOICE (ORIGINAL)\r\nลูกค้า\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nเลขที่เอกสาร RSW-2026-1240\r\nวันที่ออก 27 กรกฎาคม 2569\r\nกำหนดชำระ 25 กันยายน 2569\r\nใบสั่งซื้อเลขที่ PO-2026-0578\r\nรายละเอียด จำนวน ราคา/หน่วย รวมเงิน\r\nเหล็กแผ่นรีดร้อน หนา 6 มม. 4 16,000.00 64,000.00\r\nงานตัดและพับขึ้นรูป 1 24,000.00 24,000.00\r\nมูลค่าสินค้า/บริการ 88,000.00\r\nภาษีมูลค่าเพิ่ม 7% 5,280.00\r\nจำนวนเงินทั้งสิ้น (บาท) 93,280.00\r\nเงื่อนไขการชำระเงิน Net 60\r\nชำระเข้าบัญชีเลขที่ 3120045678\r\nผู้รับเงิน ______________________"
+    },
+    {
+      "doc_id": "receipt_thai_fuel_station",
+      "doc_type": "receipt",
+      "layout": "thai_receipt",
+      "title": "ใบเสร็จรับเงิน from a PTT station",
+      "demonstrates": "A Thai receipt, photographed. It has to be classified as a receipt rather than an invoice from ใบเสร็จ alone, on a page that also says ภาษีมูลค่าเพิ่ม - and the counterparty has to reach merchant_name, not vendor_name.",
+      "ground_truth": {
+        "receipt_number": "PTT-880451",
+        "receipt_date": "2026-07-28",
+        "merchant_name": "บริษัท ปตท. น้ำมันและการค้าปลีก จำกัด",
+        "merchant_tax_id": "0105554000770",
+        "currency": "THB",
+        "subtotal": 2000.0,
+        "tax_amount": 140.0,
+        "total_amount": 2140.0
+      },
+      "line_items": [
+        {
+          "description": "น้ำมันดีเซล B7",
+          "quantity": 50.0,
+          "unit_price": 40.0,
+          "amount": 2000.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "th",
+      "expected_findings": [],
+      "requires_posted": null,
+      "file": "27_receipt_thai_fuel_station_True.jpg",
+      "arrival": "photo",
+      "order": 27,
+      "posts": true,
+      "reference_text": "บริษัท ปตท. น้ำมันและการค้าปลีก จำกัด\r\nถนนพระราม 4 แขวงคลองเตย กรุงเทพฯ\r\nเลขประจำตัวผู้เสียภาษี 0105554000770\r\nใบเสร็จรับเงิน / ใบกำกับภาษีอย่างย่อ\r\n- - - - - - - - - - - - - - - - - - - - - - - - \r\nเลขที่ PTT-880451\r\nวันที่ 28 กรกฎาคม 2569 14:07 น.\r\n- - - - - - - - - - - - - - - - - - - - - - - - \r\nน้ำมันดีเซล B7\r\n50 x 40.00 2,000.00\r\n- - - - - - - - - - - - - - - - - - - - - - - - \r\nมูลค่าสินค้า 2,000.00\r\nภาษีมูลค่าเพิ่ม 140.00\r\nรวมทั้งสิ้น 2,140.00\r\nขอบคุณที่ใช้บริการ"
+    },
+    {
+      "doc_id": "contract_thai_service",
+      "doc_type": "contract",
+      "layout": "thai_contract",
+      "title": "สัญญาจ้างบริการ with Chao Phraya Facility",
+      "demonstrates": "A contract in Thai prose. Every field is a phrase in running text and there is no arithmetic anywhere, so a misread Buddhist-era date has nothing at all to contradict it.",
+      "ground_truth": {
+        "contract_number": "CT-2026-027",
+        "contract_title": "สัญญาจ้างบริการทำความสะอาดและบำรุงรักษาอาคาร",
+        "party_a": "Mirtphol Industries PCL",
+        "party_b": "บริษัท เจ้าพระยา แฟซิลิตี้ จำกัด",
+        "effective_date": "2026-06-01",
+        "expiry_date": "2027-05-31",
+        "contract_value": 420000.0,
+        "currency": "THB",
+        "payment_terms": "ชำระรายเดือนภายใน 30 วัน",
+        "auto_renew": "no",
+        "governing_law": "กฎหมายไทย"
+      },
+      "line_items": [],
+      "body": [
+        "ข้อ 1. ขอบเขตของงาน ผู้รับจ้างตกลงให้บริการทำความสะอาดพื้นที่สำนักงานและโรงงาน รวมถึงงานบำรุงรักษาระบบปรับอากาศและระบบไฟฟ้าส่องสว่างภายในอาคารของผู้ว่าจ้าง ตามมาตรฐานและความถี่ที่กำหนดไว้ในเอกสารแนบท้ายสัญญา",
+        "ข้อ 2. ระยะเวลาของสัญญา สัญญานี้มีกำหนดระยะเวลาหนึ่งปี นับตั้งแต่วันที่มีผลบังคับใช้ หากฝ่ายใดประสงค์จะบอกเลิกสัญญา ต้องแจ้งเป็นหนังสือให้อีกฝ่ายทราบล่วงหน้าไม่น้อยกว่าหกสิบวัน สัญญานี้ไม่ต่ออายุโดยอัตโนมัติ",
+        "ข้อ 3. ค่าจ้างและการชำระเงิน ผู้ว่าจ้างตกลงชำระค่าจ้างเป็นรายเดือน โดยผู้รับจ้างจะออกใบแจ้งหนี้ในวันทำการสุดท้ายของแต่ละเดือน และผู้ว่าจ้างจะชำระภายในสามสิบวันนับแต่วันที่ได้รับใบแจ้งหนี้ที่ถูกต้อง",
+        "ข้อ 4. กฎหมายที่ใช้บังคับ สัญญานี้อยู่ภายใต้บังคับแห่งกฎหมายไทย ข้อพิพาทใดอันเกิดจากสัญญานี้ให้อยู่ในเขตอำนาจของศาลไทย"
+      ],
+      "degrade": 0.0,
+      "language": "th",
+      "expected_findings": [],
+      "requires_posted": null,
+      "file": "28_contract_thai_service_True.pdf",
+      "arrival": "pdf",
+      "order": 28,
+      "posts": true,
+      "reference_text": "สัญญาจ้างบริการทำความสะอาดและบำรุงรักษาอาคาร\r\nเลขที่สัญญา CT-2026-027\r\nสัญญาฉบับนี้ทำขึ้นระหว่าง Mirtphol Industries PCL ซึ่งต่อไปในสัญญานี้เรียกว่า “ผู้ว่าจ้าง” ฝ่ายหนึ่ง กับ บริษัท\r\nเจ้าพระยา แฟซิลิตี้ จำกัด ซึ่งต่อไปในสัญญานี้เรียกว่า “ผู้รับจ้าง” อีกฝ่ายหนึ่ง\r\nข้อ 1. ขอบเขตของงาน ผู้รับจ้างตกลงให้บริการทำความสะอาดพื้นที่สำนักงานและโรงงาน\r\nรวมถึงงานบำรุงรักษาระบบปรับอากาศและระบบไฟฟ้าส่องสว่างภายในอาคารของผู้ว่าจ้าง\r\nตามมาตรฐานและความถี่ที่กำหนดไว้ในเอกสารแนบท้ายสัญญา\r\nข้อ 2. ระยะเวลาของสัญญา สัญญานี้มีกำหนดระยะเวลาหนึ่งปี นับตั้งแต่วันที่มีผลบังคับใช้\r\nหากฝ่ายใดประสงค์จะบอกเลิกสัญญา ต้องแจ้งเป็นหนังสือให้อีกฝ่ายทราบล่วงหน้าไม่น้อยกว่าหกสิบวัน\r\nสัญญานี้ไม่ต่ออายุโดยอัตโนมัติ\r\nข้อ 3. ค่าจ้างและการชำระเงิน ผู้ว่าจ้างตกลงชำระค่าจ้างเป็นรายเดือน\r\nโดยผู้รับจ้างจะออกใบแจ้งหนี้ในวันทำการสุดท้ายของแต่ละเดือน\r\nและผู้ว่าจ้างจะชำระภายในสามสิบวันนับแต่วันที่ได้รับใบแจ้งหนี้ที่ถูกต้อง\r\nข้อ 4. กฎหมายที่ใช้บังคับ สัญญานี้อยู่ภายใต้บังคับแห่งกฎหมายไทย\r\nข้อพิพาทใดอันเกิดจากสัญญานี้ให้อยู่ในเขตอำนาจของศาลไทย\r\nวันที่มีผลบังคับใช้ 1 มิถุนายน 2569\r\nวันสิ้นสุดสัญญา 31 พฤษภาคม 2570\r\nมูลค่าสัญญา 420,000.00 THB\r\nเงื่อนไขการชำระเงิน ชำระรายเดือนภายใน 30 วัน\r\nกฎหมายที่ใช้บังคับ กฎหมายไทย\r\nคู่สัญญาทั้งสองฝ่ายได้อ่านและเข้าใจข้อความในสัญญานี้โดยตลอดแล้ว จึงลงลายมือชื่อไว้เป็นสำคัญ\r\n_________________________\r\nMirtphol Industries PCL\r\nสมชาย วัฒนกุล ประธานเจ้าหน้าที่ฝ่ายการเงิน\r\n_________________________\r\nบริษัท เจ้าพระยา แฟซิลิตี้ จำกัด\r\nนฤมล พิชัย กรรมการผู้จัดการ"
+    },
+    {
+      "doc_id": "invoice_thai_unknown_vendor",
+      "doc_type": "invoice",
+      "layout": "thai_modern",
+      "title": "ใบแจ้งหนี้ from หจก. สมชายการช่าง, who is not registered",
+      "demonstrates": "A limited partnership (หจก.) rather than a company (บริษัท), and nobody has onboarded them. Everything on the page reconciles; the only thing wrong is that we have no record of who they are. The risk is the opposite of a miss - a fuzzy match onto a registered Thai vendor that merely reads alike.",
+      "ground_truth": {
+        "invoice_number": "SCK-2569-0142",
+        "invoice_date": "2026-07-29",
+        "due_date": "2026-08-28",
+        "vendor_name": "หจก. สมชายการช่าง",
+        "vendor_tax_id": "0105566000991",
+        "buyer_name": "Mirtphol Industries PCL",
+        "currency": "THB",
+        "subtotal": 42000.0,
+        "tax_rate": 7.0,
+        "tax_amount": 2940.0,
+        "total_amount": 44940.0,
+        "payment_terms": "Net 30",
+        "bank_account": "6650071234"
+      },
+      "line_items": [
+        {
+          "description": "งานเชื่อมโครงเหล็กหลังคาโรงงาน",
+          "quantity": 1,
+          "unit_price": 42000.0,
+          "amount": 42000.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "th",
+      "expected_findings": [
+        "vendor_known"
+      ],
+      "requires_posted": null,
+      "file": "29_invoice_thai_unknown_vendor_False.png",
+      "arrival": "png",
+      "order": 29,
+      "posts": false,
+      "reference_text": "หจก. สมชายการช่าง\r\nBangkok, Thailand\r\nเลขประจำตัวผู้เสียภาษี 0105566000991\r\nใบกำกับภาษี / ใบแจ้งหนี้\r\nTAX INVOICE (ORIGINAL)\r\nลูกค้า\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nเลขที่เอกสาร SCK-2569-0142\r\nวันที่ออก 29 กรกฎาคม 2569\r\nกำหนดชำระ 28 สิงหาคม 2569\r\nรายละเอียด จำนวน ราคา/หน่วย รวมเงิน\r\nงานเชื่อมโครงเหล็กหลังคาโรงงาน 1 42,000.00 42,000.00\r\nมูลค่าสินค้า/บริการ 42,000.00\r\nภาษีมูลค่าเพิ่ม 7% 2,940.00\r\nจำนวนเงินทั้งสิ้น (บาท) 44,940.00\r\nเงื่อนไขการชำระเงิน Net 30\r\nชำระเข้าบัญชีเลขที่ 6650071234\r\nผู้รับเงิน ______________________"
+    },
+    {
+      "doc_id": "invoice_thai_no_tax_id",
+      "doc_type": "invoice",
+      "layout": "thai_modern",
+      "title": "ใบกำกับภาษี from Sunrise Electrical with no tax ID printed",
+      "demonstrates": "A registered vendor named only in Thai, with a phone number where the tax ID usually goes. The exact identifier is gone, so the match has to be made on บริษัท ซันไรส์ อิเล็คทริคอล จำกัด against an English legal name and a Thai alias - and if Thai vendors are lost anywhere, it is here.",
+      "ground_truth": {
+        "invoice_number": "SE-2026-0498",
+        "invoice_date": "2026-07-31",
+        "due_date": "2026-09-14",
+        "vendor_name": "บริษัท ซันไรส์ อิเล็คทริคอล จำกัด",
+        "buyer_name": "Mirtphol Industries PCL",
+        "currency": "THB",
+        "subtotal": 36000.0,
+        "tax_rate": 7.0,
+        "tax_amount": 2520.0,
+        "total_amount": 38520.0,
+        "payment_terms": "Net 45",
+        "bank_account": "8890014455"
+      },
+      "line_items": [
+        {
+          "description": "หลอดไฟ LED 18W",
+          "quantity": 300,
+          "unit_price": 90.0,
+          "amount": 27000.0
+        },
+        {
+          "description": "ค่าแรงติดตั้ง",
+          "quantity": 1,
+          "unit_price": 9000.0,
+          "amount": 9000.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "th",
+      "expected_findings": [],
+      "requires_posted": null,
+      "file": "30_invoice_thai_no_tax_id_True.png",
+      "arrival": "png",
+      "order": 30,
+      "posts": true,
+      "reference_text": "บริษัท ซันไรส์ อิเล็คทริคอล จำกัด\r\nBangkok, Thailand\r\nโทร. 02-118-4400\r\nใบกำกับภาษี / ใบแจ้งหนี้\r\nTAX INVOICE (ORIGINAL)\r\nลูกค้า\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nเลขที่เอกสาร SE-2026-0498\r\nวันที่ออก 31 กรกฎาคม 2569\r\nกำหนดชำระ 14 กันยายน 2569\r\nรายละเอียด จำนวน ราคา/หน่วย รวมเงิน\r\nหลอดไฟ LED 18W 300 90.00 27,000.00\r\nค่าแรงติดตั้ง 1 9,000.00 9,000.00\r\nมูลค่าสินค้า/บริการ 36,000.00\r\nภาษีมูลค่าเพิ่ม 7% 2,520.00\r\nจำนวนเงินทั้งสิ้น (บาท) 38,520.00\r\nเงื่อนไขการชำระเงิน Net 45\r\nชำระเข้าบัญชีเลขที่ 8890014455\r\nผู้รับเงิน ______________________"
     }
   ],
   "master_data": {
@@ -1253,6 +1507,24 @@
         "amount": 76500.0,
         "status": "open",
         "description": "Industrial solvents, drum x 20"
+      },
+      {
+        "po_number": "PO-2026-0567",
+        "vendor_id": "V-1001",
+        "po_date": "2026-07-05",
+        "currency": "THB",
+        "amount": 135000.0,
+        "status": "open",
+        "description": "UPS units and installation, plant 1"
+      },
+      {
+        "po_number": "PO-2026-0578",
+        "vendor_id": "V-1006",
+        "po_date": "2026-07-01",
+        "currency": "THB",
+        "amount": 88000.0,
+        "status": "open",
+        "description": "Hot-rolled plate and forming, 6mm"
       }
     ],
     "contracts": [
@@ -1304,6 +1576,16 @@
         "effective_date": "2025-01-01",
         "expiry_date": "2026-06-30",
         "value": 480000.0,
+        "currency": "THB"
+      },
+      {
+        "contract_number": "CT-2026-027",
+        "vendor_id": "V-1004",
+        "party_a": "Mirtphol Industries PCL",
+        "party_b": "บริษัท เจ้าพระยา แฟซิลิตี้ จำกัด",
+        "effective_date": "2026-06-01",
+        "expiry_date": "2027-05-31",
+        "value": 420000.0,
         "currency": "THB"
       }
     ]

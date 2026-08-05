@@ -12,7 +12,8 @@ from dataclasses import dataclass, field
 from typing import Any, Literal
 
 LayoutStyle = Literal[
-    "classic", "modern", "thai_tax", "dense", "two_column", "minimal", "prose", "form", "narrow"
+    "classic", "modern", "thai_tax", "thai_modern", "thai_receipt", "thai_contract",
+    "dense", "two_column", "minimal", "prose", "form", "narrow"
 ]
 
 

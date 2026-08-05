@@ -12,11 +12,48 @@ import time
 
 from docuflow.config import Settings
 from docuflow.models import OcrPage, OcrResult
-from docuflow.ocr.base import OcrProvider, OcrUnavailableError, PageImage
+from docuflow.ocr.base import OcrProvider, OcrTransientError, OcrUnavailableError, PageImage
 from docuflow.ocr.factory import provider_chain
 from docuflow.ocr.quality import score_document_text, score_page_text
 
 logger = logging.getLogger(__name__)
+
+# How many times a provider that did not answer is asked again before the page
+# moves down the chain. **One retry, not two**, and the number was measured
+# rather than chosen: a page that provokes a timeout usually provokes it every
+# time, and each attempt costs a full server-side timeout before it fails. Three
+# attempts on a Thai-numeral page added three minutes to a document that was
+# going to fall back to the local engine regardless.
+#
+# One retry buys what retrying is actually for - a single unlucky call - and
+# caps what being wrong costs at one wasted timeout.
+TRANSIENT_ATTEMPTS = 2
+# Seconds before the retry. Short, because the thing being ridden out is one
+# slow request rather than a struggling service.
+RETRY_BACKOFF = (1.0,)
+
+
+def _ask(provider: OcrProvider, page: PageImage) -> tuple[str, list[str]]:
+    """Recognise one page with one provider, riding out transient failures.
+
+    A provider that returns poor text will return poor text again, so the engine
+    escalates. A provider that did not *answer* has said nothing about the page
+    at all, and escalating on that is how a two-second cloud call turns into ten
+    minutes on a local model - which is exactly what a Typhoon 408 did to every
+    Thai-numeral page in the corpus.
+    """
+    notes: list[str] = []
+    for attempt in range(TRANSIENT_ATTEMPTS):
+        try:
+            return provider.recognize(page), notes
+        except OcrTransientError as exc:
+            notes.append(f"{provider.name} did not answer (attempt {attempt + 1}): {exc}")
+            if attempt == TRANSIENT_ATTEMPTS - 1:
+                raise
+            logger.info("OCR provider %s timed out on page %s, retrying",
+                        provider.name, page.page_number)
+            time.sleep(RETRY_BACKOFF[min(attempt, len(RETRY_BACKOFF) - 1)])
+    raise OcrTransientError(f"{provider.name} did not answer")  # unreachable, kept total
 
 
 def _recognize_page(
@@ -38,7 +75,8 @@ def _recognize_page(
             warnings.append(f"{provider.name} unavailable: {reason}")
             continue
         try:
-            text = provider.recognize(page)
+            text, retries = _ask(provider, page)
+            warnings.extend(retries)
         except OcrUnavailableError as exc:
             warnings.append(f"{provider.name} skipped: {exc}")
             continue
@@ -97,6 +135,20 @@ def run_ocr(pages: list[PageImage], settings: Settings) -> OcrResult:
         all_notes.append(
             f"recognised with a general-purpose engine ({', '.join(sorted(improvised))}); "
             "accuracy is reduced"
+        )
+
+    # Which engine read the page is not a detail when the chain steps from a
+    # hosted API onto a local model: the same document goes from three seconds
+    # to ten minutes, and without this line the only evidence is a clock. Said
+    # separately from `degraded`, because falling back to a *better* engine that
+    # happens to be slower is not a quality problem and must not be reported as
+    # one.
+    configured = settings.resolved_ocr_provider()
+    fell_back = {name for name in providers_used if name not in {configured, "none"}}
+    if fell_back and chain and chain[0].name not in providers_used:
+        all_notes.append(
+            f"the configured engine ({chain[0].name}) did not read this document; "
+            f"{', '.join(sorted(fell_back))} stood in, which can be far slower"
         )
 
     return OcrResult(

@@ -61,7 +61,7 @@ system made things worse.
 
 | | |
 |---|---|
-| Corpus | [`real_samples/`](../real_samples/) — 24 documents, 12 that should post and 12 that should not |
+| Corpus | [`real_samples/`](../real_samples/) — 24 documents, 12 that should post and 12 that should not. Six Thai documents were added afterwards and are measured separately in [section 5](#5-does-it-work-on-thai-documents); every number in sections 1–4 is from the 24-document run, unchanged. |
 | Arrival | 14 digital PDFs, 5 scans, 3 phone photographs, 2 faded photocopies |
 | OCR | Typhoon OCR 1.5 (3B) on-device via Ollama |
 | Reading 1 | Typhoon `typhoon-v2.5-30b-a3b-instruct`, field-first |
@@ -367,6 +367,159 @@ anything.
 **Machine time is reported beside the saving, never subtracted from it.** A
 model reading a page is not a person waiting for it, and in a batch it is not on
 anyone's critical path.
+
+---
+
+## 5. Does it work on Thai documents?
+
+Asked because the answer was assumed. Thai had been in the corpus from the start
+— two invoices on the `thai_tax` layout — and both posted, so the language looked
+covered. It was not, and the shape of the gap is worth stating before the
+results.
+
+**Thai numerals and Thai labels are different problems, and only one of them is
+loud.** ๙ either survives OCR or it does not, and either way you find out. Arabic
+digits under Thai labels come back perfectly and the only question left is
+whether anything understood that `จำนวนเงินทั้งสิ้น` is the total — a question
+an English-trained extractor can get wrong in silence. The corpus tested only the
+first, and the second is what every real Thai business invoice looks like.
+
+So six documents were written to hold the language fixed and vary what is asked
+of it: Arabic digits with Buddhist-era dates, the same with the VAT
+miscalculated, a receipt, a contract in Thai prose, a supplier who is genuinely
+not in the register, and a registered vendor with no tax ID printed — so the
+match has to be carried by the Thai name alone.
+
+### What was already fine
+
+Worth reporting, because it is where the search started and it is where the
+problem was not:
+
+| | |
+|---|---|
+| Buddhist-era dates | `24 กรกฎาคม 2569` → 2026-07-24, in either numeral system, slashed or spelled out |
+| Amounts | `๑๓๕,๐๐๐.๐๐` and `135,000.00` both parse |
+| Thai vendor names | 12 of 12 probes resolve correctly, including spaces lost, legal form dropped, and `ซ` misread as `ช` |
+| Unknown Thai suppliers | `หจก. สมชายการช่าง` correctly matches nothing — the register's Thai names are short once `บริษัท` and `จำกัด` are stripped, and a false match here would pay the wrong company |
+
+The vendor matcher already knew about `บริษัท`, `จำกัด` and `มหาชน`, and the
+master file already carried Thai aliases. Document 30 — a registered vendor named
+only in Thai, no tax ID printed, so there is no exact identifier to fall back on
+— read 12 of 12 fields correctly and posted.
+
+### Three faults, none of them where they were expected
+
+**A Thai receipt is classified as an invoice.** The heading a Thai till prints is
+`ใบเสร็จรับเงิน / ใบกำกับภาษีอย่างย่อ` — *abbreviated tax invoice*, which is the
+Revenue Department's name for the slip you get at a counter. Matched as a bare
+substring it also satisfies the invoice keyword `ใบกำกับภาษี`, so every Thai
+receipt in the country scores as an invoice on the strength of its own receipt
+heading. The same nesting sits one level down between `เลขที่` and
+`เลขที่ใบเสร็จ`.
+
+The fix is general and contains no Thai: **when two matched phrases are nested,
+only the more specific one votes.** English has the same nesting — `No.` inside
+`Receipt No` — and it was doing the same damage there. Keyword-only
+classification errors across the corpus went from 3 of 30 to 0 of 30, and two of
+the three corrected documents are English receipts. A Thai document found a bug
+that was never about Thai.
+
+**A contract auto-posted with both parties misread.** Document 28 posted at 92%
+with `party_a` read as `Mitrphol` and `party_b` carrying `แฟชิลิตี้` for
+`แฟซิลิตี้` — one stroke apart, the commonest Thai OCR slip there is. Both are
+critical fields for a contract. Both were **grounded**, because the misread text
+is genuinely in the OCR output and grounding can only prove a value came from the
+page, never that the page was read right.
+
+An invoice naming the wrong company is caught downstream by `vendor_known`
+resolving the name against the master file. A contract had no equivalent:
+`contract_matches_master` compared the dates and the value, and never the
+parties, although the contract number is an exact key into a register that stores
+both. A page could have named a different counterparty entirely and posted.
+
+The comparison now happens, and how it is made is the load-bearing part. Names
+are compared as **organisations** — legal form stripped, fuzzy — so one misread
+character is still the same company, and then resolved through the **vendor
+register**, because nothing about the two strings
+`บริษัท เจ้าพระยา แฟซิลิตี้ จำกัด` and `Chao Phraya Facility Services Co., Ltd.`
+says they are one counterparty. The alias column does. String equality here would
+have turned a check meant for a substituted company into a false-alarm machine.
+
+**A document took ten minutes instead of thirty seconds.** Both Thai-numeral
+documents drew a `408 Request timed out` from Typhoon Cloud, and the engine
+treated a timeout the way it treats bad text: escalate to the next provider. The
+next provider was the local 3B model, at roughly 600 seconds a page against 3
+seconds for the hosted call.
+
+Nothing was wrong with the *result* — the local model read both pages at 96%
+quality, undegraded, and both posted correctly. The chain did exactly what it was
+built to do. What it did not do was say so: the trace reported `ok` and named a
+provider, and the only other evidence was a clock.
+
+Two changes. **Bad text is a verdict on the page and warrants escalation; a
+timeout is not and warrants a retry** — `OcrTransientError` now separates the
+two, and a 408, 429 or 5xx asks the same engine again before the page moves down
+the chain. And when the configured engine is not the one that read the document,
+the result says so, separately from `degraded`, because falling back to a slower
+engine is not a quality problem and must not be reported as one.
+
+### After the fixes
+
+Six Thai documents, 140 seconds, all three fixes in:
+
+| Document | Type | Decision | Expected | Conf | Fields | OCR |
+|---|---|---|---|---|---|---|
+| 25 Thai labels, Arabic digits | invoice | post | post | 84% | 13/14 | 95.3% |
+| 26 VAT stated 7%, charged 6% | invoice | **hold** | hold | 68% | 14/14 | 98.0% |
+| 27 ใบเสร็จรับเงิน, photographed | **receipt** | post | post | 92% | 8/8 | 70.4% |
+| 28 สัญญาจ้างบริการ | contract | post | post | 92% | 9/11 | 94.6% |
+| 29 หจก. not in the register | invoice | **hold** | hold | 68% | 12/13 | 96.6% |
+| 30 Thai name, no tax ID | invoice | post | post | 84% | 12/12 | 95.6% |
+
+**6 of 6 decisions correct. Field accuracy 68 of 72 (94.4%). No document over 31
+seconds.** Document 26 is held by `tax_rate_consistent` and document 29 by
+`vendor_known` — each the rule it was written to exercise.
+
+Document 27 is now typed `receipt`. Document 28's parties are still misread the
+same way, and `contract_matches_master` **passes** — which is the check working,
+not the check missing: it compared them, resolved `แฟชิลิตี้` to the same
+organisation, and did not raise a false alarm. A substituted company would not
+get that treatment.
+
+The four remaining field misses are honest reading errors, not defects:
+
+| Document | Field | What happened |
+|---|---|---|
+| 25 | `vendor_name` | OCR returned `บริษัท สยามเทคโนโลยี จำกัด` for `บริษัท สยามเทค ซัพพลาย จำกัด` — a plausible invented company name. It posted anyway because the tax ID was read correctly and resolves the vendor exactly, which is why tax ID is tried first. |
+| 28 | `party_a`, `party_b` | `Mitrphol`, `แฟชิลิตี้` — one character each |
+| 29 | `vendor_tax_id` | misread, which correctly trips `tax_id_checksum` on top of `vendor_known` |
+
+Two further mismatches turned out to be the corpus, and both were the trap this
+document already warns about: document 27 declared `tax_rate`, which the receipt
+schema has no field for, and `payment_method` as the printed Thai, when the field
+is an **enum** — a classification, not a transcription. The system answered
+`credit_card` and was marked wrong for being right. Both were removed from the
+ground truth rather than from the system.
+
+### What this section does not settle
+
+The retry rides out a *flaky* timeout. On these two pages the timeout is **not
+flaky** — it recurred on every attempt across two runs, so the page still falls
+back to the local engine and still takes ten minutes. Retrying does not fix that
+and was never going to.
+
+Measuring it did change the retry, though. Three attempts made the worst case
+three minutes *worse*: each one waits out a full server-side timeout before
+failing, and a page that provokes a timeout provokes it every time. One retry
+buys what retrying is for — a single unlucky call — and caps the cost of being
+wrong at one wasted timeout. `TRANSIENT_ATTEMPTS` is 2 because that was measured,
+not chosen.
+
+Whether Typhoon Cloud can process a Thai-numeral page at all is a question about
+the hosted model, and two documents cannot answer it. What can be said is
+narrower and still useful: **Thai is not the problem, Thai numerals are.** Every
+Thai document printed with Arabic digits ran in 11–31 seconds, the same as the
+English corpus.
 
 ---
 
