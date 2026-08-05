@@ -88,8 +88,8 @@ docuflow rules load real_samples/rules.json  # 5 expression + 2 agent rules
 docuflow real-samples --out real_samples     # regenerate the corpus
 docuflow evaluate --out report.json          # accuracy, coverage, time saved
 docuflow serve                               # the web UI on :8000
-.venv/bin/python -m pytest -q                # ~790 tests, no API key needed
-.venv/bin/python -m pytest -m ui -q          # + the browser tests, opt-in
+.venv/bin/python -m pytest -q                # 1,021 tests, no API key needed
+.venv/bin/python -m pytest -m ui -q          # + 20 browser tests, opt-in
 ```
 
 Regenerating the corpus: edit `src/docuflow/samples/real_world.py`, never the
