@@ -135,6 +135,32 @@ class TestWhenItCannotTell:
         assert [(s.start_page, s.end_page) for s in report.segments] == [(1, 2), (3, 3)]
         assert any("too little text" in note for note in report.notes)
 
+    def test_a_short_page_that_states_its_own_reference_is_still_a_document(self) -> None:
+        """The bug this exists for, and it produced the exact failure the
+        module was written to prevent.
+
+        "RECEIPT No: R-889 / Cash 500.00" is 29 characters. A length test
+        called it unplaceable and merged it into the invoice above it, so the
+        receipt was never recorded - silently, which is the whole point.
+
+        Short and unplaceable are different questions. A page carrying its own
+        reference is placeable at any length.
+        """
+        short_receipt = "RECEIPT No: R-889\nCash 500.00"
+        assert len(short_receipt.strip()) < 40, "this test needs a genuinely short page"
+
+        report = detect(_pages(INVOICE_A, short_receipt))
+        assert report.is_multi, "a short page with its own reference was swallowed"
+        assert len(report.segments) == 2
+        assert "R-889" in report.segments[1].reason
+        assert not report.uncertain
+
+    def test_a_short_page_with_no_signal_at_all_is_still_unplaceable(self) -> None:
+        """The other half: length alone is not the test, but it is still a test."""
+        report = detect(_pages(INVOICE_A, "  ...  \n"))
+        assert not report.is_multi
+        assert any("too little text" in note for note in report.notes)
+
     def test_a_file_of_blank_pages_is_reported_uncertain(self) -> None:
         report = detect(_pages(INVOICE_A, "", "  ", "\n"))
         assert report.uncertain, "an unreadable file must not come back as a confident answer"

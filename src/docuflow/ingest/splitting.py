@@ -38,6 +38,11 @@ from docuflow.schemas.registry import DOCUMENT_SCHEMAS
 # of anything; the same words across the top are.
 HEADING_WINDOW_CHARS = 400
 
+# Below this, a page that offers no reference, no heading and no page marker is
+# treated as unplaceable. It is deliberately *not* a length test on its own:
+# a short page that states its own reference is perfectly placeable.
+MIN_PLACEABLE_CHARS = 40
+
 # Reference numbers: the strongest signal there is. Two pages carrying two
 # different invoice numbers are two invoices, whatever else the layout does.
 _REFERENCE_PATTERNS: tuple[re.Pattern[str], ...] = (
@@ -149,16 +154,20 @@ def detect(pages: list[tuple[int, str]]) -> SplitReport:
     unreadable = 0
 
     for number, text in pages[1:]:
-        if len(text.strip()) < 40:
-            # Nothing to reason about. Kept with whatever came before rather
-            # than guessed at, and counted - a file of blank pages is not a
-            # file this function should be answering about.
-            unreadable += 1
-            continue
-
         continuation = _continuation(text)
         reference = _first_reference(text)
         heading = _heading_type(text)
+
+        # A page is unplaceable when it offers no signal at all - not when it is
+        # merely short. Those are different questions and conflating them lost
+        # documents: "RECEIPT No: R-889 / Cash 500.00" is 29 characters, states
+        # its own reference, and was skipped by a length test - so the receipt
+        # merged into the invoice above it and was never recorded. That is the
+        # silent error this module exists to prevent, produced by the module.
+        if not (continuation or reference or heading):
+            if len(text.strip()) < MIN_PLACEABLE_CHARS:
+                unreadable += 1
+                continue
 
         # An explicit "page 2 of 5" outranks everything: the page states that
         # it belongs to something that started earlier.
