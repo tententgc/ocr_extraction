@@ -149,6 +149,49 @@ class TestPurchaseOrderMatching:
         )
         assert finding.passed is False
         assert finding.severity == "blocking"
+        assert "over" in finding.message
+
+    def test_underrun_is_reported_but_does_not_hold_the_document(self, master, make_run):
+        """Billing less than was ordered is not a payment risk.
+
+        Partial delivery, progress billing and short shipments all produce an
+        invoice under its order, and none of them pays anybody too much. This
+        was `blocking` for both directions and stopped three otherwise clean
+        documents in the demonstration set - each looking like a system fault
+        until the rule was read.
+        """
+        fields = {**GOOD_INVOICE, "subtotal": 90_000.00, "tax_amount": 6_300.00,
+                  "total_amount": 96_300.00}
+        finding = result_for(
+            run_rules(build_context(master, fields, make_run=make_run)), "po_amount_within_tolerance"
+        )
+        assert finding.passed is False, "it is still worth reporting"
+        assert finding.severity == "warning", "but it must not hold the document"
+        assert "under" in finding.message
+
+    def test_the_two_directions_are_told_apart_in_the_detail(self, master, make_run):
+        """So a report can count them separately without parsing prose."""
+        over = {**GOOD_INVOICE, "subtotal": 210_000.00, "tax_amount": 14_700.00,
+                "total_amount": 224_700.00}
+        under = {**GOOD_INVOICE, "subtotal": 90_000.00, "tax_amount": 6_300.00,
+                 "total_amount": 96_300.00}
+        for fields, expected in ((over, "over"), (under, "under")):
+            finding = result_for(
+                run_rules(build_context(master, fields, make_run=make_run)),
+                "po_amount_within_tolerance",
+            )
+            assert finding.detail.get("direction") == expected
+
+    def test_an_underrun_alone_does_not_stop_a_document_posting(self, master, make_run):
+        """The point of the change, stated as the outcome rather than the rule."""
+        from docuflow.routing import decide
+
+        fields = {**GOOD_INVOICE, "subtotal": 90_000.00, "tax_amount": 6_300.00,
+                  "total_amount": 96_300.00}
+        context = build_context(master, fields, make_run=make_run)
+        findings = run_rules(context)
+        blocking = [f for f in findings if not f.passed and f.severity == "blocking"]
+        assert not blocking, f"an underrun should leave nothing blocking, got {blocking}"
 
     def test_large_invoice_without_a_po_blocks(self, master, make_run):
         fields = {**GOOD_INVOICE, "purchase_order_ref": None}

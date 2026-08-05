@@ -20,8 +20,26 @@ TESSERACT_TIMEOUT_SECONDS = 120
 TESSERACT_LANGS = "tha+eng"
 
 
+# Below this many characters, a "text layer" is furniture rather than content:
+# a page number a scanner stamped on, a watermark, a form field label left in
+# an otherwise flattened scan. Treating those as a successful read hands the
+# extraction stage a nearly empty page and calls it recognised.
+#
+# Erring high is cheap - the model runs, as it would have anyway. Erring low is
+# not: it returns almost nothing and reports success.
+MIN_TEXT_LAYER_CHARS = 40
+
+
 class PdfTextLayerOcr(OcrProvider):
-    """Zero-cost reader for PDFs that already contain selectable text."""
+    """Zero-cost reader for PDFs that already contain selectable text.
+
+    First in the chain rather than last, because on a digital PDF this is not a
+    weaker substitute for reading the page - the characters *are* the page, put
+    there by whatever produced the file. What follows can only re-derive them
+    less accurately and for money.
+
+    Everything about this class is therefore about knowing when to step aside.
+    """
 
     name = "pdf-text-layer"
     # Not recognition at all - the characters the PDF itself stores.
@@ -31,9 +49,18 @@ class PdfTextLayerOcr(OcrProvider):
         return True, ""
 
     def recognize(self, page: PageImage) -> str:
-        if not page.embedded_text:
+        text = (page.embedded_text or "").strip()
+        if not text:
             raise OcrUnavailableError("page has no embedded text layer")
-        return page.embedded_text.strip()
+        # Returning "" as a *successful* read was the old behaviour for a page
+        # whose text layer was whitespace, and it mattered little while this
+        # provider ran last. First in the chain it would hand an empty page
+        # downstream and report that a provider had read it.
+        if len(text) < MIN_TEXT_LAYER_CHARS:
+            raise OcrUnavailableError(
+                f"text layer holds only {len(text)} character(s); too little to be the page"
+            )
+        return text
 
 
 class TesseractOcr(OcrProvider):

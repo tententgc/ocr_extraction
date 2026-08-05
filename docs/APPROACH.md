@@ -30,13 +30,27 @@ evaluation is the half that fails.
 ### End-to-end design
 
 ```
-file / URL → ingest → render → preprocess → OCR → classify → extract → ground
-           → normalize → validate → diagnose → route → reconcile → post
+file / URL → ingest → render → preprocess → READ → classify → extract → ground
+           → normalize → validate → diagnose → confidence → route
+           → reconcile → post → export
 ```
 
 Each stage appends to an immutable trace, so any decision can be replayed and
 audited. `DocumentRun` is frozen: a stage returns a new object rather than
 mutating one, which is what makes the trace a truthful history rather than a log.
+
+**READ is a chain, not an engine.** A digital PDF already contains its
+characters — whatever produced the file wrote them in. Recognition cannot
+improve on them, so the text layer is tried first and a model runs only when
+there is nothing to read: measured on the demo corpus, **~10ms against ~54
+seconds a page**, with no model call at all. It is safe at the front because it
+removes itself — a page with no embedded text raises `OcrUnavailableError` and
+the chain moves on, so scans and photographs reach exactly the engine they
+would have anyway, and a text layer that comes back poor faces the same quality
+gate as any model's output.
+
+The cheapest correct answer is not always a model. Noticing that is most of
+what makes a pipeline affordable to run.
 
 ### Choice of models
 
@@ -67,13 +81,20 @@ Across the whole corpus (`docuflow benchmark`, strict mode, five documents):
 | Claude `claude-sonnet-5` | 91.4% | 0% | 100% | 30.2 |
 | OpenAI `gpt-5.1` | 85.7% | 0% | 100% | 29.0 |
 | Tesseract | 78.6% | 0% | 100% | 27.7 |
-| PDF text layer | 61.4% | 0% | 50% | 17.2 |
+| PDF text layer *(forced, alone)* | 61.4% | 0% | 50% | 17.2 |
 
 **The silent-error column is the point.** It is 0% for every engine, from the
 best to the one that cannot read scans at all. Engine quality moves the
 straight-through rate; it does not move whether wrong values escape. That
 separation is the whole design, and this table is the evidence for it — a weaker
 engine buys you more review work, not more bad payments.
+
+> The last row is that engine **forced on every document**, including the scans
+> and photographs it cannot read at all — which is what a benchmark row has to
+> mean, or it is measuring a fallback. In production it is first in the chain
+> rather than alone: it answers the pages it can and steps aside on the rest,
+> so it takes the cost out of digital PDFs without touching the accuracy of
+> anything else.
 
 Two counter-intuitive results worth noting: the 2B MLX build beat the 3B Ollama
 build (92.9% at 37 s/page versus 82.9% at 75 s/page), and a general-purpose
@@ -307,6 +328,31 @@ keeps the human as a decision-maker rather than a bypass.
 Every edit is recorded against document type and vendor, and aggregated into
 correction hotspots — which is what tells you where accuracy work pays off next.
 
+### The severity of a rule is a business decision, not a technical one
+
+Three severities: `blocking` stops the document, `warning` is recorded and
+holds nothing, `info` is a note. Keeping them genuinely different is what
+decides whether a human-in-the-loop system has a human in *some* loops or in
+every one.
+
+The worked example is real and cost three false alarms before anyone read the
+rule. `po_amount_within_tolerance` compared an invoice with the purchase order
+it quotes and tested `abs(difference)` — so billing **under** an order blocked
+exactly as hard as billing over it. The docstring described only the overrun,
+the only test covered only the overrun, and the only corpus document exercising
+it was an overrun: the underrun behaviour had been written by nobody, tested by
+nobody, and shipped.
+
+The two directions are not symmetrical. Billing over an order moves money for
+something nobody agreed to. Billing under it is partial delivery, progress
+billing or a short shipment, and pays nobody too much. It is graded now — over
+blocks, under warns — and that is a judgement about the business, which is why
+it was put to the person who owns the process rather than decided in the code.
+
+**The general lesson: a check being technically correct does not make its
+severity correct.** Every false alarm spends someone's attention, and a system
+that spends it freely stops being trusted long before it stops being right.
+
 ### Errors and edge cases
 
 The rule throughout: **degrade, never fail.**
@@ -468,3 +514,31 @@ That last one is why the vendor match reports its method and score rather than a
 boolean. When the system says "no such vendor", the answer is often that the
 master file is stale — and the reviewer needs to see that distinction to make the
 right call.
+
+### What holds it together while it changes
+
+1,021 tests that need no API key, plus 20 opt-in browser tests. Three habits
+matter more than the count:
+
+**Business policy is pinned in the test fixtures, not read from the machine.**
+A green suite has to be a statement about the code, not about whose `.env` ran
+it. That has caught six settings the hard way — including a notebook that
+printed one machine's disabled rules as though they were the system's.
+
+**A test written after the fix proves nothing until you put the bug back.** The
+first browser test for a sticky-header bug passed with the bug reintroduced:
+the viewport was 900px and the page was 900px, so it could not scroll, sticky
+positioning never engaged, and the assertion measured a layout at rest — where
+the broken and the fixed version are identical. It was reporting that a bug
+which had already shipped could not happen. Every UI test here was checked by
+reintroducing its bug and watching it go red.
+
+**When the evaluation says the system is wrong, suspect the corpus first.** On
+this project it has been the corpus more often than the pipeline: a VAT that
+was correct when it was meant to be wrong, four documents claiming fields their
+layout never drew, two real defects labelled as clean. Each looked like a system
+fault until it was read closely.
+
+The same instinct applies to a pipeline in production. The interesting output of
+an evaluation run is not the score — it is the list of documents the system and
+the ground truth disagree about, read one at a time.

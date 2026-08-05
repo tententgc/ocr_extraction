@@ -384,7 +384,24 @@ def po_exists_and_matches(context: RuleContext) -> RuleFinding | None:
 
 @rule("invoice", severity="blocking")
 def po_amount_within_tolerance(context: RuleContext) -> RuleFinding | None:
-    """The invoiced amount must not overrun the purchase order."""
+    """The invoiced amount must not overrun the purchase order.
+
+    The two directions are not the same finding and no longer carry the same
+    severity.
+
+    Billing **more** than was ordered is a payment risk: money leaves for
+    something nobody agreed to, which is the failure this system exists to
+    stop. That stays `blocking`.
+
+    Billing **less** is not. Partial delivery, progress billing and short
+    shipments all produce an invoice under its order, all are ordinary, and
+    none of them pays anybody too much. Held as `blocking` it stopped
+    perfectly good documents - three of them in the demonstration set alone,
+    each of which looked like the system misbehaving until the rule was read.
+    It is worth reporting, because an invoice far under its order can also mean
+    the wrong order was quoted, so it comes back as a `warning`: recorded and
+    shown, holding nothing.
+    """
     reference = context.value("purchase_order_ref")
     total = context.value("total_amount")
     subtotal = context.value("subtotal")
@@ -407,17 +424,31 @@ def po_amount_within_tolerance(context: RuleContext) -> RuleFinding | None:
             "po_amount_within_tolerance",
             f"Invoiced {comparable:,.2f} against a purchase order of {po_amount:,.2f} (within tolerance).",
         )
-    direction = "over" if difference > 0 else "under"
+
+    overrun = difference > 0
+    share = abs(difference) / po_amount if po_amount else 0.0
+    if overrun:
+        message = (
+            f"Invoiced {comparable:,.2f} is {abs(difference):,.2f} over the purchase order "
+            f"value of {po_amount:,.2f} ({share:.1%}), outside the "
+            f"{context.amount_tolerance:.0%} tolerance."
+        )
+    else:
+        message = (
+            f"Invoiced {comparable:,.2f} is {abs(difference):,.2f} under the purchase order "
+            f"value of {po_amount:,.2f} ({share:.1%}). Normal for a partial delivery or "
+            f"progress billing; worth a look only if this invoice should have been for "
+            f"the whole order, or quotes the wrong one."
+        )
     return failed(
         "po_amount_within_tolerance",
-        f"Invoiced {comparable:,.2f} is {abs(difference):,.2f} {direction} the purchase order "
-        f"value of {po_amount:,.2f} ({abs(difference) / po_amount:.1%}), outside the "
-        f"{context.amount_tolerance:.0%} tolerance.",
-        severity="blocking",
+        message,
+        severity="blocking" if overrun else "warning",
         fields=["total_amount", "subtotal", "purchase_order_ref"],
         po_amount=po_amount,
         invoiced=round(comparable, 2),
         difference=round(difference, 2),
+        direction="over" if overrun else "under",
     )
 
 

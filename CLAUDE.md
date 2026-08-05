@@ -9,11 +9,16 @@ Full docs: [README.md](README.md) · [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md
 
 **Before starting anything substantial, read
 [docs/TECH-DEBT.th.md](docs/TECH-DEBT.th.md).** It is the standing work list,
-ordered by how soon each item bites rather than by size. Two entries matter to
-anyone touching this code: `web/app.js` is 2,053 lines with no tests at all and
-is where every UI bug found so far has come from, and
-`po_amount_within_tolerance` blocks an underrun as loudly as an overrun — that
-one has been worked around three times instead of decided.
+ordered by how soon each item bites rather than by size.
+
+`tests/test_web_ui.py` covers `web/app.js` in a real browser — every bug in
+this file is one that shipped, put back in front of chromium. It is marked
+`ui` and skipped by default because it starts a server and drives a browser;
+run it with `-m ui`, and install one with `python -m playwright install
+chromium`. **A UI test that passes at rest is worth nothing**: the first
+version of the sticky-header test scrolled a page that could not scroll, so
+`scrollY` stayed 0 and it passed with the bug put back. Any test that depends
+on scrolling must assert the page actually moved.
 
 ---
 
@@ -83,7 +88,8 @@ docuflow rules load real_samples/rules.json  # 5 expression + 2 agent rules
 docuflow real-samples --out real_samples     # regenerate the corpus
 docuflow evaluate --out report.json          # accuracy, coverage, time saved
 docuflow serve                               # the web UI on :8000
-.venv/bin/python -m pytest -q                # ~753 tests, no API key needed
+.venv/bin/python -m pytest -q                # 1,021 tests, no API key needed
+.venv/bin/python -m pytest -m ui -q          # + 20 browser tests, opt-in
 ```
 
 Regenerating the corpus: edit `src/docuflow/samples/real_world.py`, never the
@@ -232,13 +238,12 @@ verbatim from `real_samples/rules.json` and pinned to it by a test. Skip
 `DISABLED_RULES` below, so `cmd_demo_set` now prints that line in its
 instructions.
 
-Every amount is chosen so nothing carries a second defect by accident, and that
-is not automatic: `po_amount_within_tolerance` flags an **underrun** as loudly as
-an overrun, so a document billing 35,000 against a 38,000 order arrives with two
-reasons to be held. This has now caught three documents, most recently document
-06 billing 48,000 against a 72,000 order. Give each document its own order,
-sized so the invoice lands inside the 2% band **in both directions** —
-`test_no_document_is_accidentally_under_its_purchase_order` enforces it.
+Every amount is chosen so nothing carries a second finding by accident. Give
+each document its own order, sized so the invoice lands inside the 2% band in
+both directions — `test_no_document_is_accidentally_under_its_purchase_order`
+enforces it. An underrun is only a `warning` now, so it will not *hold* a demo
+document, but it still shows against it, and an unexplained amber chip on a
+PASS document invites the one question the demo is not about.
 
 The register is mirrored byte for byte into `build_live.py`, `status` included,
 so the same twelve files behave the same through `docuflow` and through Colab.

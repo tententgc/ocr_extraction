@@ -13,6 +13,7 @@ import time
 from docuflow.config import Settings
 from docuflow.models import OcrPage, OcrResult
 from docuflow.ocr.base import OcrProvider, OcrTransientError, OcrUnavailableError, PageImage
+from docuflow.ocr.fallbacks import PdfTextLayerOcr
 from docuflow.ocr.factory import provider_chain
 from docuflow.ocr.quality import score_document_text, score_page_text
 
@@ -148,6 +149,21 @@ def run_ocr(pages: list[PageImage], settings: Settings) -> OcrResult:
         all_notes.append(
             f"recognised with a general-purpose engine ({', '.join(sorted(improvised))}); "
             "accuracy is reduced"
+        )
+
+    # Reading a PDF's own text layer is the cheapest correct answer there is,
+    # and it is also a different kind of answer: nothing was recognised, the
+    # characters were already in the file. Worth saying out loud on both counts
+    # - somebody comparing two runs needs to know why one cost nothing, and
+    # somebody auditing a value needs to know no model was involved in reading
+    # it. Not a warning: the text layer of a digital PDF is the source.
+    from_text_layer = sum(1 for page in ocr_pages if page.provider == PdfTextLayerOcr.name)
+    if from_text_layer:
+        billed = len(ocr_pages) - from_text_layer
+        all_notes.append(
+            f"{from_text_layer} of {len(ocr_pages)} page(s) came from the PDF's own text "
+            f"layer; no model was called for "
+            f"{'any of them' if not billed else 'those'}"
         )
 
     # Which engine read the page is not a detail when the chain steps from a
