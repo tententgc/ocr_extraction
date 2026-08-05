@@ -11,7 +11,7 @@ a next step rather than shipped, it says so.
 ### The problem is trust, not reading
 
 Modern OCR reads a page well. The failure that costs money is subtler: the system
-returns a value that *looks* right, is wrong, and nobody notices. In accounts
+returns a value that _looks_ right, is wrong, and nobody notices. In accounts
 payable that becomes a wrong payment.
 
 So the architecture is organised around a single question — **can this value be
@@ -59,12 +59,12 @@ Typhoon OCR 1.5 (`typhoon-ocr1.5-3b` / `-2b`) is fine-tuned for document layout
 and Thai script. This is not a preference — it is measurable. On a degraded Thai
 scan in the corpus:
 
-| Engine | Vendor name read | Address read |
-|---|---|---|
-| Ground truth | `บริษัท เจ้าพระยา แฟซิลิตี้ จำกัด` | `77/8 ถนนพระราม 3 … ยานนาวา 10120` |
-| Typhoon OCR 1.5 (local) | `…แฟชิลิตี้…` (one wrong character) | correct |
-| Claude Sonnet 5 | correct | correct |
-| **OpenAI gpt-5.1** | **`…แพลติค…`** | **`ถนนพหลโยธิน … พญาไท 10400`** |
+| Engine                  | Vendor name read                    | Address read                       |
+| ----------------------- | ----------------------------------- | ---------------------------------- |
+| Ground truth            | `บริษัท เจ้าพระยา แฟซิลิตี้ จำกัด`  | `77/8 ถนนพระราม 3 … ยานนาวา 10120` |
+| Typhoon OCR 1.5 (local) | `…แฟชิลิตี้…` (one wrong character) | correct                            |
+| Claude Sonnet 5         | correct                             | correct                            |
+| **OpenAI gpt-5.1**      | **`…แพลติค…`**                      | **`ถนนพหลโยธิน … พญาไท 10400`**    |
 
 `gpt-5.1` did not misread the page — it **invented a plausible Thai company name
 and a complete street address that are not on the page at all**. A general vision
@@ -74,14 +74,14 @@ default engine is a document OCR model.
 
 Across the whole corpus (`docuflow benchmark`, strict mode, five documents):
 
-| Engine | Field accuracy | Silent errors | Defects caught | s/page |
-|---|---|---|---|---|
-| Typhoon Cloud `typhoon-ocr-v1.5` | 94.3% | 0% | 100% | 19.1 |
-| MLX `typhoon-ocr1.5-2b-8bit` | 92.9% | 0% | 100% | 37.0 |
-| Claude `claude-sonnet-5` | 91.4% | 0% | 100% | 30.2 |
-| OpenAI `gpt-5.1` | 85.7% | 0% | 100% | 29.0 |
-| Tesseract | 78.6% | 0% | 100% | 27.7 |
-| PDF text layer *(forced, alone)* | 61.4% | 0% | 50% | 17.2 |
+| Engine                           | Field accuracy | Silent errors | Defects caught | s/page |
+| -------------------------------- | -------------- | ------------- | -------------- | ------ |
+| Typhoon Cloud `typhoon-ocr-v1.5` | 94.3%          | 0%            | 100%           | 19.1   |
+| MLX `typhoon-ocr1.5-2b-8bit`     | 92.9%          | 0%            | 100%           | 37.0   |
+| Claude `claude-sonnet-5`         | 91.4%          | 0%            | 100%           | 30.2   |
+| OpenAI `gpt-5.1`                 | 85.7%          | 0%            | 100%           | 29.0   |
+| Tesseract                        | 78.6%          | 0%            | 100%           | 27.7   |
+| PDF text layer _(forced, alone)_ | 61.4%          | 0%            | 50%            | 17.2   |
 
 **The silent-error column is the point.** It is 0% for every engine, from the
 best to the one that cannot read scans at all. Engine quality moves the
@@ -159,7 +159,7 @@ error the prompt cannot fix — not before.
 **No RAG.** RAG retrieves unstructured knowledge. This problem needs exact lookups
 against structured master data — a vendor by tax ID, a purchase order by number.
 That is a database query, and a database query is right every time. Fuzzy matching
-is used only for vendor *names*, where OCR damage is real (`แฟชิลิตี้` still
+is used only for vendor _names_, where OCR damage is real (`แฟชิลิตี้` still
 resolves to the correct vendor at 86% similarity), and the match method and score
 are reported so confidence stays honest.
 
@@ -197,7 +197,7 @@ label, then read what follows") — on different backends, neither seeing the
 other's answers. Agreement scores 0.97; disagreement drops to 0.45 and the
 conflict is written into the field's notes.
 
-Different *models* matters as much as different framing: two passes of one model
+Different _models_ matters as much as different framing: two passes of one model
 over one page repeat the same mistake, and agreement between them is not a
 signal. The resolver therefore refuses to reuse the primary's backend, and
 refuses the backend hosting local OCR as well — a second local model does not run
@@ -228,13 +228,13 @@ reporting a number that is not in it — convincing to a reviewer skimming the p
 **4. Calibrated confidence.** Model self-reported confidence is not used; it is
 not calibrated. Confidence is computed from verifiable facts:
 
-| Situation | Base score |
-|---|---|
-| Both channels agree | 0.97 |
-| Model only, grounded | 0.86 |
-| Rule only | 0.80 |
-| Channels disagree | 0.45 |
-| Model only, ungrounded | 0.30 |
+| Situation              | Base score |
+| ---------------------- | ---------- |
+| Both channels agree    | 0.97       |
+| Model only, grounded   | 0.86       |
+| Rule only              | 0.80       |
+| Channels disagree      | 0.45       |
+| Model only, ungrounded | 0.30       |
 
 Then multiplied by OCR quality and reduced for degraded recognition, ungrounded
 critical fields, and values that needed reinterpretation.
@@ -262,18 +262,18 @@ The guiding principle: **an agent is for judgement; deterministic code is for
 everything with a right answer.** Using an LLM where a rule suffices adds cost,
 latency and a failure mode for nothing.
 
-| Stage | Implementation | Why |
-|---|---|---|
-| Ingest, render | Deterministic | File handling has a right answer |
-| OCR | Model | Genuinely needs one |
-| Classify | Keywords first, model only when ambiguous | Most documents are obvious |
-| Extract | Deterministic + model, both | Cross-check is the accuracy signal |
-| Ground | Deterministic | String matching, not judgement |
-| Normalize | Deterministic | Date and money parsing must be repeatable |
-| **Validate** | **Deterministic** | **Business rules must be auditable and identical every run** |
-| Reconcile | **Agent with tools** | Explaining *why* something failed is judgement |
-| Route | Deterministic | Policy, not opinion |
-| Post | Deterministic | One narrow gate |
+| Stage          | Implementation                            | Why                                                          |
+| -------------- | ----------------------------------------- | ------------------------------------------------------------ |
+| Ingest, render | Deterministic                             | File handling has a right answer                             |
+| OCR            | Model                                     | Genuinely needs one                                          |
+| Classify       | Keywords first, model only when ambiguous | Most documents are obvious                                   |
+| Extract        | Deterministic + model, both               | Cross-check is the accuracy signal                           |
+| Ground         | Deterministic                             | String matching, not judgement                               |
+| Normalize      | Deterministic                             | Date and money parsing must be repeatable                    |
+| **Validate**   | **Deterministic**                         | **Business rules must be auditable and identical every run** |
+| Reconcile      | **Agent with tools**                      | Explaining _why_ something failed is judgement               |
+| Route          | Deterministic                             | Policy, not opinion                                          |
+| Post           | Deterministic                             | One narrow gate                                              |
 
 The validation layer is deliberately not agentic. "Does subtotal + tax equal the
 total?" has one correct answer, must be identical on every run, and must be
@@ -332,7 +332,7 @@ correction hotspots — which is what tells you where accuracy work pays off nex
 
 Three severities: `blocking` stops the document, `warning` is recorded and
 holds nothing, `info` is a note. Keeping them genuinely different is what
-decides whether a human-in-the-loop system has a human in *some* loops or in
+decides whether a human-in-the-loop system has a human in _some_ loops or in
 every one.
 
 The worked example is real and cost three false alarms before anyone read the
@@ -357,24 +357,24 @@ that spends it freely stops being trusted long before it stops being right.
 
 The rule throughout: **degrade, never fail.**
 
-| Situation | Behaviour |
-|---|---|
-| OCR engine unavailable / model not pulled | Falls back through the engine chain; the run is marked `degraded`, which lowers every field's confidence |
-| No LLM at all | Rule channel alone; the system still extracts, validates and routes |
-| Model returns invalid JSON | Treated as "no extraction" → human review. Never a guessed structure |
-| Model advertises tool support but its template fails | First-turn failure triggers a plain-prompt retry (a real Ollama case) |
-| Endpoint rejects a parameter | Adapters negotiate: `max_tokens` → `max_completion_tokens` for gpt-5.1, dropping `temperature` for Claude Opus 5. Read the rejection rather than maintain a model list that goes stale |
-| Reasoning model spends its budget thinking | Empty answer with `finish_reason=length` triggers one retry with a larger budget |
-| Corrupt or unsupported file | `rejected` with a clear message, never an exception to the caller |
-| Duplicate invoice | Blocked, with the earlier record id and posting date |
-| Malicious URL (`169.254.169.254`, `localhost`) | Every redirect hop resolved and checked against private ranges before connecting |
-| Wrong file extension | Type detected from magic bytes, not the filename |
+| Situation                                            | Behaviour                                                                                                                                                                              |
+| ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OCR engine unavailable / model not pulled            | Falls back through the engine chain; the run is marked `degraded`, which lowers every field's confidence                                                                               |
+| No LLM at all                                        | Rule channel alone; the system still extracts, validates and routes                                                                                                                    |
+| Model returns invalid JSON                           | Treated as "no extraction" → human review. Never a guessed structure                                                                                                                   |
+| Model advertises tool support but its template fails | First-turn failure triggers a plain-prompt retry (a real Ollama case)                                                                                                                  |
+| Endpoint rejects a parameter                         | Adapters negotiate: `max_tokens` → `max_completion_tokens` for gpt-5.1, dropping `temperature` for Claude Opus 5. Read the rejection rather than maintain a model list that goes stale |
+| Reasoning model spends its budget thinking           | Empty answer with `finish_reason=length` triggers one retry with a larger budget                                                                                                       |
+| Corrupt or unsupported file                          | `rejected` with a clear message, never an exception to the caller                                                                                                                      |
+| Duplicate invoice                                    | Blocked, with the earlier record id and posting date                                                                                                                                   |
+| Malicious URL (`169.254.169.254`, `localhost`)       | Every redirect hop resolved and checked against private ranges before connecting                                                                                                       |
+| Wrong file extension                                 | Type detected from magic bytes, not the filename                                                                                                                                       |
 
 Two edge cases worth calling out, because both were found by running the system
 rather than reasoning about it:
 
 - `parse_date("Net 45")` returned `2045-08-03` — dateutil invented the year from
-  "45" and took the day and month from *today*. Now every ambiguous parse runs
+  "45" and took the day and month from _today_. Now every ambiguous parse runs
   twice with different defaults; any component that changes was invented, and the
   parse is rejected. Silently guessing a date is precisely the behaviour the whole
   design forbids, and it took a ground-truth corpus to notice.
@@ -392,8 +392,8 @@ the top five vendors by volume, extracted and validated, writing to a review
 queue only — no posting.
 
 That is deliberately small, and it is enough to answer the only question that
-matters at week one: *on real documents from this business, how often is it
-right, and how often is it confidently wrong?* Everything else — more document
+matters at week one: _on real documents from this business, how often is it
+right, and how often is it confidently wrong?_ Everything else — more document
 types, more layouts, straight-through posting — is scaling a known quantity.
 
 Ship in this order:
@@ -416,14 +416,14 @@ because a real corpus was not available.
 **The metric that gates deployment is the silent error rate**, not accuracy.
 Everything else is secondary:
 
-| Metric | What it answers | Target |
-|---|---|---|
-| **Silent error rate** | Did anything wrong reach the ledger? | **0%** |
-| Auto-post precision | Of what posted automatically, how much was right? | 100% |
-| Defect recall | Do the rules catch known-bad documents? | 100% |
-| Straight-through rate | How much work disappeared? | grows over time |
-| Field accuracy | Where to spend improvement effort | diagnostic |
-| Seconds per page | Cost and throughput | budget-dependent |
+| Metric                | What it answers                                   | Target           |
+| --------------------- | ------------------------------------------------- | ---------------- |
+| **Silent error rate** | Did anything wrong reach the ledger?              | **0%**           |
+| Auto-post precision   | Of what posted automatically, how much was right? | 100%             |
+| Defect recall         | Do the rules catch known-bad documents?           | 100%             |
+| Straight-through rate | How much work disappeared?                        | grows over time  |
+| Field accuracy        | Where to spend improvement effort                 | diagnostic       |
+| Seconds per page      | Cost and throughput                               | budget-dependent |
 
 Note the asymmetry: silent error rate must be zero from day one, while
 straight-through rate is allowed to start low and climb. A system that queues
@@ -453,7 +453,7 @@ docuflow benchmark --combo "ocr=ollama:scb10x/typhoon-ocr1.5-3b,llm=typhoon" \
                    --combo "ocr=claude:claude-sonnet-5,llm=typhoon"
 ```
 
-Engine choice is then an evidence-based decision on *your* documents, ranked by
+Engine choice is then an evidence-based decision on _your_ documents, ranked by
 fewest silent errors, then accuracy, then speed. This is how the gpt-5.1
 hallucination was found — not by reading model cards.
 
