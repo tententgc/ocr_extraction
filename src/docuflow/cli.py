@@ -501,6 +501,30 @@ def cmd_real_samples(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_demo_set(args: argparse.Namespace) -> int:
+    """Render the demonstration set and say what each document should do."""
+    from docuflow.samples.demo_set import generate
+
+    out_dir = Path(args.out)
+    manifest = generate(out_dir)
+
+    print(f"Wrote {len(manifest)} document(s) to {out_dir}:\n")
+    for entry in manifest:
+        verdict = "POST" if entry["expected_post"] else "HOLD"
+        print(f"  {verdict:5} {entry['file']:44} {entry['demonstrates'].split('.')[0]}.")
+    from docuflow.samples.demo_set import PURCHASE_ORDERS, VENDORS
+
+    print(f"\n  register: {out_dir / 'master'}  "
+          f"({len(VENDORS)} vendors, {len(PURCHASE_ORDERS)} purchase orders)")
+    print(
+        "\nLoad it and run it with:\n"
+        "  docuflow reset --confirm\n"
+        f"  docuflow master load {out_dir / 'master'}\n"
+        f"  docuflow process {out_dir}/*.pdf {out_dir}/*.png"
+    )
+    return 0
+
+
 def cmd_models(args: argparse.Namespace) -> int:
     from docuflow.models_registry import list_models
 
@@ -638,6 +662,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     real_parser.add_argument("--out", default="real_samples", help="where to write it")
     real_parser.set_defaults(func=cmd_real_samples)
+
+    demo_parser = subparsers.add_parser(
+        "demo-set", help="render five unambiguous documents for a live demonstration"
+    )
+    demo_parser.add_argument("--out", default="Demo_Sample", help="where to write it")
+    demo_parser.set_defaults(func=cmd_demo_set)
 
     models_parser = subparsers.add_parser("models", help="list selectable OCR and agent models")
     models_parser.set_defaults(func=cmd_models)
