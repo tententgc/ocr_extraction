@@ -101,6 +101,28 @@ def _findings_summary(run: DocumentRun) -> str:
         for finding in run.findings
         if not finding.passed
     ]
+
+    # What the deterministic checks already worked out, handed over rather than
+    # left for the agent to rediscover. Two reasons. It stops the agent
+    # proposing a different value for a number the arithmetic has already
+    # settled - a contradiction a reviewer has no way to adjudicate. And where
+    # it agrees, it stops it spending tool calls re-deriving a conclusion that
+    # was in front of it.
+    fixes = run.suggested_fixes
+    if fixes:
+        lines.append("")
+        lines.append("The deterministic checks already derived these corrections:")
+        lines.extend(
+            f"- {fix.field}: {fix.current!r} should be {fix.suggested!r} "
+            f"({fix.confidence:.0%} confidence) because {fix.reason}"
+            for fix in fixes
+        )
+        lines.append(
+            "Do not contradict a correction above 85% confidence - it follows from arithmetic "
+            "on the document's own numbers. Confirm it, or explain what the page shows that "
+            "the arithmetic cannot see."
+        )
+
     return "\n".join(lines) or "(no rule failures)"
 
 

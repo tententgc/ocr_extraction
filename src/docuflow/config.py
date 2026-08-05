@@ -41,6 +41,11 @@ class Settings(BaseSettings):
     ocr_max_pages: int = Field(default=8, ge=1, le=100)
     ocr_image_dim: int = Field(default=1800, ge=512, le=4096)
     ocr_max_tokens: int = Field(default=8192, ge=512, le=32768)
+    # Straighten, relight and sharpen each page before the model reads it. Every
+    # correction is gated on a measurement and reverted if it does not help, so
+    # a clean digital PDF passes through untouched; this is here for the photos
+    # and the faxes. Turn it off to measure the OCR engine on raw input.
+    ocr_preprocess: bool = True
     # Disable engine fallback. Production wants fallback (a missing model should
     # degrade a run, not break it), but a benchmark must measure the engine it
     # names - otherwise a weak engine silently scores its fallback's accuracy.
@@ -94,7 +99,14 @@ class Settings(BaseSettings):
     # --- Routing thresholds ------------------------------------------------
     auto_post_min_confidence: float = Field(default=0.90, ge=0.0, le=1.0)
     field_review_confidence: float = Field(default=0.75, ge=0.0, le=1.0)
+    # How far an invoice may differ from the purchase order it quotes: a
+    # commercial allowance for freight, part shipments and price movement.
     amount_tolerance: float = Field(default=0.02, ge=0.0)
+    # How far a document may differ from itself. Rounding only - subtotal plus
+    # tax either makes the total or the document is wrong. Kept separate from
+    # the commercial allowance above, which is thousands of times looser and
+    # would let a misread digit through as "totals add up".
+    arithmetic_tolerance: float = Field(default=0.0001, ge=0.0)
 
     # --- Business policy ---------------------------------------------------
     # These are finance policy, not code. Change them here (or in .env) rather

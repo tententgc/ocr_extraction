@@ -1,0 +1,101 @@
+{
+  "_comment": [
+    "Checks a finance team would write for themselves, on top of the twenty-six",
+    "that ship with the system. Load with: docuflow rules load real_samples/rules.json",
+    "",
+    "`prompt` is what a person typed. Everything below it is what that compiled",
+    "to, and is what actually runs - so the compilation is reviewable rather than",
+    "a model being asked the same question again on every document.",
+    "",
+    "The last two are agent rules. They exist because their question is not a",
+    "comparison between fields: answering it needs a lookup, then arithmetic on",
+    "what came back, then a judgement about what the difference means."
+  ],
+  "rules": [
+    {
+      "rule_id": "every_line_item_described",
+      "title": "Every line item must have a description",
+      "prompt": "Every line on an invoice needs a description. A blank one means the table was misread.",
+      "message": "A line item has no description. The table was probably misread - check the amounts against the page before posting.",
+      "doc_types": ["invoice"],
+      "severity": "warning",
+      "assert": { "every_item": { "field": "description", "op": "present" } }
+    },
+    {
+      "rule_id": "no_single_line_over_400k",
+      "title": "No single line over 400,000 without a second signature",
+      "prompt": "If any one line on an invoice is more than 400,000 baht it needs a second signature.",
+      "message": "A single line item is over 400,000 and needs a second signature before this can pay.",
+      "doc_types": ["invoice"],
+      "severity": "blocking",
+      "assert": { "not": { "any_item": { "field": "amount", "op": "gt", "value": 400000 } } }
+    },
+    {
+      "rule_id": "payment_terms_stated",
+      "title": "An invoice must state its payment terms",
+      "prompt": "Every invoice has to say its payment terms, otherwise we cannot schedule the payment.",
+      "message": "No payment terms are stated, so this cannot be scheduled. Take them from the vendor's master record or ask the supplier.",
+      "doc_types": ["invoice"],
+      "severity": "warning",
+      "assert": { "field": "payment_terms", "op": "present" }
+    },
+    {
+      "rule_id": "currency_is_one_we_trade_in",
+      "title": "Only currencies we hold accounts in",
+      "prompt": "We only pay in THB, USD, EUR and SGD. Anything else has to be converted first.",
+      "message": "This is billed in a currency we hold no account in. Treasury has to convert it before it can be paid.",
+      "doc_types": ["invoice", "receipt"],
+      "severity": "blocking",
+      "assert": { "field": "currency", "op": "in", "value": ["THB", "USD", "EUR", "SGD"] }
+    },
+    {
+      "rule_id": "large_invoice_names_a_buyer",
+      "title": "Anything over 100,000 must name the buying entity",
+      "prompt": "Invoices over 100,000 must say which of our companies they are addressed to.",
+      "message": "This is over 100,000 and does not name the buying entity, so it cannot be coded to a company.",
+      "doc_types": ["invoice"],
+      "severity": "warning",
+      "when": { "field": "total_amount", "op": "gt", "value": 100000 },
+      "assert": { "field": "buyer_name", "op": "present" }
+    },
+    {
+      "rule_id": "purchase_order_still_has_room",
+      "title": "The purchase order must still be open and have budget left",
+      "prompt": "Before paying an invoice against a purchase order, check the order is still open and that what we have already paid against it plus this invoice does not exceed it.",
+      "message": "This invoice cannot be paid against the purchase order it quotes.",
+      "doc_types": ["invoice"],
+      "severity": "blocking",
+      "kind": "agent",
+      "when": { "field": "purchase_order_ref", "op": "present" },
+      "instruction": "Decide whether this invoice may be paid against the purchase order it quotes. It may not if the order is closed or cancelled, or if everything already posted against it plus this invoice exceeds the order value. Answer pass only if the order is open and there is room.",
+      "plan": [
+        "Look up the purchase order quoted on the invoice and note its status, value and currency.",
+        "If the status is anything other than open, that alone is a fail - say which status it is.",
+        "Find the records already posted against this purchase order and add up their amounts.",
+        "Add this invoice's subtotal to that sum and compare it with the order value.",
+        "Answer fail if the total exceeds the order value, pass if it does not, and unsure if a lookup returned nothing."
+      ],
+      "tools": ["lookup_purchase_order", "find_posted_records", "read_document"]
+    },
+    {
+      "rule_id": "tax_id_belongs_to_this_vendor",
+      "title": "The tax ID on the page must be this vendor's registered one",
+      "prompt": "Check the tax ID printed on the invoice is really the one registered for that vendor, not just a valid number.",
+      "message": "The tax ID on this document does not belong to the vendor it names.",
+      "_note": "Invoices only. A receipt calls the same field merchant_tax_id, and a guard spanning both types may only name fields both of them have - which the store refuses rather than silently never firing.",
+      "doc_types": ["invoice"],
+      "severity": "warning",
+      "kind": "agent",
+      "when": { "field": "vendor_tax_id", "op": "present" },
+      "instruction": "Decide whether the tax ID printed on this document is the one registered for the vendor named on it. A number that passes its check digit but belongs to a different company is still wrong. Answer pass only if the registered tax ID matches the printed one.",
+      "plan": [
+        "Run the check-digit test on the tax ID as it was read.",
+        "Look up the vendor by the name printed on the document.",
+        "Compare the tax ID on the vendor's master record with the one on the page.",
+        "If they differ, search the page text for the tax ID to see whether it was misread.",
+        "Answer pass when they match, fail when they clearly differ, and unsure when the vendor is not in the master file."
+      ],
+      "tools": ["validate_tax_id", "lookup_vendor", "read_document"]
+    }
+  ]
+}

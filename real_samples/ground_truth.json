@@ -1,0 +1,1593 @@
+{
+  "documents": [
+    {
+      "doc_id": "invoice_clean_matches_po",
+      "doc_type": "invoice",
+      "layout": "classic",
+      "title": "Rungruang Steel invoice against PO-2026-0501",
+      "demonstrates": "Everything reconciles: PO, vendor, bank account, arithmetic. Should post without a person.",
+      "ground_truth": {
+        "invoice_number": "RSW-2026-1188",
+        "invoice_date": "2026-07-14",
+        "due_date": "2026-09-12",
+        "vendor_name": "Rungruang Steel Works Co., Ltd.",
+        "vendor_tax_id": "0105552000110",
+        "buyer_name": "Mirtphol Industries PCL",
+        "purchase_order_ref": "PO-2026-0501",
+        "currency": "THB",
+        "subtotal": 415000.0,
+        "tax_rate": 7.0,
+        "tax_amount": 29050.0,
+        "total_amount": 444050.0,
+        "payment_terms": "Net 60",
+        "bank_account": "3120045678"
+      },
+      "line_items": [
+        {
+          "description": "Hot-rolled steel plate 12mm x 1500 x 6000",
+          "quantity": 20,
+          "unit_price": 18500.0,
+          "amount": 370000.0
+        },
+        {
+          "description": "Cutting and edge preparation",
+          "quantity": 20,
+          "unit_price": 2250.0,
+          "amount": 45000.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [],
+      "requires_posted": null,
+      "file": "1_invoice_clean_matches_po_True.pdf",
+      "arrival": "pdf",
+      "order": 1,
+      "posts": true,
+      "reference_text": "Rungruang Steel Works Co., Ltd.\r\nBangkok, Thailand\r\nTax ID: 0105552000110\r\nTAX INVOICE\r\nInvoice No.: RSW-2026-1188\r\nInvoice Date: 14 July 2026\r\nDue Date: 12 September 2026\r\nPO Reference: PO-2026-0501\r\nBill To\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nDescription Qty Unit Price Amount\r\nHot-rolled steel plate 12mm x 1500 x 6000 20 18,500.00 370,000.00\r\nCutting and edge preparation 20 2,250.00 45,000.00\r\nSubtotal 415,000.00 THB\r\nVAT 7% 29,050.00 THB\r\nAmount Due 444,050.00 THB\r\nPayment Terms: Net 60\r\nRemit to Account No: 3120045678"
+    },
+    {
+      "doc_id": "invoice_total_transposed",
+      "doc_type": "invoice",
+      "layout": "modern",
+      "title": "Thai Beverage invoice whose total has two digits swapped",
+      "demonstrates": "Subtotal, VAT and the line items all agree on 44,940.00; the total reads 49,440.00. The suggestion should name the total and call the transposition.",
+      "ground_truth": {
+        "invoice_number": "TBS-7741",
+        "invoice_date": "2026-07-16",
+        "due_date": "2026-07-31",
+        "vendor_name": "Thai Beverage Supply Co., Ltd.",
+        "vendor_tax_id": "0105563000221",
+        "buyer_name": "Mirtphol Industries PCL",
+        "purchase_order_ref": "PO-2026-0523",
+        "currency": "THB",
+        "subtotal": 42000.0,
+        "tax_rate": 7.0,
+        "tax_amount": 2940.0,
+        "total_amount": 49440.0,
+        "payment_terms": "Net 15",
+        "bank_account": "7710028899"
+      },
+      "line_items": [
+        {
+          "description": "Drinking water 20L returnable",
+          "quantity": 300,
+          "unit_price": 95.0,
+          "amount": 28500.0
+        },
+        {
+          "description": "Instant coffee, catering tin",
+          "quantity": 45,
+          "unit_price": 300.0,
+          "amount": 13500.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [
+        "invoice_totals_consistent"
+      ],
+      "requires_posted": null,
+      "file": "2_invoice_total_transposed_False.pdf",
+      "arrival": "pdf",
+      "order": 2,
+      "posts": false,
+      "reference_text": "Thai Beverage Supply Co., Ltd.\r\nBangkok, Thailand\r\nINVOICE\r\nBILLED TO\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nInvoice # TBS-7741\r\nIssued Jul 16, 2026\r\nPayment Due Jul 31, 2026\r\nPO PO-2026-0523\r\nSupplier Tax ID 0105563000221\r\nDescription Qty Unit Price Amount\r\nDrinking water 20L returnable 300 95.00 28,500.00\r\nInstant coffee, catering tin 45 300.00 13,500.00\r\nSubtotal 42,000.00 THB\r\nVAT 7% 2,940.00 THB\r\nAmount Due 49,440.00 THB\r\nTerms: Net 15\r\nBank Account: 7710028899"
+    },
+    {
+      "doc_id": "invoice_photo_on_a_desk",
+      "doc_type": "invoice",
+      "layout": "classic",
+      "title": "Sunrise Electrical invoice photographed at an angle",
+      "demonstrates": "A phone photo: skewed, lit from one side, slightly soft. Preprocessing has to straighten and relight it before OCR sees it.",
+      "ground_truth": {
+        "invoice_number": "SE-2026-0442",
+        "invoice_date": "2026-07-18",
+        "due_date": "2026-09-01",
+        "vendor_name": "Sunrise Electrical Co., Ltd.",
+        "vendor_tax_id": "0105571000448",
+        "buyer_name": "Mirtphol Industries PCL",
+        "purchase_order_ref": "PO-2026-0545",
+        "currency": "THB",
+        "subtotal": 128000.0,
+        "tax_rate": 7.0,
+        "tax_amount": 8960.0,
+        "total_amount": 136960.0,
+        "payment_terms": "Net 45",
+        "bank_account": "8890014455"
+      },
+      "line_items": [
+        {
+          "description": "LV switchgear panel, 8-way",
+          "quantity": 4,
+          "unit_price": 26000.0,
+          "amount": 104000.0
+        },
+        {
+          "description": "Installation and commissioning",
+          "quantity": 1,
+          "unit_price": 24000.0,
+          "amount": 24000.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [],
+      "requires_posted": null,
+      "file": "3_invoice_photo_on_a_desk_False.jpg",
+      "arrival": "photo",
+      "order": 3,
+      "posts": false,
+      "reference_text": "Sunrise Electrical Co., Ltd.\r\nBangkok, Thailand\r\nTax ID: 0105571000448\r\nTAX INVOICE\r\nInvoice No.: SE-2026-0442\r\nInvoice Date: 18 July 2026\r\nDue Date: 1 September 2026\r\nPO Reference: PO-2026-0545\r\nBill To\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nDescription Qty Unit Price Amount\r\nLV switchgear panel, 8-way 4 26,000.00 104,000.00\r\nInstallation and commissioning 1 24,000.00 24,000.00\r\nSubtotal 128,000.00 THB\r\nVAT 7% 8,960.00 THB\r\nAmount Due 136,960.00 THB\r\nPayment Terms: Net 45\r\nRemit to Account No: 8890014455"
+    },
+    {
+      "doc_id": "invoice_vat_miscalculated",
+      "doc_type": "invoice",
+      "layout": "dense",
+      "title": "Nakhon Chemicals invoice where the VAT does not match the rate",
+      "demonstrates": "States 7% but charges 4,590.00 on 76,500.00, which is 6%. The tax is the only value the arithmetic can blame, and the vendor is on hold as well.",
+      "ground_truth": {
+        "invoice_number": "NCC-30187",
+        "invoice_date": "2026-07-20",
+        "due_date": "2026-08-19",
+        "vendor_name": "Nakhon Chemicals Co., Ltd.",
+        "vendor_tax_id": "0105539000551",
+        "buyer_name": "Mirtphol Industries PCL",
+        "purchase_order_ref": "PO-2026-0556",
+        "currency": "THB",
+        "subtotal": 76500.0,
+        "tax_rate": 7.0,
+        "tax_amount": 4590.0,
+        "total_amount": 81090.0,
+        "payment_terms": "Net 30",
+        "bank_account": "6640077331"
+      },
+      "line_items": [
+        {
+          "description": "Isopropyl alcohol 99%, 200L drum",
+          "quantity": 12,
+          "unit_price": 4250.0,
+          "amount": 51000.0
+        },
+        {
+          "description": "Acetone technical grade, 200L drum",
+          "quantity": 6,
+          "unit_price": 4250.0,
+          "amount": 25500.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [
+        "tax_rate_consistent",
+        "vendor_active"
+      ],
+      "requires_posted": null,
+      "file": "4_invoice_vat_miscalculated_False.pdf",
+      "arrival": "pdf",
+      "order": 4,
+      "posts": false,
+      "reference_text": "Nakhon Chemicals Co., Ltd.\r\nBangkok, Thailand\r\nTIN 0105539000551 Tel 02-555-0100\r\nINVOICE NCC-30187 Dated 20/07/2026 Terms Net 30 Due 19/08/2026\r\nTo: Mirtphol Industries PCL, 88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\n1. Isopropyl alcohol 99%, 200L drum x12 @ 4,250.00 = 51,000.00\r\n2. Acetone technical grade, 200L drum x6 @ 4,250.00 = 25,500.00\r\nSub-total 76,500.00 THB VAT 7% 4,590.00 TOTAL DUE 81,090.00 THB\r\nPlease remit to a/c 6640077331 within terms."
+    },
+    {
+      "doc_id": "invoice_bank_account_changed",
+      "doc_type": "invoice",
+      "layout": "classic",
+      "title": "Rungruang Steel invoice quoting an account that is not theirs",
+      "demonstrates": "The signature of payment-redirection fraud: a correct invoice with new remittance details. Must block, and must not offer a one-click fix.",
+      "ground_truth": {
+        "invoice_number": "RSW-2026-1203",
+        "invoice_date": "2026-07-21",
+        "due_date": "2026-09-19",
+        "vendor_name": "Rungruang Steel Works Co., Ltd.",
+        "vendor_tax_id": "0105552000110",
+        "buyer_name": "Mirtphol Industries PCL",
+        "currency": "THB",
+        "subtotal": 96000.0,
+        "tax_rate": 7.0,
+        "tax_amount": 6720.0,
+        "total_amount": 102720.0,
+        "payment_terms": "Net 60",
+        "bank_account": "0455512399"
+      },
+      "line_items": [
+        {
+          "description": "Steel angle bar 50x50x5mm",
+          "quantity": 240,
+          "unit_price": 400.0,
+          "amount": 96000.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [
+        "bank_account_matches_vendor"
+      ],
+      "requires_posted": null,
+      "file": "5_invoice_bank_account_changed_False.pdf",
+      "arrival": "pdf",
+      "order": 5,
+      "posts": false,
+      "reference_text": "Rungruang Steel Works Co., Ltd.\r\nBangkok, Thailand\r\nTax ID: 0105552000110\r\nTAX INVOICE\r\nInvoice No.: RSW-2026-1203\r\nInvoice Date: 21 July 2026\r\nDue Date: 19 September 2026\r\nBill To\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nDescription Qty Unit Price Amount\r\nSteel angle bar 50x50x5mm 240 400.00 96,000.00\r\nSubtotal 96,000.00 THB\r\nVAT 7% 6,720.00 THB\r\nAmount Due 102,720.00 THB\r\nPayment Terms: Net 60\r\nRemit to Account No: 0455512399"
+    },
+    {
+      "doc_id": "invoice_unknown_vendor",
+      "doc_type": "invoice",
+      "layout": "minimal",
+      "title": "Invoice from a company that is not in the vendor file",
+      "demonstrates": "Nothing about the document is wrong; the counterparty is simply unregistered. Blocks, and the agent must not invent a match.",
+      "ground_truth": {
+        "invoice_number": "AX-2026-556",
+        "invoice_date": "2026-07-22",
+        "due_date": "2026-08-21",
+        "vendor_name": "Apex Industrial Fasteners Ltd.",
+        "vendor_tax_id": "0105568000661",
+        "buyer_name": "Mirtphol Industries PCL",
+        "currency": "THB",
+        "subtotal": 31400.0,
+        "tax_rate": 7.0,
+        "tax_amount": 2198.0,
+        "total_amount": 33598.0,
+        "payment_terms": "Net 30"
+      },
+      "line_items": [
+        {
+          "description": "Stainless bolt M12 x 60, box of 100",
+          "quantity": 40,
+          "unit_price": 785.0,
+          "amount": 31400.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [
+        "vendor_known"
+      ],
+      "requires_posted": null,
+      "file": "6_invoice_unknown_vendor_False.png",
+      "arrival": "png",
+      "order": 6,
+      "posts": false,
+      "reference_text": "Apex Industrial Fasteners Ltd.\r\nAX-2026-556\r\n22/07/2026\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nStainless bolt M12 x 60, box of 100 31,400.00\r\n31,400.00\r\n+7% 2,198.00\r\nTHB 33,598.00\r\n21/08/2026"
+    },
+    {
+      "doc_id": "invoice_from_a_blocked_vendor",
+      "doc_type": "invoice",
+      "layout": "two_column",
+      "title": "Krungthep Print invoice - vendor is blocked in the master file",
+      "demonstrates": "A clean, correct invoice that must still not pay automatically, because the block is a decision someone made deliberately.",
+      "ground_truth": {
+        "invoice_number": "KPH-2026-0912",
+        "invoice_date": "2026-07-23",
+        "due_date": "2026-08-22",
+        "vendor_name": "Krungthep Print House Co., Ltd.",
+        "vendor_tax_id": "0105547000336",
+        "buyer_name": "Mirtphol Industries PCL",
+        "currency": "THB",
+        "subtotal": 18600.0,
+        "tax_rate": 7.0,
+        "tax_amount": 1302.0,
+        "total_amount": 19902.0,
+        "payment_terms": "Net 30",
+        "bank_account": "2260031122"
+      },
+      "line_items": [
+        {
+          "description": "Annual report, 500 copies, full colour",
+          "quantity": 500,
+          "unit_price": 37.2,
+          "amount": 18600.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [
+        "vendor_active"
+      ],
+      "requires_posted": null,
+      "file": "7_invoice_from_a_blocked_vendor_False.pdf",
+      "arrival": "pdf",
+      "order": 7,
+      "posts": false,
+      "reference_text": "Krungthep Print House Co., Ltd.\r\nBangkok, Thailand\r\nTax ID 0105547000336\r\nINVOICE\r\nKPH-2026-0912\r\nJul 23, 2026\r\nTerms Net 30\r\nBILL TO\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nSHIP TO\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nDescription Qty Unit Price Amount\r\nAnnual report, 500 copies, full colour 500 37.20 18,600.00\r\nSubtotal 18,600.00 THB\r\nVAT 7% 1,302.00 THB\r\nAmount Due 19,902.00 THB\r\nRemit to Account No: 2260031122"
+    },
+    {
+      "doc_id": "invoice_over_the_purchase_order",
+      "doc_type": "invoice",
+      "layout": "classic",
+      "title": "Meridian invoice 22% above the purchase order it quotes",
+      "demonstrates": "Arithmetic is perfect; the commercial overrun is the problem. Tests that the 2% purchase-order allowance is still a commercial one.",
+      "ground_truth": {
+        "invoice_number": "MC-2026-0774",
+        "invoice_date": "2026-07-24",
+        "due_date": "2026-08-23",
+        "vendor_name": "Meridian Consulting LLP",
+        "vendor_tax_id": "GB428765190",
+        "buyer_name": "Mirtphol Industries PCL",
+        "purchase_order_ref": "PO-2026-0534",
+        "currency": "USD",
+        "subtotal": 44000.0,
+        "tax_rate": 0.0,
+        "tax_amount": 0.0,
+        "total_amount": 44000.0,
+        "payment_terms": "Net 30",
+        "bank_account": "GB29NWBK60161331926819"
+      },
+      "line_items": [
+        {
+          "description": "Operations advisory, phase 2 - senior partner",
+          "quantity": 110,
+          "unit_price": 280.0,
+          "amount": 30800.0
+        },
+        {
+          "description": "Operations advisory, phase 2 - analyst",
+          "quantity": 132,
+          "unit_price": 100.0,
+          "amount": 13200.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [
+        "po_amount_within_tolerance"
+      ],
+      "requires_posted": null,
+      "file": "8_invoice_over_the_purchase_order_False.pdf",
+      "arrival": "pdf",
+      "order": 8,
+      "posts": false,
+      "reference_text": "Meridian Consulting LLP\r\nBangkok, Thailand\r\nTax ID: GB428765190\r\nTAX INVOICE\r\nInvoice No.: MC-2026-0774\r\nInvoice Date: 24 July 2026\r\nDue Date: 23 August 2026\r\nPO Reference: PO-2026-0534\r\nBill To\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nDescription Qty Unit Price Amount\r\nOperations advisory, phase 2 - senior partner 110 280.00 30,800.00\r\nOperations advisory, phase 2 - analyst 132 100.00 13,200.00\r\nSubtotal 44,000.00 USD\r\nVAT 0.00 USD\r\nAmount Due 44,000.00 USD\r\nPayment Terms: Net 30\r\nRemit to Account No: GB29NWBK60161331926819"
+    },
+    {
+      "doc_id": "invoice_thai_buddhist_dates",
+      "doc_type": "invoice",
+      "layout": "thai_tax",
+      "title": "ใบกำกับภาษี from Thai Beverage with Buddhist-era dates",
+      "demonstrates": "Thai layout, Thai month names, dates in BE 2569. Everything reconciles once the calendar is converted.",
+      "ground_truth": {
+        "invoice_number": "TBS-7802",
+        "invoice_date": "2026-07-25",
+        "due_date": "2026-08-09",
+        "vendor_name": "บริษัท ไทยเบเวอเรจ ซัพพลาย จำกัด",
+        "vendor_tax_id": "0105563000221",
+        "buyer_name": "Mirtphol Industries PCL",
+        "currency": "THB",
+        "subtotal": 24000.0,
+        "tax_rate": 7.0,
+        "tax_amount": 1680.0,
+        "total_amount": 25680.0,
+        "payment_terms": "Net 15",
+        "bank_account": "7710028899"
+      },
+      "line_items": [
+        {
+          "description": "น้ำดื่ม 20 ลิตร",
+          "quantity": 200,
+          "unit_price": 95.0,
+          "amount": 19000.0
+        },
+        {
+          "description": "กาแฟสำเร็จรูป",
+          "quantity": 20,
+          "unit_price": 250.0,
+          "amount": 5000.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "th",
+      "expected_findings": [],
+      "requires_posted": null,
+      "file": "9_invoice_thai_buddhist_dates_True.png",
+      "arrival": "png",
+      "order": 9,
+      "posts": true,
+      "reference_text": "บริษัท ไทยเบเวอเรจ ซัพพลาย จำกัด\r\nBangkok, Thailand\r\nเลขประจำตัวผู้เสียภาษี 0105563000221\r\nใบกำกับภาษี / ใบแจ้งหนี้\r\n(ต้นฉบับ)\r\nเลขที่: TBS-7802\r\nวันที่: ๒๕ กรกฎาคม ๒๕๖๙\r\nครบกำหนดชำระ: ๙ สิงหาคม ๒๕๖๙\r\nลูกค้า / ผู้ซื้อ\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nรายการ จำนวน ราคาต่อหน่วย จำนวนเงิน\r\nน้ำดื่ม 20 ลิตร ๒๐๐ ๙๕.๐๐ ๑๙,๐๐๐.๐๐\r\nกาแฟสำเร็จรูป ๒๐ ๒๕๐.๐๐ ๕,๐๐๐.๐๐\r\nรวมเป็นเงิน ๒๔,๐๐๐.๐๐\r\nภาษีมูลค่าเพิ่ม ๗% ๑,๖๘๐.๐๐\r\nจำนวนเงินรวมทั้งสิ้น ๒๕,๖๘๐.๐๐\r\nเงื่อนไขการชำระเงิน: Net 15\r\nเลขที่บัญชีธนาคาร: 7710028899\r\nผู้รับเงิน .............................."
+    },
+    {
+      "doc_id": "invoice_no_po_above_threshold",
+      "doc_type": "invoice",
+      "layout": "minimal",
+      "title": "Sunrise Electrical invoice for 214,000 with no purchase order",
+      "demonstrates": "Above the 50,000 threshold with nothing to match against. Blocks on policy rather than on anything being wrong.",
+      "ground_truth": {
+        "invoice_number": "SE-2026-0471",
+        "invoice_date": "2026-07-26",
+        "due_date": "2026-09-09",
+        "vendor_name": "Sunrise Electrical Co., Ltd.",
+        "vendor_tax_id": "0105571000448",
+        "buyer_name": "Mirtphol Industries PCL",
+        "currency": "THB",
+        "subtotal": 200000.0,
+        "tax_rate": 7.0,
+        "tax_amount": 14000.0,
+        "total_amount": 214000.0,
+        "payment_terms": "Net 45",
+        "bank_account": "8890014455"
+      },
+      "line_items": [
+        {
+          "description": "Emergency cable replacement, plant 2",
+          "quantity": 1,
+          "unit_price": 200000.0,
+          "amount": 200000.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [
+        "purchase_order_required"
+      ],
+      "requires_posted": null,
+      "file": "10_invoice_no_po_above_threshold_False.pdf",
+      "arrival": "pdf",
+      "order": 10,
+      "posts": false,
+      "reference_text": "Sunrise Electrical Co., Ltd.\r\nSE-2026-0471\r\n26/07/2026\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nEmergency cable replacement, plant 2 200,000.00\r\n200,000.00\r\n+7% 14,000.00\r\nTHB 214,000.00\r\n09/09/2026\r\n8890014455"
+    },
+    {
+      "doc_id": "receipt_photographed",
+      "doc_type": "receipt",
+      "layout": "narrow",
+      "title": "Thermal fuel receipt, photographed on a desk",
+      "demonstrates": "80mm thermal paper, low contrast, photographed. The hardest OCR case in the corpus and the one preprocessing matters most for.",
+      "ground_truth": {
+        "receipt_number": "PTT-556123",
+        "receipt_date": "2026-07-19",
+        "merchant_name": "PTT Station Rama IV",
+        "currency": "THB",
+        "subtotal": 1869.16,
+        "tax_rate": 7.0,
+        "tax_amount": 130.84,
+        "total_amount": 2000.0,
+        "payment_method": "Corporate card"
+      },
+      "line_items": [
+        {
+          "description": "Diesel B7",
+          "quantity": 61.35,
+          "unit_price": 32.6,
+          "amount": 2000.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [],
+      "requires_posted": null,
+      "file": "11_receipt_photographed_True.jpg",
+      "arrival": "photo",
+      "order": 11,
+      "posts": true,
+      "reference_text": "PTT Station Rama IV\r\nRama IV Rd, Khlong Toei, Bangkok\r\nTAX ID \r\n- - - - - - - - - - - - - - - - - - - - - - - - - - \r\nRECEIPT PTT-556123\r\n19/07/2026 14:07\r\n- - - - - - - - - - - - - - - - - - - - - - - - - - \r\nDiesel B7\r\n61.35 L x 32.60 2,000.00\r\n- - - - - - - - - - - - - - - - - - - - - - - - - - \r\nSub-total 1,869.16\r\nVAT 7% 130.84\r\nTOTAL 2,000.00\r\nPAID BY VISA ****4412\r\nTHANK YOU / ■■■■■■■■■"
+    },
+    {
+      "doc_id": "contract_expiring_soon",
+      "doc_type": "contract",
+      "layout": "prose",
+      "title": "Rungruang Steel supply agreement ending in under 90 days",
+      "demonstrates": "Nothing is wrong with it; it simply needs renewing before it lapses. A warning, not a block.",
+      "ground_truth": {
+        "contract_number": "CT-2026-014",
+        "party_a": "Mirtphol Industries PCL",
+        "party_b": "Rungruang Steel Works Co., Ltd.",
+        "effective_date": "2026-02-01",
+        "expiry_date": "2026-09-30",
+        "auto_renew": "no",
+        "contract_value": 1250000.0,
+        "currency": "THB"
+      },
+      "line_items": [],
+      "body": [
+        "This Steel Supply Agreement (the \"Agreement\") is made and entered into as of 1 February 2026 (the \"Effective Date\") by and between Mirtphol Industries PCL, a public company limited organised under the laws of Thailand (\"Party A\"), and Rungruang Steel Works Co., Ltd., a company limited organised under the laws of Thailand (\"Party B\").",
+        "1. SCOPE OF SUPPLY. Party B shall supply hot-rolled and cold-rolled steel plate, angle bar and structural sections to Party A's Rayong fabrication yard, against purchase orders raised from time to time under this Agreement.",
+        "2. TERM. This Agreement shall commence on the Effective Date and shall continue in force until 30 September 2026. It shall NOT renew automatically. Any continuation beyond the expiry date requires a new written agreement executed by both parties.",
+        "3. CONTRACT VALUE. The total contract value for the term is THB 1,250,000.00 (one million two hundred fifty thousand Baht), drawn down against purchase orders and invoiced on delivery, with payment due within sixty (60) days of receipt of a valid tax invoice.",
+        "4. PRICE ADJUSTMENT. Prices are fixed for the term save for movements in the published mill base price exceeding five per cent (5%), in which case either party may request a review on thirty (30) days' written notice.",
+        "5. QUALITY. All material shall be supplied with mill test certificates. Material failing to conform shall be replaced at Party B's cost within fourteen (14) days.",
+        "6. GOVERNING LAW. This Agreement shall be governed by and construed in accordance with the laws of the Kingdom of Thailand."
+      ],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [
+        "contract_expiring_soon"
+      ],
+      "requires_posted": null,
+      "file": "12_contract_expiring_soon_True.pdf",
+      "arrival": "pdf",
+      "order": 12,
+      "posts": true,
+      "reference_text": "AGREEMENT\r\nContract No. CT-2026-014\r\nThis Steel Supply Agreement (the \"Agreement\") is made and entered into as of 1 February 2026 (the \"Effective Date\")\r\nby and between Mirtphol Industries PCL, a public company limited organised under the laws of Thailand (\"Party A\"),\r\nand Rungruang Steel Works Co., Ltd., a company limited organised under the laws of Thailand (\"Party B\").\r\n1. SCOPE OF SUPPLY. Party B shall supply hot-rolled and cold-rolled steel plate, angle bar and structural sections to\r\nParty A's Rayong fabrication yard, against purchase orders raised from time to time under this Agreement.\r\n2. TERM. This Agreement shall commence on the Effective Date and shall continue in force until 30 September 2026.\r\nIt shall NOT renew automatically. Any continuation beyond the expiry date requires a new written agreement executed\r\nby both parties.\r\n3. CONTRACT VALUE. The total contract value for the term is THB 1,250,000.00 (one million two hundred fifty\r\nthousand Baht), drawn down against purchase orders and invoiced on delivery, with payment due within sixty (60)\r\ndays of receipt of a valid tax invoice.\r\n4. PRICE ADJUSTMENT. Prices are fixed for the term save for movements in the published mill base price exceeding\r\nfive per cent (5%), in which case either party may request a review on thirty (30) days' written notice.\r\n5. QUALITY. All material shall be supplied with mill test certificates. Material failing to conform shall be replaced at\r\nParty B's cost within fourteen (14) days.\r\n6. GOVERNING LAW. This Agreement shall be governed by and construed in accordance with the laws of the\r\nKingdom of Thailand.\r\nIN WITNESS WHEREOF, the parties have executed this Agreement as of the Effective Date.\r\n_________________________\r\nMirtphol Industries PCL\r\nSomchai Wattanakul, Chief Financial Officer\r\n_________________________\r\nRungruang Steel Works Co., Ltd.\r\nNaruemon Pichai, Managing Director"
+    },
+    {
+      "doc_id": "contract_already_expired",
+      "doc_type": "contract",
+      "layout": "prose",
+      "title": "Sunrise Electrical maintenance agreement that ended in June",
+      "demonstrates": "A faded photocopy of a contract that has already lapsed. Tests the contrast correction and the expiry check together.",
+      "ground_truth": {
+        "contract_number": "CT-2025-031",
+        "party_a": "Mirtphol Industries PCL",
+        "party_b": "Sunrise Electrical Co., Ltd.",
+        "effective_date": "2025-01-01",
+        "expiry_date": "2026-06-30",
+        "auto_renew": "no",
+        "contract_value": 480000.0,
+        "currency": "THB"
+      },
+      "line_items": [],
+      "body": [
+        "This Electrical Maintenance Agreement (the \"Agreement\") is made and entered into as of 1 January 2025 (the \"Effective Date\") by and between Mirtphol Industries PCL, a public company limited organised under the laws of Thailand (\"Party A\"), and Sunrise Electrical Co., Ltd., a company limited organised under the laws of Thailand (\"Party B\").",
+        "1. SCOPE OF SERVICES. Party B shall provide scheduled preventive maintenance, thermographic inspection and emergency call-out cover for all low-voltage switchgear and distribution equipment at Party A's Bangkok headquarters.",
+        "2. TERM. This Agreement shall commence on the Effective Date and shall continue in force until 30 June 2026. It shall NOT renew automatically and shall lapse on the expiry date unless replaced by a new written agreement.",
+        "3. CONTRACT VALUE. The total contract value is THB 480,000.00 (four hundred eighty thousand Baht) for the full term, invoiced quarterly in advance with payment due within forty-five (45) days of receipt of a valid tax invoice.",
+        "4. RESPONSE TIMES. Party B shall attend site within four (4) hours of an emergency call-out during business hours and within eight (8) hours otherwise.",
+        "5. SAFETY. Party B's personnel shall hold current electrical safety certification and shall comply with Party A's permit-to-work procedures at all times while on site.",
+        "6. GOVERNING LAW. This Agreement shall be governed by and construed in accordance with the laws of the Kingdom of Thailand."
+      ],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [
+        "contract_expired"
+      ],
+      "requires_posted": null,
+      "file": "13_contract_already_expired_False.jpg",
+      "arrival": "photocopy",
+      "order": 13,
+      "posts": false,
+      "reference_text": "AGREEMENT\r\nContract No. CT-2025-031\r\nThis Electrical Maintenance Agreement (the \"Agreement\") is made and entered into as of 1 January 2025 (the\r\n\"Effective Date\") by and between Mirtphol Industries PCL, a public company limited organised under the laws of\r\nThailand (\"Party A\"), and Sunrise Electrical Co., Ltd., a company limited organised under the laws of Thailand (\"Party\r\nB\").\r\n1. SCOPE OF SERVICES. Party B shall provide scheduled preventive maintenance, thermographic inspection and\r\nemergency call-out cover for all low-voltage switchgear and distribution equipment at Party A's Bangkok headquarters.\r\n2. TERM. This Agreement shall commence on the Effective Date and shall continue in force until 30 June 2026. It shall\r\nNOT renew automatically and shall lapse on the expiry date unless replaced by a new written agreement.\r\n3. CONTRACT VALUE. The total contract value is THB 480,000.00 (four hundred eighty thousand Baht) for the full\r\nterm, invoiced quarterly in advance with payment due within forty-five (45) days of receipt of a valid tax invoice.\r\n4. RESPONSE TIMES. Party B shall attend site within four (4) hours of an emergency call-out during business hours\r\nand within eight (8) hours otherwise.\r\n5. SAFETY. Party B's personnel shall hold current electrical safety certification and shall comply with Party A's\r\npermit-to-work procedures at all times while on site.\r\n6. GOVERNING LAW. This Agreement shall be governed by and construed in accordance with the laws of the\r\nKingdom of Thailand.\r\nIN WITNESS WHEREOF, the parties have executed this Agreement as of the Effective Date.\r\n_________________________\r\nMirtphol Industries PCL\r\nSomchai Wattanakul, Chief Financial Officer\r\n_________________________\r\nSunrise Electrical Co., Ltd.\r\nNaruemon Pichai, Managing Director"
+    },
+    {
+      "doc_id": "form_vendor_onboarding",
+      "doc_type": "form",
+      "layout": "form",
+      "title": "New supplier registration form",
+      "demonstrates": "An unregistered counterparty is the point of the document, so an unknown vendor must not block it.",
+      "ground_truth": {
+        "form_type": "Vendor onboarding",
+        "applicant_name": "Apex Industrial Fasteners Ltd.",
+        "tax_id": "0105568000661",
+        "submitted_date": "2026-07-22",
+        "contact_email": "accounts@apexfasteners.co.th",
+        "contact_phone": "02-115-8890",
+        "bank_account": "1180099221"
+      },
+      "line_items": [],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [],
+      "requires_posted": null,
+      "file": "14_form_vendor_onboarding_True.png",
+      "arrival": "png",
+      "order": 14,
+      "posts": true,
+      "reference_text": "Mirtphol Industries PCL\r\nProcurement - Supplier Registration\r\nRef: \r\nVENDOR ONBOARDING FORM\r\nDate submitted: 22/07/2026\r\nRegistration type (tick one):\r\nNew supplier Update existing Reactivation\r\nCompany / Applicant name\r\nApex Industrial Fasteners Ltd.\r\nTax registration number\r\n0105568000661\r\nRegistered address\r\nContact e-mail\r\naccounts@apexfasteners.co.th\r\nContact telephone\r\n02-115-8890\r\nBank account number\r\n1180099221\r\nDeclaration\r\nI confirm that the information given above is true and complete, and that the bank account provided belongs to the applicant\r\ncompany. I understand that payment will only be made to the registered account.\r\n_________________________\r\nSigned: \r\n_________________________\r\nDate: 22/07/2026"
+    },
+    {
+      "doc_id": "invoice_duplicate_submission",
+      "doc_type": "invoice",
+      "layout": "classic",
+      "title": "RSW-2026-1188 sent a second time",
+      "demonstrates": "Identical to document 1. Only detectable against what has already been posted, so it needs document 1 to have gone through first.",
+      "ground_truth": {
+        "invoice_number": "RSW-2026-1188",
+        "invoice_date": "2026-07-14",
+        "due_date": "2026-09-12",
+        "vendor_name": "Rungruang Steel Works Co., Ltd.",
+        "vendor_tax_id": "0105552000110",
+        "buyer_name": "Mirtphol Industries PCL",
+        "purchase_order_ref": "PO-2026-0501",
+        "currency": "THB",
+        "subtotal": 415000.0,
+        "tax_rate": 7.0,
+        "tax_amount": 29050.0,
+        "total_amount": 444050.0,
+        "payment_terms": "Net 60",
+        "bank_account": "3120045678"
+      },
+      "line_items": [
+        {
+          "description": "Hot-rolled steel plate 12mm x 1500 x 6000",
+          "quantity": 20,
+          "unit_price": 18500.0,
+          "amount": 370000.0
+        },
+        {
+          "description": "Cutting and edge preparation",
+          "quantity": 20,
+          "unit_price": 2250.0,
+          "amount": 45000.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [
+        "duplicate_document"
+      ],
+      "requires_posted": "1_invoice_clean_matches_po",
+      "file": "15_invoice_duplicate_submission_False.pdf",
+      "arrival": "pdf",
+      "order": 15,
+      "posts": false,
+      "reference_text": "Rungruang Steel Works Co., Ltd.\r\nBangkok, Thailand\r\nTax ID: 0105552000110\r\nTAX INVOICE\r\nInvoice No.: RSW-2026-1188\r\nInvoice Date: 14 July 2026\r\nDue Date: 12 September 2026\r\nPO Reference: PO-2026-0501\r\nBill To\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nDescription Qty Unit Price Amount\r\nHot-rolled steel plate 12mm x 1500 x 6000 20 18,500.00 370,000.00\r\nCutting and edge preparation 20 2,250.00 45,000.00\r\nSubtotal 415,000.00 THB\r\nVAT 7% 29,050.00 THB\r\nAmount Due 444,050.00 THB\r\nPayment Terms: Net 60\r\nRemit to Account No: 3120045678"
+    },
+    {
+      "doc_id": "invoice_line_items_do_not_sum",
+      "doc_type": "invoice",
+      "layout": "dense",
+      "title": "Pacific Rim freight invoice with a line missing from the table",
+      "demonstrates": "The stated subtotal is right and the visible lines are 4,300 short. A faded copy, so it also tests whether the missing line was misread rather than absent.",
+      "ground_truth": {
+        "invoice_number": "PRF-SG-20416",
+        "invoice_date": "2026-07-17",
+        "due_date": "2026-08-16",
+        "vendor_name": "Pacific Rim Freight Pte. Ltd.",
+        "buyer_name": "Mirtphol Industries PCL",
+        "purchase_order_ref": "PO-2026-0512",
+        "currency": "SGD",
+        "subtotal": 18500.0,
+        "tax_rate": 0.0,
+        "tax_amount": 0.0,
+        "total_amount": 18500.0,
+        "payment_terms": "Net 30",
+        "bank_account": "SG21DBSS0110001234567"
+      },
+      "line_items": [
+        {
+          "description": "Ocean freight 40ft HC",
+          "quantity": 2,
+          "unit_price": 5600.0,
+          "amount": 11200.0
+        },
+        {
+          "description": "Terminal handling, origin",
+          "quantity": 2,
+          "unit_price": 1500.0,
+          "amount": 3000.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [
+        "line_items_sum_to_subtotal"
+      ],
+      "requires_posted": null,
+      "file": "16_invoice_line_items_do_not_sum_False.jpg",
+      "arrival": "photocopy",
+      "order": 16,
+      "posts": false,
+      "reference_text": "Pacific Rim Freight Pte. Ltd.\r\nBangkok, Thailand\r\nTIN Tel 02-555-0100\r\nINVOICE PRF-SG-20416 Dated 17/07/2026 Terms Net 30 Due 16/08/2026\r\nTo: Mirtphol Industries PCL, 88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\n1. Ocean freight 40ft HC x2 @ 5,600.00 = 11,200.00\r\n2. Terminal handling, origin x2 @ 1,500.00 = 3,000.00\r\nSub-total 18,500.00 SGD VAT 0% 0.00 TOTAL DUE 18,500.00 SGD\r\nPlease remit to a/c SG21DBSS0110001234567 within terms."
+    },
+    {
+      "doc_id": "invoice_currency_disagrees_with_po",
+      "doc_type": "invoice",
+      "layout": "modern",
+      "title": "Pacific Rim invoice billed in USD against an SGD order",
+      "demonstrates": "Same numbers, wrong currency. Paying it as printed overpays by the exchange rate, and the fix is on the purchase order.",
+      "ground_truth": {
+        "invoice_number": "PRF-SG-20455",
+        "invoice_date": "2026-07-27",
+        "due_date": "2026-08-26",
+        "vendor_name": "Pacific Rim Freight Pte. Ltd.",
+        "buyer_name": "Mirtphol Industries PCL",
+        "purchase_order_ref": "PO-2026-0512",
+        "currency": "USD",
+        "subtotal": 18500.0,
+        "tax_rate": 0.0,
+        "tax_amount": 0.0,
+        "total_amount": 18500.0,
+        "payment_terms": "Net 30",
+        "bank_account": "SG21DBSS0110001234567"
+      },
+      "line_items": [
+        {
+          "description": "Ocean freight 40ft HC",
+          "quantity": 2,
+          "unit_price": 7150.0,
+          "amount": 14300.0
+        },
+        {
+          "description": "Terminal handling, origin",
+          "quantity": 2,
+          "unit_price": 2100.0,
+          "amount": 4200.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [
+        "po_currency_matches"
+      ],
+      "requires_posted": null,
+      "file": "17_invoice_currency_disagrees_with_po_False.pdf",
+      "arrival": "pdf",
+      "order": 17,
+      "posts": false,
+      "reference_text": "Pacific Rim Freight Pte. Ltd.\r\nBangkok, Thailand\r\nINVOICE\r\nBILLED TO\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nInvoice # PRF-SG-20455\r\nIssued Jul 27, 2026\r\nPayment Due Aug 26, 2026\r\nPO PO-2026-0512\r\nSupplier Tax ID -\r\nDescription Qty Unit Price Amount\r\nOcean freight 40ft HC 2 7,150.00 14,300.00\r\nTerminal handling, origin 2 2,100.00 4,200.00\r\nSubtotal 18,500.00 USD\r\nVAT 0.00 USD\r\nAmount Due 18,500.00 USD\r\nTerms: Net 30\r\nBank Account: SG21DBSS0110001234567"
+    },
+    {
+      "doc_id": "invoice_unlabelled_amounts",
+      "doc_type": "invoice",
+      "layout": "minimal",
+      "title": "Invoice with no field labels at all, photographed",
+      "demonstrates": "Three bare numbers in a column and a company name. Nothing for a label matcher to anchor on, so the two extraction channels have to disagree honestly rather than both guessing.",
+      "ground_truth": {
+        "invoice_number": "1188-B",
+        "invoice_date": "2026-07-28",
+        "vendor_name": "Thai Beverage Supply Co., Ltd.",
+        "vendor_tax_id": "0105563000221",
+        "buyer_name": "Mirtphol Industries PCL",
+        "currency": "THB",
+        "subtotal": 9800.0,
+        "tax_rate": 7.0,
+        "tax_amount": 686.0,
+        "total_amount": 10486.0
+      },
+      "line_items": [
+        {
+          "description": "Canteen supplies",
+          "quantity": 1,
+          "unit_price": 9800.0,
+          "amount": 9800.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [],
+      "requires_posted": null,
+      "file": "18_invoice_unlabelled_amounts_True.jpg",
+      "arrival": "photo",
+      "order": 18,
+      "posts": true,
+      "reference_text": "Thai Beverage Supply Co., Ltd.\r\n1188-B\r\n28/07/2026\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nCanteen supplies 9,800.00\r\n9,800.00\r\n+7% 686.00\r\nTHB 10,486.00"
+    },
+    {
+      "doc_id": "invoice_two_column_layout",
+      "doc_type": "invoice",
+      "layout": "two_column",
+      "title": "Thai Beverage invoice in a two-column layout",
+      "demonstrates": "Correct in every way; the header sits in two columns instead of one. Must post.",
+      "ground_truth": {
+        "invoice_number": "TBS-7855",
+        "invoice_date": "2026-07-29",
+        "due_date": "2026-08-13",
+        "vendor_name": "Thai Beverage Supply Co., Ltd.",
+        "vendor_tax_id": "0105563000221",
+        "buyer_name": "Mirtphol Industries PCL",
+        "purchase_order_ref": "PO-2026-0523",
+        "currency": "THB",
+        "subtotal": 38000.0,
+        "tax_rate": 7.0,
+        "tax_amount": 2660.0,
+        "total_amount": 40660.0,
+        "payment_terms": "Net 15",
+        "bank_account": "7710028899"
+      },
+      "line_items": [
+        {
+          "description": "Drinking water 20L returnable",
+          "quantity": 280,
+          "unit_price": 95.0,
+          "amount": 26600.0
+        },
+        {
+          "description": "Instant coffee, catering tin",
+          "quantity": 38,
+          "unit_price": 300.0,
+          "amount": 11400.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [],
+      "requires_posted": null,
+      "file": "19_invoice_two_column_layout_True.pdf",
+      "arrival": "pdf",
+      "order": 19,
+      "posts": true,
+      "reference_text": "Thai Beverage Supply Co., Ltd.\r\nBangkok, Thailand\r\nTax ID 0105563000221\r\nINVOICE\r\nTBS-7855\r\nJul 29, 2026\r\nTerms Net 15\r\nBILL TO\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nSHIP TO\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nDescription Qty Unit Price Amount\r\nDrinking water 20L returnable 280 95.00 26,600.00\r\nInstant coffee, catering tin 38 300.00 11,400.00\r\nSubtotal 38,000.00 THB\r\nVAT 7% 2,660.00 THB\r\nAmount Due 40,660.00 THB\r\nRemit to Account No: 7710028899"
+    },
+    {
+      "doc_id": "invoice_dense_no_whitespace",
+      "doc_type": "invoice",
+      "layout": "dense",
+      "title": "Rungruang Steel invoice typeset with no whitespace",
+      "demonstrates": "Correct, and packed edge to edge. Tests that density alone does not hold a document.",
+      "ground_truth": {
+        "invoice_number": "RSW-2026-1240",
+        "invoice_date": "2026-07-29",
+        "due_date": "2026-09-27",
+        "vendor_name": "Rungruang Steel Works Co., Ltd.",
+        "vendor_tax_id": "0105552000110",
+        "buyer_name": "Mirtphol Industries PCL",
+        "currency": "THB",
+        "subtotal": 28000.0,
+        "tax_rate": 7.0,
+        "tax_amount": 1960.0,
+        "total_amount": 29960.0,
+        "bank_account": "3120045678"
+      },
+      "line_items": [
+        {
+          "description": "Steel channel 100x50x5mm",
+          "quantity": 70,
+          "unit_price": 400.0,
+          "amount": 28000.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [],
+      "requires_posted": null,
+      "file": "20_invoice_dense_no_whitespace_True.pdf",
+      "arrival": "pdf",
+      "order": 20,
+      "posts": true,
+      "reference_text": "Rungruang Steel Works Co., Ltd.\r\nBangkok, Thailand\r\nTIN 0105552000110 Tel 02-555-0100\r\nINVOICE RSW-2026-1240 Dated 29/07/2026 Terms Due 27/09/2026\r\nTo: Mirtphol Industries PCL, 88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\n1. Steel channel 100x50x5mm x70 @ 400.00 = 28,000.00\r\nSub-total 28,000.00 THB VAT 7% 1,960.00 TOTAL DUE 29,960.00 THB\r\nPlease remit to a/c 3120045678 within terms."
+    },
+    {
+      "doc_id": "invoice_minimal_unlabelled",
+      "doc_type": "invoice",
+      "layout": "minimal",
+      "title": "Sunrise Electrical invoice with almost no labels",
+      "demonstrates": "Correct, but the amounts are a bare column with no words beside them. The label-first channel has nothing to anchor on.",
+      "ground_truth": {
+        "invoice_number": "SE-2026-0488",
+        "invoice_date": "2026-07-29",
+        "due_date": "2026-09-12",
+        "vendor_name": "Sunrise Electrical Co., Ltd.",
+        "buyer_name": "Mirtphol Industries PCL",
+        "currency": "THB",
+        "subtotal": 22000.0,
+        "tax_rate": 7.0,
+        "tax_amount": 1540.0,
+        "total_amount": 23540.0,
+        "bank_account": "8890014455"
+      },
+      "line_items": [
+        {
+          "description": "Distribution board, 12-way",
+          "quantity": 4,
+          "unit_price": 5500.0,
+          "amount": 22000.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [],
+      "requires_posted": null,
+      "file": "21_invoice_minimal_unlabelled_True.pdf",
+      "arrival": "pdf",
+      "order": 21,
+      "posts": true,
+      "reference_text": "Sunrise Electrical Co., Ltd.\r\nSE-2026-0488\r\n29/07/2026\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nDistribution board, 12-way 22,000.00\r\n22,000.00\r\n+7% 1,540.00\r\nTHB 23,540.00\r\n12/09/2026\r\n8890014455"
+    },
+    {
+      "doc_id": "invoice_thai_layout_correct",
+      "doc_type": "invoice",
+      "layout": "thai_tax",
+      "title": "ใบกำกับภาษี that is entirely correct",
+      "demonstrates": "Thai layout, Thai month names, Buddhist-era dates, and nothing wrong with it. Must post.",
+      "ground_truth": {
+        "invoice_number": "TBS-7860",
+        "invoice_date": "2026-07-30",
+        "due_date": "2026-08-14",
+        "vendor_name": "บริษัท ไทยเบเวอเรจ ซัพพลาย จำกัด",
+        "vendor_tax_id": "0105563000221",
+        "buyer_name": "Mirtphol Industries PCL",
+        "currency": "THB",
+        "subtotal": 16000.0,
+        "tax_rate": 7.0,
+        "tax_amount": 1120.0,
+        "total_amount": 17120.0,
+        "payment_terms": "Net 15",
+        "bank_account": "7710028899"
+      },
+      "line_items": [
+        {
+          "description": "น้ำดื่ม 20 ลิตร",
+          "quantity": 150,
+          "unit_price": 95.0,
+          "amount": 14250.0
+        },
+        {
+          "description": "กาแฟสำเร็จรูป",
+          "quantity": 7,
+          "unit_price": 250.0,
+          "amount": 1750.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "th",
+      "expected_findings": [],
+      "requires_posted": null,
+      "file": "22_invoice_thai_layout_correct_True.png",
+      "arrival": "png",
+      "order": 22,
+      "posts": true,
+      "reference_text": "บริษัท ไทยเบเวอเรจ ซัพพลาย จำกัด\r\nBangkok, Thailand\r\nเลขประจำตัวผู้เสียภาษี 0105563000221\r\nใบกำกับภาษี / ใบแจ้งหนี้\r\n(ต้นฉบับ)\r\nเลขที่: TBS-7860\r\nวันที่: ๓๐ กรกฎาคม ๒๕๖๙\r\nครบกำหนดชำระ: ๑๔ สิงหาคม ๒๕๖๙\r\nลูกค้า / ผู้ซื้อ\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nรายการ จำนวน ราคาต่อหน่วย จำนวนเงิน\r\nน้ำดื่ม 20 ลิตร ๑๕๐ ๙๕.๐๐ ๑๔,๒๕๐.๐๐\r\nกาแฟสำเร็จรูป ๗ ๒๕๐.๐๐ ๑,๗๕๐.๐๐\r\nรวมเป็นเงิน ๑๖,๐๐๐.๐๐\r\nภาษีมูลค่าเพิ่ม ๗% ๑,๑๒๐.๐๐\r\nจำนวนเงินรวมทั้งสิ้น ๑๗,๑๒๐.๐๐\r\nเงื่อนไขการชำระเงิน: Net 15\r\nเลขที่บัญชีธนาคาร: 7710028899\r\nผู้รับเงิน .............................."
+    },
+    {
+      "doc_id": "invoice_modern_scanned",
+      "doc_type": "invoice",
+      "layout": "modern",
+      "title": "Meridian invoice, modern layout, scanned rather than digital",
+      "demonstrates": "Correct, zero-rated, in USD, and arriving as an image with no text layer.",
+      "ground_truth": {
+        "invoice_number": "MC-2026-0801",
+        "invoice_date": "2026-07-30",
+        "due_date": "2026-08-29",
+        "vendor_name": "Meridian Consulting LLP",
+        "vendor_tax_id": "GB428765190",
+        "buyer_name": "Mirtphol Industries PCL",
+        "purchase_order_ref": "PO-2026-0534",
+        "currency": "USD",
+        "subtotal": 36000.0,
+        "tax_rate": 0.0,
+        "tax_amount": 0.0,
+        "total_amount": 36000.0,
+        "payment_terms": "Net 30",
+        "bank_account": "GB29NWBK60161331926819"
+      },
+      "line_items": [
+        {
+          "description": "Operations advisory, phase 2 - senior partner",
+          "quantity": 90,
+          "unit_price": 280.0,
+          "amount": 25200.0
+        },
+        {
+          "description": "Operations advisory, phase 2 - analyst",
+          "quantity": 108,
+          "unit_price": 100.0,
+          "amount": 10800.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [],
+      "requires_posted": null,
+      "file": "23_invoice_modern_scanned_True.png",
+      "arrival": "png",
+      "order": 23,
+      "posts": true,
+      "reference_text": "Meridian Consulting LLP\r\nBangkok, Thailand\r\nINVOICE\r\nBILLED TO\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nInvoice # MC-2026-0801\r\nIssued Jul 30, 2026\r\nPayment Due Aug 29, 2026\r\nPO PO-2026-0534\r\nSupplier Tax ID GB428765190\r\nDescription Qty Unit Price Amount\r\nOperations advisory, phase 2 - senior partner 90 280.00 25,200.00\r\nOperations advisory, phase 2 - analyst 108 100.00 10,800.00\r\nSubtotal 36,000.00 USD\r\nVAT 0.00 USD\r\nAmount Due 36,000.00 USD\r\nTerms: Net 30\r\nBank Account: GB29NWBK60161331926819"
+    },
+    {
+      "doc_id": "receipt_clean_thermal",
+      "doc_type": "receipt",
+      "layout": "narrow",
+      "title": "Thermal receipt, 80mm, clean and correct",
+      "demonstrates": "The same shape as the photographed receipt, without the photograph. Isolates layout from image quality.",
+      "ground_truth": {
+        "receipt_number": "PTT-556890",
+        "receipt_date": "2026-07-28",
+        "merchant_name": "PTT Station Rama IV",
+        "currency": "THB",
+        "subtotal": 1401.87,
+        "tax_rate": 7.0,
+        "tax_amount": 98.13,
+        "total_amount": 1500.0,
+        "payment_method": "Corporate card"
+      },
+      "line_items": [
+        {
+          "description": "Diesel B7",
+          "quantity": 43.0,
+          "unit_price": 32.6,
+          "amount": 1401.87
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [],
+      "requires_posted": null,
+      "file": "24_receipt_clean_thermal_True.pdf",
+      "arrival": "pdf",
+      "order": 24,
+      "posts": true,
+      "reference_text": "PTT Station Rama IV\r\nRama IV Rd, Khlong Toei, Bangkok\r\nTAX ID \r\n- - - - - - - - - - - - - - - - - - - - - - - - - - \r\nRECEIPT PTT-556890\r\n28/07/2026 14:07\r\n- - - - - - - - - - - - - - - - - - - - - - - - - - \r\nDiesel B7\r\n43 L x 32.60 1,401.87\r\n- - - - - - - - - - - - - - - - - - - - - - - - - - \r\nSub-total 1,401.87\r\nVAT 7% 98.13\r\nTOTAL 1,500.00\r\nPAID BY VISA ****4412\r\nTHANK YOU / ■■■■■■■■■"
+    },
+    {
+      "doc_id": "invoice_thai_arabic_digits",
+      "doc_type": "invoice",
+      "layout": "thai_modern",
+      "title": "ใบกำกับภาษี from Siam Tech with Arabic numerals",
+      "demonstrates": "Thai labels throughout, amounts in 135,000.00 rather than ๑๓๕,๐๐๐.๐๐, dates as 24 กรกฎาคม 2569. The ordinary Thai business invoice, and the shape the corpus was missing.",
+      "ground_truth": {
+        "invoice_number": "STS-2026-0318",
+        "invoice_date": "2026-07-24",
+        "due_date": "2026-08-23",
+        "vendor_name": "บริษัท สยามเทค ซัพพลาย จำกัด",
+        "vendor_tax_id": "0105543000129",
+        "buyer_name": "Mirtphol Industries PCL",
+        "purchase_order_ref": "PO-2026-0567",
+        "currency": "THB",
+        "subtotal": 135000.0,
+        "tax_rate": 7.0,
+        "tax_amount": 9450.0,
+        "total_amount": 144450.0,
+        "payment_terms": "Net 30",
+        "bank_account": "1234567890"
+      },
+      "line_items": [
+        {
+          "description": "เครื่องสำรองไฟ UPS 3kVA",
+          "quantity": 12,
+          "unit_price": 9500.0,
+          "amount": 114000.0
+        },
+        {
+          "description": "ติดตั้งและทดสอบระบบ",
+          "quantity": 1,
+          "unit_price": 21000.0,
+          "amount": 21000.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "th",
+      "expected_findings": [],
+      "requires_posted": null,
+      "file": "25_invoice_thai_arabic_digits_True.png",
+      "arrival": "png",
+      "order": 25,
+      "posts": true,
+      "reference_text": "บริษัท สยามเทค ซัพพลาย จำกัด\r\nBangkok, Thailand\r\nเลขประจำตัวผู้เสียภาษี 0105543000129\r\nใบกำกับภาษี / ใบแจ้งหนี้\r\nTAX INVOICE (ORIGINAL)\r\nลูกค้า\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nเลขที่เอกสาร STS-2026-0318\r\nวันที่ออก 24 กรกฎาคม 2569\r\nกำหนดชำระ 23 สิงหาคม 2569\r\nใบสั่งซื้อเลขที่ PO-2026-0567\r\nรายละเอียด จำนวน ราคา/หน่วย รวมเงิน\r\nเครื่องสำรองไฟ UPS 3kVA 12 9,500.00 114,000.00\r\nติดตั้งและทดสอบระบบ 1 21,000.00 21,000.00\r\nมูลค่าสินค้า/บริการ 135,000.00\r\nภาษีมูลค่าเพิ่ม 7% 9,450.00\r\nจำนวนเงินทั้งสิ้น (บาท) 144,450.00\r\nเงื่อนไขการชำระเงิน Net 30\r\nชำระเข้าบัญชีเลขที่ 1234567890\r\nผู้รับเงิน ______________________"
+    },
+    {
+      "doc_id": "invoice_thai_vat_miscalculated",
+      "doc_type": "invoice",
+      "layout": "thai_modern",
+      "title": "ใบกำกับภาษี stating 7% and charging 6%",
+      "demonstrates": "Says ภาษีมูลค่าเพิ่ม 7% and charges 5,280.00 on 88,000.00, which is 6%. The total agrees with the tax as printed, so only the rate is contradicted - and the tax is the only value the arithmetic can blame.",
+      "ground_truth": {
+        "invoice_number": "RSW-2026-1240",
+        "invoice_date": "2026-07-27",
+        "due_date": "2026-09-25",
+        "vendor_name": "บริษัท รุ่งเรือง สตีล เวิร์ค จำกัด",
+        "vendor_tax_id": "0105552000110",
+        "buyer_name": "Mirtphol Industries PCL",
+        "purchase_order_ref": "PO-2026-0578",
+        "currency": "THB",
+        "subtotal": 88000.0,
+        "tax_rate": 7.0,
+        "tax_amount": 5280.0,
+        "total_amount": 93280.0,
+        "payment_terms": "Net 60",
+        "bank_account": "3120045678"
+      },
+      "line_items": [
+        {
+          "description": "เหล็กแผ่นรีดร้อน หนา 6 มม.",
+          "quantity": 4,
+          "unit_price": 16000.0,
+          "amount": 64000.0
+        },
+        {
+          "description": "งานตัดและพับขึ้นรูป",
+          "quantity": 1,
+          "unit_price": 24000.0,
+          "amount": 24000.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "th",
+      "expected_findings": [
+        "tax_rate_consistent"
+      ],
+      "requires_posted": null,
+      "file": "26_invoice_thai_vat_miscalculated_False.pdf",
+      "arrival": "pdf",
+      "order": 26,
+      "posts": false,
+      "reference_text": "บริษัท รุ่งเรือง สตีล เวิร์ค จำกัด\r\nBangkok, Thailand\r\nเลขประจำตัวผู้เสียภาษี 0105552000110\r\nใบกำกับภาษี / ใบแจ้งหนี้\r\nTAX INVOICE (ORIGINAL)\r\nลูกค้า\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nเลขที่เอกสาร RSW-2026-1240\r\nวันที่ออก 27 กรกฎาคม 2569\r\nกำหนดชำระ 25 กันยายน 2569\r\nใบสั่งซื้อเลขที่ PO-2026-0578\r\nรายละเอียด จำนวน ราคา/หน่วย รวมเงิน\r\nเหล็กแผ่นรีดร้อน หนา 6 มม. 4 16,000.00 64,000.00\r\nงานตัดและพับขึ้นรูป 1 24,000.00 24,000.00\r\nมูลค่าสินค้า/บริการ 88,000.00\r\nภาษีมูลค่าเพิ่ม 7% 5,280.00\r\nจำนวนเงินทั้งสิ้น (บาท) 93,280.00\r\nเงื่อนไขการชำระเงิน Net 60\r\nชำระเข้าบัญชีเลขที่ 3120045678\r\nผู้รับเงิน ______________________"
+    },
+    {
+      "doc_id": "receipt_thai_fuel_station",
+      "doc_type": "receipt",
+      "layout": "thai_receipt",
+      "title": "ใบเสร็จรับเงิน from a PTT station",
+      "demonstrates": "A Thai receipt, photographed. It has to be classified as a receipt rather than an invoice from ใบเสร็จ alone, on a page that also says ภาษีมูลค่าเพิ่ม - and the counterparty has to reach merchant_name, not vendor_name.",
+      "ground_truth": {
+        "receipt_number": "PTT-880451",
+        "receipt_date": "2026-07-28",
+        "merchant_name": "บริษัท ปตท. น้ำมันและการค้าปลีก จำกัด",
+        "merchant_tax_id": "0105554000770",
+        "currency": "THB",
+        "subtotal": 2000.0,
+        "tax_amount": 140.0,
+        "total_amount": 2140.0
+      },
+      "line_items": [
+        {
+          "description": "น้ำมันดีเซล B7",
+          "quantity": 50.0,
+          "unit_price": 40.0,
+          "amount": 2000.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "th",
+      "expected_findings": [],
+      "requires_posted": null,
+      "file": "27_receipt_thai_fuel_station_True.jpg",
+      "arrival": "photo",
+      "order": 27,
+      "posts": true,
+      "reference_text": "บริษัท ปตท. น้ำมันและการค้าปลีก จำกัด\r\nถนนพระราม 4 แขวงคลองเตย กรุงเทพฯ\r\nเลขประจำตัวผู้เสียภาษี 0105554000770\r\nใบเสร็จรับเงิน / ใบกำกับภาษีอย่างย่อ\r\n- - - - - - - - - - - - - - - - - - - - - - - - \r\nเลขที่ PTT-880451\r\nวันที่ 28 กรกฎาคม 2569 14:07 น.\r\n- - - - - - - - - - - - - - - - - - - - - - - - \r\nน้ำมันดีเซล B7\r\n50 x 40.00 2,000.00\r\n- - - - - - - - - - - - - - - - - - - - - - - - \r\nมูลค่าสินค้า 2,000.00\r\nภาษีมูลค่าเพิ่ม 140.00\r\nรวมทั้งสิ้น 2,140.00\r\nขอบคุณที่ใช้บริการ"
+    },
+    {
+      "doc_id": "contract_thai_service",
+      "doc_type": "contract",
+      "layout": "thai_contract",
+      "title": "สัญญาจ้างบริการ with Chao Phraya Facility",
+      "demonstrates": "A contract in Thai prose. Every field is a phrase in running text and there is no arithmetic anywhere, so a misread Buddhist-era date has nothing at all to contradict it.",
+      "ground_truth": {
+        "contract_number": "CT-2026-027",
+        "contract_title": "สัญญาจ้างบริการทำความสะอาดและบำรุงรักษาอาคาร",
+        "party_a": "Mirtphol Industries PCL",
+        "party_b": "บริษัท เจ้าพระยา แฟซิลิตี้ จำกัด",
+        "effective_date": "2026-06-01",
+        "expiry_date": "2027-05-31",
+        "contract_value": 420000.0,
+        "currency": "THB",
+        "payment_terms": "ชำระรายเดือนภายใน 30 วัน",
+        "auto_renew": "no",
+        "governing_law": "กฎหมายไทย"
+      },
+      "line_items": [],
+      "body": [
+        "ข้อ 1. ขอบเขตของงาน ผู้รับจ้างตกลงให้บริการทำความสะอาดพื้นที่สำนักงานและโรงงาน รวมถึงงานบำรุงรักษาระบบปรับอากาศและระบบไฟฟ้าส่องสว่างภายในอาคารของผู้ว่าจ้าง ตามมาตรฐานและความถี่ที่กำหนดไว้ในเอกสารแนบท้ายสัญญา",
+        "ข้อ 2. ระยะเวลาของสัญญา สัญญานี้มีกำหนดระยะเวลาหนึ่งปี นับตั้งแต่วันที่มีผลบังคับใช้ หากฝ่ายใดประสงค์จะบอกเลิกสัญญา ต้องแจ้งเป็นหนังสือให้อีกฝ่ายทราบล่วงหน้าไม่น้อยกว่าหกสิบวัน สัญญานี้ไม่ต่ออายุโดยอัตโนมัติ",
+        "ข้อ 3. ค่าจ้างและการชำระเงิน ผู้ว่าจ้างตกลงชำระค่าจ้างเป็นรายเดือน โดยผู้รับจ้างจะออกใบแจ้งหนี้ในวันทำการสุดท้ายของแต่ละเดือน และผู้ว่าจ้างจะชำระภายในสามสิบวันนับแต่วันที่ได้รับใบแจ้งหนี้ที่ถูกต้อง",
+        "ข้อ 4. กฎหมายที่ใช้บังคับ สัญญานี้อยู่ภายใต้บังคับแห่งกฎหมายไทย ข้อพิพาทใดอันเกิดจากสัญญานี้ให้อยู่ในเขตอำนาจของศาลไทย"
+      ],
+      "degrade": 0.0,
+      "language": "th",
+      "expected_findings": [],
+      "requires_posted": null,
+      "file": "28_contract_thai_service_True.pdf",
+      "arrival": "pdf",
+      "order": 28,
+      "posts": true,
+      "reference_text": "สัญญาจ้างบริการทำความสะอาดและบำรุงรักษาอาคาร\r\nเลขที่สัญญา CT-2026-027\r\nสัญญาฉบับนี้ทำขึ้นระหว่าง Mirtphol Industries PCL ซึ่งต่อไปในสัญญานี้เรียกว่า “ผู้ว่าจ้าง” ฝ่ายหนึ่ง กับ บริษัท\r\nเจ้าพระยา แฟซิลิตี้ จำกัด ซึ่งต่อไปในสัญญานี้เรียกว่า “ผู้รับจ้าง” อีกฝ่ายหนึ่ง\r\nข้อ 1. ขอบเขตของงาน ผู้รับจ้างตกลงให้บริการทำความสะอาดพื้นที่สำนักงานและโรงงาน\r\nรวมถึงงานบำรุงรักษาระบบปรับอากาศและระบบไฟฟ้าส่องสว่างภายในอาคารของผู้ว่าจ้าง\r\nตามมาตรฐานและความถี่ที่กำหนดไว้ในเอกสารแนบท้ายสัญญา\r\nข้อ 2. ระยะเวลาของสัญญา สัญญานี้มีกำหนดระยะเวลาหนึ่งปี นับตั้งแต่วันที่มีผลบังคับใช้\r\nหากฝ่ายใดประสงค์จะบอกเลิกสัญญา ต้องแจ้งเป็นหนังสือให้อีกฝ่ายทราบล่วงหน้าไม่น้อยกว่าหกสิบวัน\r\nสัญญานี้ไม่ต่ออายุโดยอัตโนมัติ\r\nข้อ 3. ค่าจ้างและการชำระเงิน ผู้ว่าจ้างตกลงชำระค่าจ้างเป็นรายเดือน\r\nโดยผู้รับจ้างจะออกใบแจ้งหนี้ในวันทำการสุดท้ายของแต่ละเดือน\r\nและผู้ว่าจ้างจะชำระภายในสามสิบวันนับแต่วันที่ได้รับใบแจ้งหนี้ที่ถูกต้อง\r\nข้อ 4. กฎหมายที่ใช้บังคับ สัญญานี้อยู่ภายใต้บังคับแห่งกฎหมายไทย\r\nข้อพิพาทใดอันเกิดจากสัญญานี้ให้อยู่ในเขตอำนาจของศาลไทย\r\nวันที่มีผลบังคับใช้ 1 มิถุนายน 2569\r\nวันสิ้นสุดสัญญา 31 พฤษภาคม 2570\r\nมูลค่าสัญญา 420,000.00 THB\r\nเงื่อนไขการชำระเงิน ชำระรายเดือนภายใน 30 วัน\r\nกฎหมายที่ใช้บังคับ กฎหมายไทย\r\nคู่สัญญาทั้งสองฝ่ายได้อ่านและเข้าใจข้อความในสัญญานี้โดยตลอดแล้ว จึงลงลายมือชื่อไว้เป็นสำคัญ\r\n_________________________\r\nMirtphol Industries PCL\r\nสมชาย วัฒนกุล ประธานเจ้าหน้าที่ฝ่ายการเงิน\r\n_________________________\r\nบริษัท เจ้าพระยา แฟซิลิตี้ จำกัด\r\nนฤมล พิชัย กรรมการผู้จัดการ"
+    },
+    {
+      "doc_id": "invoice_thai_unknown_vendor",
+      "doc_type": "invoice",
+      "layout": "thai_modern",
+      "title": "ใบแจ้งหนี้ from หจก. สมชายการช่าง, who is not registered",
+      "demonstrates": "A limited partnership (หจก.) rather than a company (บริษัท), and nobody has onboarded them. Everything on the page reconciles; the only thing wrong is that we have no record of who they are. The risk is the opposite of a miss - a fuzzy match onto a registered Thai vendor that merely reads alike.",
+      "ground_truth": {
+        "invoice_number": "SCK-2569-0142",
+        "invoice_date": "2026-07-29",
+        "due_date": "2026-08-28",
+        "vendor_name": "หจก. สมชายการช่าง",
+        "vendor_tax_id": "0105566000991",
+        "buyer_name": "Mirtphol Industries PCL",
+        "currency": "THB",
+        "subtotal": 42000.0,
+        "tax_rate": 7.0,
+        "tax_amount": 2940.0,
+        "total_amount": 44940.0,
+        "payment_terms": "Net 30",
+        "bank_account": "6650071234"
+      },
+      "line_items": [
+        {
+          "description": "งานเชื่อมโครงเหล็กหลังคาโรงงาน",
+          "quantity": 1,
+          "unit_price": 42000.0,
+          "amount": 42000.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "th",
+      "expected_findings": [
+        "vendor_known"
+      ],
+      "requires_posted": null,
+      "file": "29_invoice_thai_unknown_vendor_False.png",
+      "arrival": "png",
+      "order": 29,
+      "posts": false,
+      "reference_text": "หจก. สมชายการช่าง\r\nBangkok, Thailand\r\nเลขประจำตัวผู้เสียภาษี 0105566000991\r\nใบกำกับภาษี / ใบแจ้งหนี้\r\nTAX INVOICE (ORIGINAL)\r\nลูกค้า\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nเลขที่เอกสาร SCK-2569-0142\r\nวันที่ออก 29 กรกฎาคม 2569\r\nกำหนดชำระ 28 สิงหาคม 2569\r\nรายละเอียด จำนวน ราคา/หน่วย รวมเงิน\r\nงานเชื่อมโครงเหล็กหลังคาโรงงาน 1 42,000.00 42,000.00\r\nมูลค่าสินค้า/บริการ 42,000.00\r\nภาษีมูลค่าเพิ่ม 7% 2,940.00\r\nจำนวนเงินทั้งสิ้น (บาท) 44,940.00\r\nเงื่อนไขการชำระเงิน Net 30\r\nชำระเข้าบัญชีเลขที่ 6650071234\r\nผู้รับเงิน ______________________"
+    },
+    {
+      "doc_id": "invoice_thai_no_tax_id",
+      "doc_type": "invoice",
+      "layout": "thai_modern",
+      "title": "ใบกำกับภาษี from Sunrise Electrical with no tax ID printed",
+      "demonstrates": "A registered vendor named only in Thai, with a phone number where the tax ID usually goes. The exact identifier is gone, so the match has to be made on บริษัท ซันไรส์ อิเล็คทริคอล จำกัด against an English legal name and a Thai alias - and if Thai vendors are lost anywhere, it is here.",
+      "ground_truth": {
+        "invoice_number": "SE-2026-0498",
+        "invoice_date": "2026-07-31",
+        "due_date": "2026-09-14",
+        "vendor_name": "บริษัท ซันไรส์ อิเล็คทริคอล จำกัด",
+        "buyer_name": "Mirtphol Industries PCL",
+        "currency": "THB",
+        "subtotal": 36000.0,
+        "tax_rate": 7.0,
+        "tax_amount": 2520.0,
+        "total_amount": 38520.0,
+        "payment_terms": "Net 45",
+        "bank_account": "8890014455"
+      },
+      "line_items": [
+        {
+          "description": "หลอดไฟ LED 18W",
+          "quantity": 300,
+          "unit_price": 90.0,
+          "amount": 27000.0
+        },
+        {
+          "description": "ค่าแรงติดตั้ง",
+          "quantity": 1,
+          "unit_price": 9000.0,
+          "amount": 9000.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "th",
+      "expected_findings": [],
+      "requires_posted": null,
+      "file": "30_invoice_thai_no_tax_id_True.png",
+      "arrival": "png",
+      "order": 30,
+      "posts": true,
+      "reference_text": "บริษัท ซันไรส์ อิเล็คทริคอล จำกัด\r\nBangkok, Thailand\r\nโทร. 02-118-4400\r\nใบกำกับภาษี / ใบแจ้งหนี้\r\nTAX INVOICE (ORIGINAL)\r\nลูกค้า\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nเลขที่เอกสาร SE-2026-0498\r\nวันที่ออก 31 กรกฎาคม 2569\r\nกำหนดชำระ 14 กันยายน 2569\r\nรายละเอียด จำนวน ราคา/หน่วย รวมเงิน\r\nหลอดไฟ LED 18W 300 90.00 27,000.00\r\nค่าแรงติดตั้ง 1 9,000.00 9,000.00\r\nมูลค่าสินค้า/บริการ 36,000.00\r\nภาษีมูลค่าเพิ่ม 7% 2,520.00\r\nจำนวนเงินทั้งสิ้น (บาท) 38,520.00\r\nเงื่อนไขการชำระเงิน Net 45\r\nชำระเข้าบัญชีเลขที่ 8890014455\r\nผู้รับเงิน ______________________"
+    }
+  ],
+  "master_data": {
+    "vendors": [
+      {
+        "vendor_id": "V-1001",
+        "legal_name": "Siam Tech Supply Co., Ltd.",
+        "aliases": "Siam Tech;Siam Tech Supply;บริษัท สยามเทค ซัพพลาย จำกัด",
+        "tax_id": "0105543000129",
+        "bank_account": "1234567890",
+        "status": "active",
+        "payment_terms": "Net 30",
+        "currency": "THB"
+      },
+      {
+        "vendor_id": "V-1002",
+        "legal_name": "Northwind Logistics Ltd.",
+        "aliases": "Northwind;Northwind Logistics",
+        "tax_id": "0105561071237",
+        "bank_account": "9876543210",
+        "status": "active",
+        "payment_terms": "Net 45",
+        "currency": "THB"
+      },
+      {
+        "vendor_id": "V-1003",
+        "legal_name": "Bluepeak Software GmbH",
+        "aliases": "Bluepeak;Bluepeak Software",
+        "tax_id": "DE811907980",
+        "bank_account": "DE89370400440532013000",
+        "status": "active",
+        "payment_terms": "Net 30",
+        "currency": "EUR"
+      },
+      {
+        "vendor_id": "V-1004",
+        "legal_name": "Chao Phraya Facility Services Co., Ltd.",
+        "aliases": "Chao Phraya Facility;CPFS;บริษัท เจ้าพระยา แฟซิลิตี้ จำกัด",
+        "tax_id": "0994000165111",
+        "bank_account": "5550001111",
+        "status": "active",
+        "payment_terms": "Net 15",
+        "currency": "THB"
+      },
+      {
+        "vendor_id": "V-1005",
+        "legal_name": "Orient Paper & Print Co., Ltd.",
+        "aliases": "Orient Paper;Orient Print",
+        "tax_id": "0105539000117",
+        "bank_account": "4440002222",
+        "status": "on_hold",
+        "payment_terms": "Net 30",
+        "currency": "THB"
+      },
+      {
+        "vendor_id": "V-1006",
+        "legal_name": "Rungruang Steel Works Co., Ltd.",
+        "aliases": "Rungruang Steel;RSW;บริษัท รุ่งเรือง สตีล เวิร์ค จำกัด",
+        "tax_id": "0105552000110",
+        "bank_account": "3120045678",
+        "status": "active",
+        "payment_terms": "Net 60",
+        "currency": "THB"
+      },
+      {
+        "vendor_id": "V-1007",
+        "legal_name": "Pacific Rim Freight Pte. Ltd.",
+        "aliases": "Pacific Rim;PRF Singapore",
+        "tax_id": "SG198800123K",
+        "bank_account": "SG21DBSS0110001234567",
+        "status": "active",
+        "payment_terms": "Net 30",
+        "currency": "SGD"
+      },
+      {
+        "vendor_id": "V-1008",
+        "legal_name": "Thai Beverage Supply Co., Ltd.",
+        "aliases": "Thai Beverage Supply;TBS;บริษัท ไทยเบเวอเรจ ซัพพลาย จำกัด",
+        "tax_id": "0105563000221",
+        "bank_account": "7710028899",
+        "status": "active",
+        "payment_terms": "Net 15",
+        "currency": "THB"
+      },
+      {
+        "vendor_id": "V-1009",
+        "legal_name": "Meridian Consulting LLP",
+        "aliases": "Meridian;Meridian Consulting",
+        "tax_id": "GB428765190",
+        "bank_account": "GB29NWBK60161331926819",
+        "status": "active",
+        "payment_terms": "Net 30",
+        "currency": "USD"
+      },
+      {
+        "vendor_id": "V-1010",
+        "legal_name": "Krungthep Print House Co., Ltd.",
+        "aliases": "Krungthep Print;KPH",
+        "tax_id": "0105547000336",
+        "bank_account": "2260031122",
+        "status": "blocked",
+        "payment_terms": "Net 30",
+        "currency": "THB"
+      },
+      {
+        "vendor_id": "V-1011",
+        "legal_name": "Sunrise Electrical Co., Ltd.",
+        "aliases": "Sunrise Electrical;บริษัท ซันไรส์ อิเล็คทริคอล จำกัด",
+        "tax_id": "0105571000448",
+        "bank_account": "8890014455",
+        "status": "active",
+        "payment_terms": "Net 45",
+        "currency": "THB"
+      },
+      {
+        "vendor_id": "V-1013",
+        "legal_name": "PTT Station Rama IV",
+        "aliases": "PTT Rama IV;PTT Oil and Retail;บริษัท ปตท. น้ำมันและการค้าปลีก จำกัด",
+        "tax_id": "0105554000770",
+        "bank_account": "0140099887",
+        "status": "active",
+        "payment_terms": "Corporate card",
+        "currency": "THB"
+      },
+      {
+        "vendor_id": "V-1012",
+        "legal_name": "Nakhon Chemicals Co., Ltd.",
+        "aliases": "Nakhon Chemicals;NCC",
+        "tax_id": "0105539000551",
+        "bank_account": "6640077331",
+        "status": "on_hold",
+        "payment_terms": "Net 30",
+        "currency": "THB"
+      }
+    ],
+    "purchase_orders": [
+      {
+        "po_number": "PO-2026-0412",
+        "vendor_id": "V-1001",
+        "po_date": "2026-06-02",
+        "currency": "THB",
+        "amount": 187000.0,
+        "status": "open",
+        "description": "Dell Latitude laptops and docking stations"
+      },
+      {
+        "po_number": "PO-2026-0455",
+        "vendor_id": "V-1002",
+        "po_date": "2026-06-18",
+        "currency": "THB",
+        "amount": 64000.0,
+        "status": "open",
+        "description": "Inbound freight, June"
+      },
+      {
+        "po_number": "PO-2026-0470",
+        "vendor_id": "V-1003",
+        "po_date": "2026-07-01",
+        "currency": "EUR",
+        "amount": 24000.0,
+        "status": "open",
+        "description": "Annual platform licence renewal"
+      },
+      {
+        "po_number": "PO-2026-0488",
+        "vendor_id": "V-1004",
+        "po_date": "2026-07-05",
+        "currency": "THB",
+        "amount": 92000.0,
+        "status": "open",
+        "description": "Quarterly cleaning and facility services"
+      },
+      {
+        "po_number": "PO-2026-0501",
+        "vendor_id": "V-1006",
+        "po_date": "2026-06-22",
+        "currency": "THB",
+        "amount": 415000.0,
+        "status": "open",
+        "description": "Hot-rolled steel plate, 12mm"
+      },
+      {
+        "po_number": "PO-2026-0512",
+        "vendor_id": "V-1007",
+        "po_date": "2026-06-28",
+        "currency": "SGD",
+        "amount": 18500.0,
+        "status": "open",
+        "description": "Sea freight, Singapore to Laem Chabang"
+      },
+      {
+        "po_number": "PO-2026-0523",
+        "vendor_id": "V-1008",
+        "po_date": "2026-07-02",
+        "currency": "THB",
+        "amount": 42000.0,
+        "status": "open",
+        "description": "Pantry and canteen supplies, Q3"
+      },
+      {
+        "po_number": "PO-2026-0534",
+        "vendor_id": "V-1009",
+        "po_date": "2026-07-06",
+        "currency": "USD",
+        "amount": 36000.0,
+        "status": "open",
+        "description": "Operations advisory, phase 2"
+      },
+      {
+        "po_number": "PO-2026-0545",
+        "vendor_id": "V-1011",
+        "po_date": "2026-05-14",
+        "currency": "THB",
+        "amount": 128000.0,
+        "status": "closed",
+        "description": "Low-voltage switchgear panels"
+      },
+      {
+        "po_number": "PO-2026-0556",
+        "vendor_id": "V-1012",
+        "po_date": "2026-07-09",
+        "currency": "THB",
+        "amount": 76500.0,
+        "status": "open",
+        "description": "Industrial solvents, drum x 20"
+      },
+      {
+        "po_number": "PO-2026-0567",
+        "vendor_id": "V-1001",
+        "po_date": "2026-07-05",
+        "currency": "THB",
+        "amount": 135000.0,
+        "status": "open",
+        "description": "UPS units and installation, plant 1"
+      },
+      {
+        "po_number": "PO-2026-0578",
+        "vendor_id": "V-1006",
+        "po_date": "2026-07-01",
+        "currency": "THB",
+        "amount": 88000.0,
+        "status": "open",
+        "description": "Hot-rolled plate and forming, 6mm"
+      }
+    ],
+    "contracts": [
+      {
+        "contract_number": "CT-2025-018",
+        "vendor_id": "V-1004",
+        "party_a": "Mirtphol Industries PCL",
+        "party_b": "Chao Phraya Facility Services Co., Ltd.",
+        "effective_date": "2025-08-01",
+        "expiry_date": "2026-07-31",
+        "value": 368000.0,
+        "currency": "THB"
+      },
+      {
+        "contract_number": "CT-2026-004",
+        "vendor_id": "V-1003",
+        "party_a": "Mirtphol Industries PCL",
+        "party_b": "Bluepeak Software GmbH",
+        "effective_date": "2026-01-15",
+        "expiry_date": "2027-01-14",
+        "value": 24000.0,
+        "currency": "EUR"
+      },
+      {
+        "contract_number": "CT-2026-011",
+        "vendor_id": "V-1009",
+        "party_a": "Mirtphol Industries PCL",
+        "party_b": "Meridian Consulting LLP",
+        "effective_date": "2026-03-01",
+        "expiry_date": "2027-02-28",
+        "value": 144000.0,
+        "currency": "USD"
+      },
+      {
+        "contract_number": "CT-2026-014",
+        "vendor_id": "V-1006",
+        "party_a": "Mirtphol Industries PCL",
+        "party_b": "Rungruang Steel Works Co., Ltd.",
+        "effective_date": "2026-02-01",
+        "expiry_date": "2026-09-30",
+        "value": 1250000.0,
+        "currency": "THB"
+      },
+      {
+        "contract_number": "CT-2025-031",
+        "vendor_id": "V-1011",
+        "party_a": "Mirtphol Industries PCL",
+        "party_b": "Sunrise Electrical Co., Ltd.",
+        "effective_date": "2025-01-01",
+        "expiry_date": "2026-06-30",
+        "value": 480000.0,
+        "currency": "THB"
+      },
+      {
+        "contract_number": "CT-2026-027",
+        "vendor_id": "V-1004",
+        "party_a": "Mirtphol Industries PCL",
+        "party_b": "บริษัท เจ้าพระยา แฟซิลิตี้ จำกัด",
+        "effective_date": "2026-06-01",
+        "expiry_date": "2027-05-31",
+        "value": 420000.0,
+        "currency": "THB"
+      }
+    ]
+  }
+}

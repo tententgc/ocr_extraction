@@ -159,36 +159,40 @@
         <mxCell id="s1" value="&lt;b&gt;render&lt;/b&gt;  PDFium → images&#10;module-level lock: two workers rendering at once&#10;segfaulted the interpreter" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="p1">
           <mxGeometry x="60" y="200" width="300" height="70" as="geometry" />
         </mxCell>
+        <mxCell id="sPre" value="&lt;b&gt;preprocess&lt;/b&gt;  straighten · relight · sharpen&#10;each correction gated on a measurement, applied, measured&#10;again, and reverted if the number did not improve&#10;a clean PDF passes through untouched and writes no file&#10;the prepared page is written beside the original, never over it" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="p1">
+          <mxGeometry x="60" y="290" width="300" height="80" as="geometry" />
+        </mxCell>
         <mxCell id="s2" value="&lt;b&gt;ocr&lt;/b&gt;  vision model  &lt;i&gt;(model)&lt;/i&gt;" style="rounded=1;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;align=left;spacingLeft=8;" vertex="1" parent="p1">
-          <mxGeometry x="60" y="290" width="300" height="40" as="geometry" />
+          <mxGeometry x="60" y="380" width="300" height="40" as="geometry" />
         </mxCell>
         <mxCell id="s3" value="&lt;b&gt;classify&lt;/b&gt;  keywords, then model if unsure  &lt;i&gt;(model)&lt;/i&gt;" style="rounded=1;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;align=left;spacingLeft=8;" vertex="1" parent="p1">
-          <mxGeometry x="60" y="350" width="300" height="40" as="geometry" />
+          <mxGeometry x="60" y="440" width="300" height="40" as="geometry" />
         </mxCell>
         <mxCell id="s4" value="&lt;b&gt;extract&lt;/b&gt;  channel 1 + channel 2  &lt;i&gt;(2 models)&lt;/i&gt;&#10;then merge, ground, score — no model" style="rounded=1;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="p1">
-          <mxGeometry x="60" y="410" width="300" height="60" as="geometry" />
+          <mxGeometry x="60" y="500" width="300" height="60" as="geometry" />
         </mxCell>
         <mxCell id="s5" value="&lt;b&gt;line_items&lt;/b&gt;  table rows from HTML markup or text&#10;a line that parses as a date is not a line item" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="p1">
-          <mxGeometry x="60" y="490" width="300" height="60" as="geometry" />
+          <mxGeometry x="60" y="580" width="300" height="60" as="geometry" />
         </mxCell>
         <mxCell id="s6" value="&lt;b&gt;validate&lt;/b&gt;  master data + rules&#10;vendor match: tax ID → exact name → alias →&#10;core name → fuzzy ≥ 86" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="p1">
-          <mxGeometry x="60" y="570" width="300" height="70" as="geometry" />
+          <mxGeometry x="60" y="660" width="300" height="70" as="geometry" />
         </mxCell>
         <mxCell id="s7" value="&lt;b&gt;route&lt;/b&gt;  routing.decide()&#10;auto_post needs ALL of: no blocking failure,&#10;confidence ≥ threshold, every required field&#10;present, every critical field grounded" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="p1">
-          <mxGeometry x="60" y="660" width="300" height="80" as="geometry" />
+          <mxGeometry x="60" y="750" width="300" height="80" as="geometry" />
         </mxCell>
         <mxCell id="s8" value="&lt;b&gt;reconcile&lt;/b&gt;  tool-calling agent  &lt;i&gt;(model)&lt;/i&gt;&#10;runs only if something failed — nothing on the&#10;happy path" style="rounded=1;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="p1">
-          <mxGeometry x="60" y="760" width="300" height="60" as="geometry" />
+          <mxGeometry x="60" y="850" width="300" height="60" as="geometry" />
         </mxCell>
         <mxCell id="s9" value="&lt;b&gt;archive&lt;/b&gt;  hard link into&#10;data/archive/&lt;type&gt;/&lt;YYYY-MM&gt;/" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="p1">
-          <mxGeometry x="60" y="840" width="300" height="55" as="geometry" />
+          <mxGeometry x="60" y="930" width="300" height="55" as="geometry" />
         </mxCell>
         <mxCell id="s10" value="&lt;b&gt;post&lt;/b&gt;  the only write into the ledger&#10;refuses anything not cleared for auto_post&#10;unless a reviewer forced it" style="rounded=0;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="p1">
-          <mxGeometry x="60" y="915" width="300" height="70" as="geometry" />
+          <mxGeometry x="60" y="1005" width="300" height="70" as="geometry" />
         </mxCell>
 
         <mxCell id="pe1" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="p1" source="s0" target="s1"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="pe2" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="p1" source="s1" target="s2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="pe2a" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="p1" source="s1" target="sPre"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="pe2" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="p1" source="sPre" target="s2"><mxGeometry relative="1" as="geometry" /></mxCell>
         <mxCell id="pe3" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="p1" source="s2" target="s3"><mxGeometry relative="1" as="geometry" /></mxCell>
         <mxCell id="pe4" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="p1" source="s3" target="s4"><mxGeometry relative="1" as="geometry" /></mxCell>
         <mxCell id="pe5" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="p1" source="s4" target="s5"><mxGeometry relative="1" as="geometry" /></mxCell>
@@ -200,25 +204,35 @@
 
         <!-- right column: the human loop and the re-judgement path -->
         <mxCell id="h1" value="&lt;b&gt;Review queue&lt;/b&gt;&#10;a person sees the page beside every field, its evidence&#10;quote, every rule that ran and the agent's account" style="rounded=0;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="p1">
-          <mxGeometry x="470" y="660" width="340" height="70" as="geometry" />
-        </mxCell>
-        <mxCell id="h2" value="&lt;b&gt;Save&lt;/b&gt;  keeps the corrected values, re-runs the rules,&#10;and leaves the routing decision exactly where it was.&#10;A save is an edit, not a verdict." style="rounded=0;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="p1">
           <mxGeometry x="470" y="750" width="340" height="70" as="geometry" />
         </mxCell>
+        <mxCell id="h2" value="&lt;b&gt;Save&lt;/b&gt;  keeps the corrected values, re-runs the rules,&#10;and leaves the routing decision exactly where it was.&#10;A save is an edit, not a verdict." style="rounded=0;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="p1">
+          <mxGeometry x="470" y="840" width="340" height="70" as="geometry" />
+        </mxCell>
         <mxCell id="h3" value="&lt;b&gt;Re-check&lt;/b&gt;  revalidate.py&#10;replays master data → rules → confidence → routing&#10;against the stored run. No render, no OCR, no model:&#10;the values did not change, the policy did.&#10;Seven documents re-judged in 25 ms." style="rounded=0;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="p1">
-          <mxGeometry x="470" y="840" width="340" height="95" as="geometry" />
+          <mxGeometry x="470" y="930" width="340" height="95" as="geometry" />
         </mxCell>
         <mxCell id="h4" value="&lt;b&gt;Approve &amp; post&lt;/b&gt;  refused while a blocking rule still fails.&#10;The reviewer corrects the values or rejects the document —&#10;there is no way to approve past a failing check." style="rounded=0;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="p1">
-          <mxGeometry x="470" y="950" width="340" height="70" as="geometry" />
+          <mxGeometry x="470" y="1040" width="340" height="70" as="geometry" />
         </mxCell>
         <mxCell id="h5" value="&lt;b&gt;Two refusals that shape re-checking&lt;/b&gt;&#10;• a document a &lt;i&gt;person&lt;/i&gt; rejected is never posted by a&#10;  re-evaluation — a policy change is not consent to&#10;  overturn someone's decision&#10;• a posted document is refused outright: a posted record&#10;  is corrected downstream, not by re-running a check" style="rounded=0;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="p1">
-          <mxGeometry x="850" y="840" width="330" height="110" as="geometry" />
+          <mxGeometry x="850" y="930" width="330" height="110" as="geometry" />
         </mxCell>
         <mxCell id="pe11" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;dashed=1;" edge="1" parent="p1" source="s7" target="h1"><mxGeometry relative="1" as="geometry" /></mxCell>
         <mxCell id="pe12" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="p1" source="h1" target="h2"><mxGeometry relative="1" as="geometry" /></mxCell>
         <mxCell id="pe13" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="p1" source="h2" target="h3"><mxGeometry relative="1" as="geometry" /></mxCell>
         <mxCell id="pe14" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="p1" source="h3" target="h4"><mxGeometry relative="1" as="geometry" /></mxCell>
         <mxCell id="pe15" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="p1" source="h4" target="s10"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- the diagnosis that turns a failure into something a reviewer can act on -->
+        <mxCell id="fix1" value="&lt;b&gt;Which value is wrong&lt;/b&gt;  rules/repair.py&#10;The amounts are tied together by three relations: the lines&#10;sum to the subtotal, the tax is a rate applied to it, the&#10;subtotal and tax make the total. One misread value breaks&#10;every relation it appears in and leaves the others standing,&#10;so what still holds names what broke.&#10;&#10;Exactly one field explains it → name it, carry the value.&#10;Two would → say nothing. A wrong number wearing a&#10;suggestion's confidence is worse than no suggestion.&#10;&#10;Then name the slip: a transposition, a decimal point, a&#10;digit pair scans confuse. A reviewer confirms that with a&#10;glance instead of re-deriving it." style="rounded=0;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="p1">
+          <mxGeometry x="850" y="560" width="330" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="fix2" value="&lt;b&gt;Two tolerances, not one&lt;/b&gt;&#10;An invoice may differ from the &lt;i&gt;purchase order&lt;/i&gt; it quotes&#10;by 2% — freight, a part shipment, a price that moved.&#10;It may not differ from &lt;i&gt;itself&lt;/i&gt; by more than rounding.&#10;Lending the commercial allowance to a document's own&#10;arithmetic let an 810-baht misread post as &quot;totals add up&quot;." style="rounded=0;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="p1">
+          <mxGeometry x="850" y="800" width="330" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="pe17" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;dashed=1;" edge="1" parent="p1" source="s6" target="fix1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="pe18" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;dashed=1;" edge="1" parent="p1" source="fix1" target="h1"><mxGeometry relative="1" as="geometry" /></mxCell>
 
         <!-- queue -->
         <mxCell id="q1" value="&lt;b&gt;Batch queue&lt;/b&gt;  jobs.py&#10;ThreadPoolExecutor, worker count by engine:&#10;local engine → 1 worker (one model, one GPU)&#10;cloud engine → 4 workers&#10;max 50 files per batch" style="rounded=0;html=1;fillColor=#f5f5f5;strokeColor=#999999;fontSize=10;align=left;spacingLeft=8;verticalAlign=top;spacingTop=6;" vertex="1" parent="p1">

@@ -88,17 +88,65 @@ def score_field(
     return round(max(0.0, min(1.0, score)), 3)
 
 
+# Rule failures that say the *reading* is probably wrong, rather than that the
+# *document* is. The distinction is the one this whole module turns on.
+#
+# A document that does not add up, or whose check digit fails, or that is dated
+# next decade, is telling you a character was misread - and the rest of the page
+# came off the same engine under the same conditions. That is a confidence
+# signal.
+#
+# A blocked vendor, an expired contract, an invoice above its purchase order:
+# every one of those was read perfectly. They are facts about the world that
+# stop the document, and they stop it in `routing.decide`, where stopping
+# belongs. Feeding them into confidence as well says "we probably misread this",
+# which is both false and unhelpful to the reviewer who then cannot tell a
+# document we could not read from one we read fine and may not pay.
+MISREAD_SIGNALS = frozenset({
+    "invoice_totals_consistent",
+    "tax_rate_consistent",
+    "line_items_sum_to_subtotal",
+    "tax_id_checksum",
+    "dates_not_in_future",
+    "due_date_after_issue",
+    "contract_dates_ordered",
+})
+
+# How far a misread signal moves the score, by how serious the rule itself says
+# it is. The gap between these two is the point.
+#
+# A blocking one takes a fifth. The document is held by routing either way, so
+# this is not what stops it - it is what explains to the reviewer that the
+# reading is suspect rather than the supplier.
+#
+# A warning takes a twentieth. A warning must be able to survive the threshold,
+# or it is a blocking rule that has not admitted it: at 5% a page read at 95%
+# still clears an 84% bar with two warnings against it, and only starts to be
+# held once three of them agree something is off. That is the right shape - one
+# advisory finding is noise, three are a pattern.
+MISREAD_PENALTY = {"blocking": 0.20, "warning": 0.05, "info": 0.0}
+# However many of them, the reading is never scored below this on rule evidence
+# alone. Below here the fields themselves have to be weak.
+MISREAD_FLOOR = 0.5
+
+
 def document_confidence(
     fields: tuple[ExtractedField, ...],
     findings: tuple[RuleFinding, ...],
     required_names: frozenset[str],
     critical_names: frozenset[str],
 ) -> float:
-    """Overall confidence, weighted toward the fields that matter.
+    """How sure we are the values were read correctly. Nothing else.
 
-    Missing required fields and failed rules pull this down hard - the score is
-    meant to answer "is it safe to post this without a human?", not "how well did
-    the model do on average?".
+    Deliberately *not* "is it safe to post this". That question is answered in
+    `routing.decide`, which weighs this score alongside the blocking findings,
+    the missing required fields and the ungrounded critical ones.
+
+    Keeping them apart matters because it was previously one question, and every
+    warning quietly became a block: three advisory findings multiplied a
+    perfectly-read document from 95% down to 72%, under an 84% threshold, and it
+    went to a person who had nothing to correct. A warning that holds documents
+    is a blocking rule that has not admitted it.
     """
     if not fields:
         return 0.0
@@ -123,12 +171,14 @@ def document_confidence(
     missing_required = required_names - present
     score *= max(0.35, 1.0 - 0.25 * len(missing_required))
 
-    # Rule failures are direct evidence something is wrong.
-    blocking = sum(1 for finding in findings if finding.is_blocking)
-    warnings = sum(1 for finding in findings if not finding.passed and finding.severity == "warning")
-    if blocking:
-        score = min(score, 0.45) * max(0.5, 1.0 - 0.15 * (blocking - 1))
-    elif warnings:
-        score *= max(0.6, 1.0 - 0.08 * warnings)
+    # Only the failures that are evidence the *reading* is wrong, and weighted by
+    # how serious the rule says they are.
+    penalty = sum(
+        MISREAD_PENALTY.get(finding.severity, 0.0)
+        for finding in findings
+        if not finding.passed and finding.rule_id in MISREAD_SIGNALS
+    )
+    if penalty:
+        score *= max(MISREAD_FLOOR, 1.0 - penalty)
 
     return round(max(0.0, min(1.0, score)), 3)

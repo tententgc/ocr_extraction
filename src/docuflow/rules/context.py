@@ -29,7 +29,17 @@ class RuleContext:
     # --- finance policy, supplied from configuration ------------------------
     # These are business decisions, not code. Rules read them from here so the
     # thresholds can be changed in .env without editing a rule module.
+    # How far an invoice may differ from the purchase order it quotes. This is a
+    # commercial allowance - freight, part shipments, a price that moved between
+    # order and delivery - and 2% of a large order is real money by design.
     amount_tolerance: float = 0.02
+    # How far a document may differ *from itself*. A separate number, because it
+    # answers a different question: subtotal plus tax either makes the total or
+    # the document is wrong. There is no commercial reason for slack here, only
+    # rounding, and lending the commercial allowance to internal arithmetic is
+    # how an 810-baht misread passes as "totals add up" on a 200,000-baht
+    # invoice. Found exactly that way.
+    arithmetic_tolerance: float = 0.0001
     po_required_above: float = 50_000.0
     expected_vat_rates: tuple[float, ...] = (0.0, 7.0)
     contract_expiry_warning_days: int = 90
@@ -51,6 +61,7 @@ class RuleContext:
         """The policy keyword arguments carried by `settings`."""
         return {
             "amount_tolerance": settings.amount_tolerance,
+            "arithmetic_tolerance": settings.arithmetic_tolerance,
             "po_required_above": settings.po_required_above,
             "expected_vat_rates": settings.vat_rates,
             "contract_expiry_warning_days": settings.contract_expiry_warning_days,

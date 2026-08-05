@@ -232,6 +232,34 @@ class PolicyStore:
             return self._policy
 
 
+def unrecognised_rules(settings: Settings) -> list[str]:
+    """Ids in `DISABLED_RULES` that name no rule at all.
+
+    Both registers are consulted: the built-in checks, and the rules this
+    installation wrote for itself. Switching off one of your own by name has to
+    work, so an id missing from `all_rules()` is not on its own an error.
+
+    A database that cannot be read yields no complaint rather than a false one -
+    this runs at startup, and a policy warning is not worth failing a boot over.
+    """
+    wanted = settings.skipped_rules
+    if not wanted:
+        return []
+
+    known = {info.rule_id for info in all_rules()}
+    try:
+        from docuflow.store.custom_rules import CustomRuleStore
+
+        known |= {rule.rule_id for rule in CustomRuleStore(settings.db_path).list_rules()}
+    except Exception:  # noqa: BLE001 - an unreadable store must not break startup
+        pass
+
+    return sorted(
+        name for name in wanted
+        if name not in known and not any(info.matches(name) for info in all_rules())
+    )
+
+
 def warnings_for(settings: Settings) -> list[str]:
     """Plain-language consequences of the current policy, for the UI to show."""
     notes: list[str] = []
@@ -250,6 +278,19 @@ def warnings_for(settings: Settings) -> list[str]:
     if disabled and not (settings.rules_free_mode or settings.builtin_rules_disabled):
         notes.append(
             f"{len(disabled)} rule(s) switched off: {', '.join(sorted(disabled))}."
+        )
+    # A name that matches nothing switches nothing off, and says so nowhere. The
+    # settings screen refuses an unknown id outright; `DISABLED_RULES` in the
+    # environment cannot, because it is read before anything is registered - so
+    # it has to be reported instead. A typo here is silent and looks exactly
+    # like a rule that is still too noisy.
+    unknown = unrecognised_rules(settings)
+    if unknown:
+        notes.append(
+            f"{', '.join(unknown)} in DISABLED_RULES "
+            f"{'match' if len(unknown) > 1 else 'matches'} no rule, so "
+            f"{'they switch' if len(unknown) > 1 else 'it switches'} nothing off. "
+            "Check the spelling against the ids on the Rules screen."
         )
     if settings.auto_post_min_confidence < LOW_THRESHOLD_WARNING:
         notes.append(

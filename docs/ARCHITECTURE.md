@@ -12,6 +12,11 @@ read**. An automated pipeline that is right 95% of the time and silently wrong 5
 of the time is worse than useless in accounts payable, because the 5% becomes
 wrong payments. Every design decision below follows from that.
 
+> The same three views as diagrams — where a model is called, the pipeline with
+> the human loop, and the agents with their tools — are in
+> [architecture.drawio.xml](architecture.drawio.xml), openable at
+> [diagrams.net](https://app.diagrams.net).
+
 ## Pipeline
 
 ```
@@ -24,6 +29,11 @@ wrong payments. Every design decision below follows from that.
       ▼
 ┌─────────────┐   PDF → page images (pypdfium2), text layer kept as a free cross-check
 │   render    │
+└─────┬───────┘
+      ▼
+┌─────────────┐   skew / blur / contrast / lighting measured, then only the
+│ preprocess  │   corrections a measurement asks for — each re-measured and
+│             │   reverted if it did not help. Clean pages pass through untouched.
 └─────┬───────┘
       ▼
 ┌─────────────┐   Typhoon OCR 1.5 → Markdown + HTML tables
@@ -49,6 +59,11 @@ wrong payments. Every design decision below follows from that.
       ▼
 ┌─────────────┐   arithmetic, VAT, duplicates, vendor master, 3-way PO match,
 │  validate   │   bank account, contract dates, tax-ID checksum
+└─────┬───────┘
+      ▼
+┌─────────────┐   which of the values is the wrong one, and what it should say —
+│   diagnose  │   from the relations that still hold. Silent where two would
+│             │   explain the failure equally well.
 └─────┬───────┘
       ▼
 ┌─────────────┐   tool-using agent — only when a check has already failed

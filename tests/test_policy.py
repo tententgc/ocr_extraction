@@ -116,6 +116,90 @@ class TestPolicyWarnings:
     def test_the_configured_defaults_warn_about_nothing(self, settings):
         assert warnings_for(settings) == []
 
+    def test_switched_off_rules_are_named(self, settings):
+        notes = warnings_for(settings.model_copy(
+            update={"disabled_rules": "vat_rate_expected,due_date_after_issue"}))
+        assert any("2 rule(s) switched off" in note for note in notes)
+
+
+class TestDisabledRulesFromTheEnvironment:
+    """`DISABLED_RULES` is read before any rule is registered, so it cannot
+    refuse a bad id the way the settings screen does. It has to report instead."""
+
+    def test_a_typo_switches_nothing_off_and_says_so(self, settings):
+        """The failure this exists for is silent: you disable `vendor_knwon`,
+        see no error, and conclude the rule is still too noisy."""
+        from docuflow.policy import unrecognised_rules
+
+        mistyped = settings.model_copy(
+            update={"disabled_rules": "vat_rate_expected,vendor_knwon"})
+
+        assert unrecognised_rules(mistyped) == ["vendor_knwon"]
+        assert any("switches nothing off" in note for note in warnings_for(mistyped))
+
+    def test_every_real_rule_id_is_accepted(self, settings):
+        from docuflow.policy import unrecognised_rules
+
+        every = ",".join(info.rule_id for info in all_rules())
+        assert unrecognised_rules(settings.model_copy(update={"disabled_rules": every})) == []
+
+    def test_a_rule_this_installation_wrote_is_not_a_typo(self, settings):
+        """`DISABLED_RULES` may name your own rules too, and those are in a
+        different register. Reporting one as unknown would be worse than saying
+        nothing — it would send someone looking for a spelling mistake that is
+        not there."""
+        from docuflow.policy import unrecognised_rules
+        from docuflow.rules.custom import build_rule
+        from docuflow.store.custom_rules import CustomRuleStore
+
+        CustomRuleStore(settings.db_path).save(build_rule({
+            "rule_id": "our_own_check", "title": "Ours", "message": "no",
+            "doc_types": ["invoice"], "severity": "warning",
+            "assert": {"field": "total_amount", "op": "present"},
+        }), replace=True)
+
+        mixed = settings.model_copy(update={"disabled_rules": "our_own_check,not_a_rule"})
+        assert unrecognised_rules(mixed) == ["not_a_rule"]
+
+    def test_the_recommended_set_is_spelled_correctly(self, settings):
+        """The four ids shipped in `.env.example` under BALANCED. A rename that
+        orphans one of them should fail here rather than quietly stop
+        disabling it."""
+        from docuflow.policy import unrecognised_rules
+
+        recommended = ("vat_rate_expected", "currency_matches_vendor_default",
+                       "payment_terms_stated", "tax_id_belongs_to_this_vendor")
+        known = {info.rule_id for info in all_rules()}
+        # Two are built in; two ship in `real_samples/rules.json`.
+        assert {"vat_rate_expected", "currency_matches_vendor_default"} <= known
+        assert unrecognised_rules(settings.model_copy(
+            update={"disabled_rules": ",".join(recommended[:2])})) == []
+
+    def test_no_recommended_rule_is_one_confidence_depends_on(self):
+        """Switching off a check that feeds confidence does not just stop it
+        reporting — it stops the reading being questioned. None of the four may
+        ever be in `MISREAD_SIGNALS`."""
+        from docuflow.confidence import MISREAD_SIGNALS
+
+        recommended = {"vat_rate_expected", "currency_matches_vendor_default",
+                       "payment_terms_stated", "tax_id_belongs_to_this_vendor"}
+        assert not (recommended & MISREAD_SIGNALS)
+
+    def test_a_disabled_rule_stops_firing(self, settings, master, make_run):
+        """End to end: the same document, the same context, one setting."""
+        from tests.test_rules import build_context, result_for
+
+        fields = {"invoice_number": "X-1", "invoice_date": "2026-07-20",
+                  "vendor_name": "Siam Tech Supply Co., Ltd.",
+                  "vendor_tax_id": "0105543000129", "currency": "THB",
+                  "subtotal": 1_000.0, "tax_rate": 10.0, "tax_amount": 100.0,
+                  "total_amount": 1_100.0}
+        context = build_context(master, fields, make_run=make_run)
+
+        assert result_for(run_rules(context), "vat_rate_expected").passed is False
+        assert result_for(run_rules(context, skip=["vat_rate_expected"]),
+                          "vat_rate_expected") is None
+
 
 class TestRuleSeverityOverrides:
     """The setting that was missing between "on" and "off"."""

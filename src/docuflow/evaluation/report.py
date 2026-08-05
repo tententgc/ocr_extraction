@@ -49,6 +49,35 @@ def _print_cost(cost: dict[str, Any]) -> None:
                   f"(asked something already answered)")
 
 
+def _print_effort(effort: dict[str, Any]) -> None:
+    """Time saved, with the assumptions it rests on printed beside it.
+
+    Accuracy and coverage are measured. This is modelled, and a modelled number
+    presented like a measured one is how a report ends up claiming a saving
+    nobody can find afterwards. So the assumptions are printed every time, not
+    kept in a footnote.
+    """
+    if not effort.get("documents"):
+        return
+
+    print("\n--- Time saved " + "-" * 62)
+    print(f"By hand              : {effort['manual_minutes']:.0f} min "
+          f"({effort['manual_days_per_thousand_documents']} days per 1,000 documents)")
+    print(f"Through here         : {effort['assisted_minutes']:.0f} min "
+          f"({effort['days_per_thousand_documents']} days per 1,000 documents)")
+    if effort["rework_minutes"]:
+        print(f"  of which rework    : {effort['rework_minutes']:.0f} min "
+              f"cleaning up posted errors")
+    print(f"Saved                : {effort['saved_minutes']:.0f} min "
+          f"({effort['saved_share']:.0%} of the manual effort)")
+    print(f"Machine time         : {effort['machine_minutes']:.1f} min wall clock "
+          f"(nobody waits for it in a batch)")
+
+    print("  assuming, per document:")
+    for name, value in effort.get("assumptions", {}).items():
+        print(f"    {name.replace('_', ' '):48} {value:>5.1f} min")
+
+
 def print_report(report: dict[str, Any]) -> None:
     """Print the accuracy report to stdout."""
     summary = report.get("summary", {})
@@ -84,6 +113,7 @@ def print_report(report: dict[str, Any]) -> None:
     print(f"Planted defects      : {summary['planted_defects_caught']}/{summary['planted_defects']} caught "
           f"({summary['defect_recall']:.0%} recall)")
 
+    _print_effort(report.get("effort") or {})
     _print_cost(report.get("cost") or {})
 
     breakdown = report.get("field_breakdown", {})

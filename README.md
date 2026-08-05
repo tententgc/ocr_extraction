@@ -25,39 +25,75 @@ worse than useless in accounts payable: the 5% becomes wrong payments. So the
 headline metric here is not field accuracy, it is the **silent error rate** —
 documents that posted automatically while carrying a wrong critical value.
 
-Four mechanisms keep that number down:
+Five mechanisms keep that number down:
 
-1. **Two independent extraction channels** — two language models read the same
+1. **A clean page before the model reads it** — skew, blur, contrast and lighting
+   are measured, and only the corrections a measurement asks for are applied.
+   Each one is then re-measured and thrown away if the number it exists to
+   improve did not improve, so a clean digital PDF passes through untouched and
+   a phone photo arrives at the OCR model straightened and relit.
+2. **Two independent extraction channels** — two language models read the same
    page, one framed field-first and one label-first, neither seeing the other's
    answers. Agreement scores 0.97; disagreement drops to 0.45 and routes to a
    human. The deterministic label matcher takes the second slot only when no
    second model is reachable, so the system still runs with no credentials.
-2. **Evidence grounding** — every extracted value must come with a verbatim
+3. **Evidence grounding** — every extracted value must come with a verbatim
    quote, verified to (a) exist on the page and (b) state the reported value.
    That second check is type-aware: a page saying `11/02/2019` does state the
    date `2019-02-11`, and `Subtotal 145.00` does state `145`. Ungrounded
    critical fields can never auto-post.
-3. **Deterministic recomputation** — arithmetic is recomputed, never trusted from
-   the model.
-4. **Conservative routing** — straight-through posting requires no blocking rule
+4. **Deterministic recomputation** — arithmetic is recomputed, never trusted from
+   the model, and against a tolerance that is *rounding only*. The 2% allowance
+   for an invoice differing from its purchase order is a commercial one and does
+   not apply to a document agreeing with itself; lending it there let an
+   810-baht misread post as "totals add up" on a 200,000-baht invoice.
+5. **Conservative routing** — straight-through posting requires no blocking rule
    failure, confidence above threshold, all required fields present, and all
    critical fields grounded.
+
+And when something does fail, the finding says **which value is wrong and what it
+should be**. The amounts on an invoice are tied together by three relations — the
+lines sum to the subtotal, the tax is a rate applied to it, the subtotal and tax
+make the total — so a single misread value breaks every relation it appears in
+and leaves the others standing. Where exactly one field explains the failure it
+is named and the correction offered; where two would, nothing is offered, because
+a wrong number wearing a suggestion's confidence is worse than no suggestion.
 
 - [docs/APPROACH.md](docs/APPROACH.md) — the reasoning: model and technique
   choices, where agents belong versus deterministic steps, and how value is
   proven and improved before scaling.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — the mechanics: pipeline stages,
   confidence model, plugin system, data model.
+- [docs/architecture.drawio.xml](docs/architecture.drawio.xml) — three diagrams,
+  openable at [diagrams.net](https://app.diagrams.net): where a model is called
+  and what it is allowed to decide, the pipeline end to end with the human loop,
+  and the agents with their tools.
+- [docs/EVALUATION.md](docs/EVALUATION.md) — the numbers, per document, with
+  what was read wrong and why.
 
 ---
 
 ## Quick start
 
-Nothing to install: [`notebooks/docuflow_walkthrough.ipynb`](notebooks/docuflow_walkthrough.ipynb)
-runs the whole pipeline in Colab against Typhoon Cloud and Claude, one stage at a
-time, printing what each one produced — the page image, the OCR markdown, both
-independent readings, which fields they agreed on, what the rules made of it, and
-why it was posted or held. It needs two API keys and no GPU.
+Nothing to install — two Colab notebooks, both running the real pipeline against
+Typhoon Cloud and Claude with two API keys and no GPU. Both ship with their
+outputs, so they can be read without running anything.
+
+**[`notebooks/docuflow_explained.ipynb`](notebooks/docuflow_explained.ipynb) —
+start here if you want to understand how it works.** One document followed
+through all nine stages, with a map printed at each one showing where in the
+pipeline you are and what that stage was handed. Then three rules written by
+typing sentences at it, and three documents ending in three different outcomes —
+including a defect that every arithmetic check passes and only a lookup can
+catch.
+
+**[`notebooks/docuflow_walkthrough.ipynb`](notebooks/docuflow_walkthrough.ipynb)
+— the reference.** The same pipeline under the full production rule set, every
+option spelled out: the page as it arrived and as preprocessing handed it on, the
+OCR markdown, both independent readings, which fields they agreed on, which value
+the arithmetic blames when something fails, and re-checking a held document under
+a policy that changed. It defaults to a phone photograph rather than a clean PDF,
+because a clean PDF asks nothing of the system.
 
 To run it locally instead:
 
@@ -86,8 +122,17 @@ Then start the platform:
 .venv/bin/docuflow serve
 ```
 
-Open **http://127.0.0.1:8000**. The database, master data and a corpus of ten
-demo documents are created on first run.
+Open **http://127.0.0.1:8000**. The database, master data and the demo corpus are
+created on first run.
+
+To work against the committed corpus and its master data instead:
+
+```bash
+.venv/bin/docuflow reset --confirm
+.venv/bin/docuflow master load real_samples/master
+.venv/bin/docuflow rules load real_samples/rules.json
+.venv/bin/docuflow process real_samples/3_invoice_photo_on_a_desk_False.jpg
+```
 
 ---
 
@@ -113,14 +158,27 @@ docuflow process invoice.pdf          # one file
 docuflow process https://…/invoice.pdf  # straight from a URL
 docuflow demo --reset                 # process the whole demo corpus
 docuflow records                      # what has been posted
-docuflow master import vendors.csv --type vendors   # load your own master data
+docuflow status                       # which engines are configured
+docuflow models                       # every selectable model and its status
+
+# master data
+docuflow master load real_samples/master            # a whole directory, in order
+docuflow master import vendors.csv --type vendors   # one file
 docuflow master template --type purchase_orders     # the columns it expects
 docuflow master show                  # what the register holds
 docuflow master clear                 # empty it
-docuflow models                       # every selectable model and its status
-docuflow evaluate --out report.json   # accuracy against ground truth
+
+# rules you write
+docuflow rules load real_samples/rules.json   # load a reviewed rule set
+docuflow rules list                   # what is active, and what each one reads as
+docuflow rules clear                  # remove them (the 26 built-ins stay)
+
+# starting over, and measuring
+docuflow reset --confirm              # empty documents, ledger and master data
+docuflow reset --confirm --keep-master  # keep the register, clear the rest
+docuflow real-samples --out real_samples  # regenerate the working corpus
+docuflow evaluate --out report.json   # accuracy, coverage and time saved
 docuflow benchmark                    # compare models on the same corpus
-docuflow status                       # which engines are configured
 ```
 
 ---
@@ -200,21 +258,29 @@ in `.env`, never in source.**
 
 ```bash
 OCR_PROVIDER=ollama            # ollama | local | typhoon_api | openai | claude | pdftext | tesseract | auto
-LLM_PROVIDER=auto              # auto | ollama | typhoon | openai | claude | local | rules
+LLM_PROVIDER=typhoon           # auto | ollama | typhoon | openai | claude | local | rules
+LLM_VERIFY_PROVIDER=openai     # the second reading — a *different* backend, or its agreement means nothing
+OCR_PREPROCESS=true            # straighten, relight and sharpen before OCR
 
 TYPHOON_API_KEY=               # opentyphoon.ai
 OPENAI_API_KEY=                # platform.openai.com
 ANTHROPIC_API_KEY=             # console.anthropic.com
 
 AUTO_POST_MIN_CONFIDENCE=0.90  # bar for straight-through posting
-AMOUNT_TOLERANCE=0.02          # PO / arithmetic slack
+AMOUNT_TOLERANCE=0.02          # how far an invoice may differ from its purchase order
+ARITHMETIC_TOLERANCE=0.0001    # how far a document may differ from itself: rounding only
 ```
+
+Those last two answer different questions and must not share a number. An invoice
+may legitimately differ from the purchase order it quotes by 2% — freight, a part
+shipment, a price that moved between order and delivery. It may not differ from
+its own subtotal plus its own tax by anything but rounding.
 
 Business policy is configuration, not code:
 
 ```bash
 PO_REQUIRED_ABOVE=50000        # invoices above this must quote a PO
-EXPECTED_VAT_RATES=0,7         # flag unusual rates
+EXPECTED_VAT_RATES=0,7         # Thailand is 7%; set yours
 CONTRACT_EXPIRY_WARNING_DAYS=90
 ```
 
@@ -223,9 +289,47 @@ extraction only — no keys, no downloads. That is what CI uses.
 
 ---
 
+## Before the model reads it
+
+Documents arrive as photographs taken under one lamp, faxes of faxes, scans fed
+in crooked. Four things are measured on every page — how far it is rotated, how
+sharp its edges are, how far the ink sits from the paper, and how much the
+paper's own brightness drifts across the sheet — and only the corrections a
+measurement asks for are applied.
+
+Then each correction is **re-measured and thrown away if it did not help**. That
+one rule removes the whole class of failure where a heuristic misfires on an
+unusual page and quietly degrades it. Sharpening a crisp digital PDF rings the
+glyph edges and makes OCR worse, so all thirteen documents in the demo corpus
+pass through untouched and no second file is written for them.
+
+Measured on the working corpus:
+
+| Document | Before | After |
+|---|---|---|
+| `3_invoice_photo_on_a_desk` | 2.8° skew, lighting drift 0.390 | 0.0°, 0.008 |
+| `18_invoice_unlabelled_amounts` | 2.9° skew, lighting drift 0.406 | 0.0°, 0.002 |
+| `13_contract_already_expired` | ink-to-paper 0.057 | 0.142 |
+| `16_invoice_line_items_do_not_sum` | 1.9° skew, ink-to-paper 0.059 | 0.0°, 0.192 |
+| the three clean scans | — | untouched |
+
+Two things are reported rather than corrected: a page tilted further than a
+scanner could be, and a page lying on its side. Telling 90° from 270° needs to
+know which way the glyphs face, and guessing wrong leaves the model reading
+upside down. On the thermal receipt the deskew was attempted, measured as no
+improvement and reverted — ten lines of text on 80mm paper is not enough of a
+projection profile to trust, and the trace says so rather than rotating it on a
+guess.
+
+The prepared image is written **beside** the rendered page, never over it. OCR
+reads the clean copy; a reviewer confirming a value still sees what arrived.
+
+---
+
 ## What it checks
 
-Roughly twenty rules run against every document. The blocking ones:
+Twenty-six rules ship with the system, fifteen of them blocking. The ones that
+stop a document:
 
 | Rule | Catches |
 |---|---|
@@ -241,8 +345,70 @@ Roughly twenty rules run against every document. The blocking ones:
 | `critical_fields_grounded` | a money or identity value not traceable to the page |
 | `contract_dates_ordered` | expiry before commencement |
 
-Warnings (VAT rate unusual, contract expiring, low-confidence fields, degraded
-OCR) inform the reviewer without blocking.
+### The three tiers, and what each one actually does
+
+Three severities are only worth having if they behave differently:
+
+| Tier | What happens | Who acts |
+|---|---|---|
+| **blocking** | The document stops. Nothing posts past a failing blocking rule — not even on approval. | A person corrects the values and re-checks, or rejects it. |
+| **warning** | Recorded on the document, shown to the reviewer, carried into the posted record. **Does not stop it.** | Nobody, unless they want to. |
+| **info** | Recorded. Notes a mode or a decision rather than a problem. | Nobody. |
+
+That middle row is load-bearing and used not to be true. A warning previously
+cut confidence by 8% each, so three advisory findings took a perfectly-read
+document from 95% to 72% — under the threshold — and sent it to someone with
+nothing to correct. **A warning that holds documents is a blocking rule that has
+not admitted it**, and it is how a human-in-the-loop system ends up with a human
+in every loop.
+
+So confidence now answers one question — *how sure are we the values were read
+correctly* — and routing answers the other. A blocked vendor, an expired
+purchase order, a duplicate submission and an unusual VAT rate no longer move
+the score at all: every one of them was read perfectly, and calling them
+doubtful reading leaves a reviewer unable to tell a document we could not read
+from one we read fine and may not pay.
+
+What does move it is a failure saying a *character* was misread — the arithmetic
+disagreeing, a check digit failing, a date next decade — because the rest of the
+page came off the same engine under the same conditions. Weighted by the rule's
+own severity: a blocking one takes a fifth, a warning a twentieth. A page read
+at 95% still clears an 84% bar with two warnings against it, and is held once
+three of them agree something is off. One advisory finding is noise; three are a
+pattern.
+
+### And when one fails, what to do about it
+
+A failing check that only says *something is wrong* leaves the reviewer to work
+out which of the numbers to trust, re-read the page and retype it. Where the
+document's own arithmetic can answer that, the finding carries the answer:
+
+```
+[BLOCKING] invoice_totals_consistent
+   Totals do not add up: 42,000.00 + 2,940.00 = 44,940.00, but the document
+   states 49,440.00 (difference 4,500.00). the total is the only value that
+   explains it — the line items add up to the subtotal and the tax matches the
+   stated rate, so those are right. the subtotal plus the tax gives 44,940.00.
+   Looking at the page: two digits are transposed: '94' was read where '49'
+   balances
+
+   suggested fix   total_amount   49,440.00 → 44,940.00   (92%)   [Apply]
+```
+
+The reasoning is worth stating because it is what makes the suggestion safe. The
+amounts are tied together by three relations — the lines sum to the subtotal, the
+tax is a rate applied to it, the subtotal and tax make the total. A single
+misread value breaks every relation it appears in and leaves the others standing,
+so the relations that still hold identify the one that broke them. **Where two
+fields would explain the failure equally well, nothing is suggested at all** —
+that is a page a person has to look at, and naming one at random would put a
+wrong number in front of them wearing a suggestion's confidence.
+
+Suggestions decide nothing. A reviewer accepts one, and the full rule set runs
+again over what they accepted, exactly as if they had typed it. A changed bank
+account is offered at 35% with *"confirm the change with the vendor by a channel
+you already had"*, because a box that trains reviewers to click through
+payment-redirection fraud is worse than no box.
 
 ### Rules you write yourself
 
@@ -275,27 +441,54 @@ The whole trace — the plan, which step found what, which tools were called —
 the finding, so a reviewer can see how the answer was reached rather than being
 handed a confident sentence.
 
+A rule set can also be kept in a file and loaded, which is how the seven that
+ship with the working corpus are stored. The sentence someone typed sits next to
+what it compiled to, so the compilation is reviewable in a diff rather than being
+a model asked the same question again on every document:
+
+```bash
+docuflow rules load real_samples/rules.json
+docuflow rules list
+```
+
 ---
 
-## The demo corpus
+## The corpora
 
-Ten documents with known ground truth, each demonstrating something specific:
+**[`real_samples/`](real_samples/)** is the working corpus: eighteen documents
+that arrive the way documents actually arrive. Ten digital PDFs, three scans,
+three phone photographs and two faded photocopies — the arrival is part of the
+test, so document 3 is a photograph and only a photograph.
 
-| Document | Demonstrates |
-|---|---|
-| `inv-clean-classic` | Happy path — posts automatically |
-| `inv-bad-math` | Stated total 86,480 vs computed 68,480 — blocked |
-| `inv-thai-scan` | Thai scan, Buddhist-era dates, Thai numerals |
-| `inv-unknown-vendor` | Unregistered vendor + unknown bank account (fraud pattern) |
-| `inv-duplicate` | Same invoice sent twice |
-| `inv-eur-over-po` | Foreign currency, PO overrun outside tolerance |
-| `contract-facility` | Multi-page prose contract |
-| `form-vendor-onboarding` | Hand-filled form, invalid tax-ID checksum |
-| `receipt-fuel` | Low-contrast thermal receipt |
-| `po-orient-paper` | Purchase order against an on-hold vendor |
+It ships with the master data it reconciles against, as the three CSVs an ERP
+would export, and with the seven checks a finance team would add on top of the
+built-in twenty-six.
 
-Four are rendered as degraded scans — rotated, blurred, noisy, JPEG-compressed —
-so the numbers are not flattered by clean digital PDFs.
+```bash
+docuflow reset --confirm                     # a known-empty database
+docuflow master load real_samples/master     # vendors, then POs and contracts
+docuflow rules load real_samples/rules.json  # 5 expression rules, 2 agent rules
+docuflow process real_samples/1_invoice_clean_matches_po_True.pdf
+```
+
+Between them the eighteen cover a transposed total, a miscalculated VAT, a
+changed bank account, an unregistered vendor, a blocked one, an overrun against
+the purchase order, a currency that disagrees with it, a missing line item,
+Buddhist-era dates, a duplicate submission, an expiring contract, an expired one,
+an invoice with no labels at all, and a thermal receipt photographed on a desk.
+[`real_samples/README.md`](real_samples/README.md) lists what each is for and
+which rules it should trip.
+
+Regenerate it after editing `src/docuflow/samples/real_world.py`:
+
+```bash
+docuflow real-samples --out real_samples
+```
+
+**The demo corpus** is smaller, older and generated at runtime rather than
+committed. It exists so `docuflow demo` works on a fresh clone with nothing
+loaded, and it is what `docuflow evaluate` and `docuflow benchmark` measure
+against.
 
 ```bash
 docuflow demo --reset
@@ -306,36 +499,43 @@ docuflow demo --reset
 ## Accuracy
 
 ```bash
-docuflow evaluate
+docuflow evaluate            # accuracy, coverage and time saved
+docuflow benchmark           # the same corpus across several model combinations
 ```
 
-Measured on the ten-document corpus with Typhoon OCR 1.5 running on-device:
+Full results, per document, with what was read wrong and why:
+**[docs/EVALUATION.md](docs/EVALUATION.md)**.
+
+The headline, measured on the eighteen-document working corpus — Typhoon OCR 1.5
+on-device, Typhoon Cloud reading it, Claude reading it again:
 
 | Metric | Result |
 |---|---|
-| **Silent error rate** | **0.0%** — nothing wrong reached the ledger |
-| Planted defects caught | **8/8 (100%)** |
-| Document type accuracy | **100%** |
-| Field accuracy (exact) | **91.2%** (114/125) |
-| Field accuracy (allowing a one-character OCR slip) | **96.8%** |
-| Straight-through rate | 10% — the rest were correctly held |
+| **Silent error rate** | **0%** — all three auto-posted documents were read perfectly, every field |
+| Planted defects caught | **13/13** (100%) |
+| Document type accuracy | **18/18** (100%) |
+| Field accuracy (exact) | **191/216** (88.4%) |
+| Straight-through rate | 3/18 — the other 15 were held, each for a stated reason |
+| Time saved (modelled) | 112 of 135 manual minutes (83%) |
 
-The silent error rate is the number that matters. Field accuracy of 91% with a
-0% silent error rate is deployable; 99% accuracy with silent errors is not,
-because you cannot tell which payments are wrong.
+Seventeen per cent straight-through looks low until you read the corpus: thirteen
+of the eighteen documents have a defect planted in them on purpose.
 
-Every wrong value in that run was a genuine OCR misread on a degraded scan, and
-every one was caught — for example the bank account `5550001111` read as
-`550001111`, blocked by `bank_account_matches_vendor` before it could redirect a
-payment.
+Read the confidence beside the decision, not instead of it. Five held documents
+sit at 91–93%: every one was read correctly and stopped by a closed purchase
+order, a changed bank account, a duplicate, a currency mismatch or a blocked
+vendor. The three at 60–63% are the ones the system genuinely could not read.
+Those need different things from a reviewer, and a single number that conflated
+them told them neither.
+
+The silent error rate is the number that matters. Field accuracy in the low
+nineties with a 0% silent error rate is deployable; 99% accuracy with silent
+errors is not, because you cannot tell which payments are wrong.
 
 Because each sample carries ground truth *and* a list of the defects planted in
-it, the harness verifies both that values are read correctly and that the rules
-catch what they should.
-
-```bash
-docuflow benchmark   # the same corpus across several model combinations
-```
+it, the harness checks both that values are read correctly and that the rules
+catch what they should — a corpus that only measures reading would score well on
+a system that validates nothing.
 
 ---
 
@@ -346,11 +546,17 @@ docuflow benchmark   # the same corpus across several model combinations
 .venv/bin/python -m pytest tests/ --cov=docuflow --cov-report=term-missing
 ```
 
-250 tests, 82% coverage. The suite runs with no API key and no model download: it
-uses the PDF text layer for OCR and the deterministic extractor for fields, so
-the full pipeline — ingest, render, OCR, classify, extract, validate, route,
-post, review — is exercised in about twenty seconds. Credentials are blanked in
-the fixtures, so results do not depend on which keys happen to be in your `.env`.
+745 tests, 82% coverage. The suite runs with no API key and no model download: it uses the PDF
+text layer for OCR and the deterministic extractor for fields, so the full
+pipeline — ingest, render, preprocess, OCR, classify, extract, validate,
+diagnose, route, post, review — is exercised in about a minute.
+
+Credentials *and* business policy are pinned in the fixtures. That second half
+matters more than it sounds: a developer whose `.env` names a verification
+backend, or loosens a tolerance, or turns a rule off while exploring, would
+otherwise get a green suite that is a statement about their machine rather than
+about the code. That has now caught six settings the hard way, each of which is
+named in `tests/conftest.py` with the failure it caused.
 
 ```
 src/docuflow/
@@ -360,9 +566,9 @@ src/docuflow/
 ├── llm/          plugin registry + Typhoon / Ollama / OpenAI / Claude / MLX
 ├── masterdata/   vendors, purchase orders, contracts
 ├── normalize/    dates, amounts, identifiers, text
-├── ocr/          plugin registry, engines, rendering, quality scoring
-├── rules/        the business rule engine
-├── samples/      the demo corpus generator
+├── ocr/          plugin registry, engines, rendering, preprocessing, quality
+├── rules/        the business rule engine, and the repair diagnosis
+├── samples/      the demo and working corpus generators
 ├── schemas/      per-document-type field definitions
 ├── store/        documents, records, corrections
 └── web/          the single-page UI

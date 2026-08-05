@@ -187,11 +187,32 @@ class TestGenericRules:
         assert finding.passed is False
         assert finding.severity == "blocking"
 
-    def test_future_dated_invoice_warns(self, master, make_run):
-        fields = {**GOOD_INVOICE, "invoice_date": "2027-01-01"}
-        finding = result_for(run_rules(build_context(master, fields, make_run=make_run)), "dates_not_in_future")
+    def test_a_slightly_future_date_warns(self, master, make_run):
+        """Days ahead is a clock, a timezone, or a supplier billing early."""
+        fields = {**GOOD_INVOICE, "invoice_date": "2026-08-20"}   # today is 2026-08-03
+        finding = result_for(run_rules(build_context(master, fields, make_run=make_run)),
+                             "dates_not_in_future")
         assert finding.passed is False
         assert finding.severity == "warning"
+
+    def test_a_date_years_ahead_blocks(self, master, make_run):
+        """Found by an actual silent error, which is why this is graded now.
+
+        A faded photocopy read 2026 as 2028 and its invoice number as
+        `PRF.SG20496` where the page said `PRF-SG-20416`. Both values were
+        grounded - grounding proves a quote is in the OCR text, and the OCR text
+        was what was wrong - and the document posted automatically at 85%.
+
+        This rule was the only one that fired, and as a warning it stopped
+        nothing. A date two years out is not a document issued early; it is a
+        digit misread by the same engine that read the rest of the page.
+        """
+        fields = {**GOOD_INVOICE, "invoice_date": "2028-07-17"}
+        finding = result_for(run_rules(build_context(master, fields, make_run=make_run)),
+                             "dates_not_in_future")
+        assert finding.passed is False
+        assert finding.severity == "blocking"
+        assert "misread year" in finding.message
 
 
 class TestContractRules:
@@ -293,6 +314,37 @@ class TestRouting:
 
         run = self._run(make_run, GOOD_INVOICE).evolve(ocr=OcrResult())
         assert decide(run, get_schema("invoice"), 0.90).decision == "rejected"
+
+    def test_a_critical_field_the_document_never_printed_does_not_hold_it(self, make_run):
+        """`critical` is a statement about consequence, not about presence.
+
+        It means: if this value is here and it is wrong, somebody is paid the
+        wrong amount. It does not mean the document must carry it. Plenty of
+        ordinary invoices quote no purchase order — a small one, a subscription,
+        an expense reimbursement — and whether one is *required* is a business
+        policy question, answered by `purchase_order_required` against
+        `po_required_above`, not by a field's severity.
+        """
+        fields = {key: value for key, value in GOOD_INVOICE.items()
+                  if key != "purchase_order_ref"}
+        outcome = decide(self._run(make_run, fields), get_schema("invoice"), 0.90)
+
+        assert "purchase_order_ref" in {spec.name for spec in get_schema("invoice").critical_fields}
+        assert outcome.decision == "auto_post", outcome.reasons
+
+    def test_the_posting_reason_does_not_claim_more_than_was_checked(self, make_run):
+        """It used to read "all required and critical fields are present and
+        verified" on a document that had posted without a purchase order — a
+        critical field. The sentence a reviewer reads on every posted record
+        must describe the two checks that actually ran, or it teaches the wrong
+        model of the system to everyone who reads it."""
+        fields = {key: value for key, value in GOOD_INVOICE.items()
+                  if key != "purchase_order_ref"}
+        reason = " ".join(decide(self._run(make_run, fields), get_schema("invoice"), 0.90).reasons)
+
+        assert "present and verified" not in reason
+        assert "not printed on this document" in reason
+        assert "purchase_order_ref" in reason
 
 
 class TestUnknownVendorSeverity:

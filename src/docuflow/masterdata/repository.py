@@ -38,6 +38,30 @@ def _core_name(name: str) -> str:
     return " ".join(normalized.split())
 
 
+def same_organisation(left: str | None, right: str | None) -> bool:
+    """Whether two written company names denote the same organisation.
+
+    The comparison a company name needs, and it is not string equality. A page
+    prints the legal form or omits it, in Thai or in English, and OCR turns
+    `แฟซิลิตี้` into `แฟชิลิตี้` - one stroke apart, and the commonest Thai
+    misread there is. All three are the same counterparty, and treating them as
+    different is how a check that should catch a substituted company instead
+    stops every correctly-read document with a typo in it.
+
+    Same threshold as vendor resolution, because it is the same judgement.
+    """
+    if not left or not right:
+        return False
+    if normalize_for_match(left) == normalize_for_match(right):
+        return True
+    if _core_name(left) and _core_name(left) == _core_name(right):
+        return True
+    return max(
+        fuzz.WRatio(normalize_for_match(left), normalize_for_match(right)),
+        fuzz.WRatio(_core_name(left), _core_name(right)),
+    ) >= NAME_MATCH_THRESHOLD
+
+
 @dataclass(frozen=True)
 class VendorMatch:
     """Result of resolving a document's vendor against the master file."""

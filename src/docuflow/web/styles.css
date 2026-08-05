@@ -289,6 +289,9 @@ tbody tr:hover { background: var(--surface-2); }
   padding: 9px 11px; margin-top: 7px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
 }
 .suggestion code { font-family: var(--mono); font-size: 12px; }
+/* The value as read, struck through: a reviewer checking a suggestion against
+   the page needs to see what it is replacing without scrolling to find it. */
+.suggestion code.was { text-decoration: line-through; color: var(--muted); }
 
 .tool-log { margin-top: 10px; }
 .tool-log summary {

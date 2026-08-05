@@ -205,9 +205,9 @@ settings = Settings(
     # --- keys --------------------------------------------------------------
     typhoon_api_key=os.environ.get("TYPHOON_API_KEY", ""),
     anthropic_api_key=os.environ.get("ANTHROPIC_API_KEY", ""),
-    # A small demo vendor/PO/contract register so the business rules have
-    # something to check against. Replace it with your own CSV any time.
-    seed_demo_master_data=True,
+    # The master data is loaded from the CSVs in `real_samples/master` two cells
+    # down, which is how it would arrive from an ERP. Nothing is seeded here.
+    seed_demo_master_data=False,
     # --- business policy ---------------------------------------------------
     # Stated rather than left to default, for two reasons: these are finance
     # decisions and belong in the open, and pinning them means a stray .env in
@@ -218,9 +218,29 @@ settings = Settings(
     amount_tolerance=0.02,
 )
 
-info = bootstrap(settings, with_samples=True)
+info = bootstrap(settings, with_samples=False)
 print("data dir :", settings.data_dir)
-print("seeded   :", info.get("master_data") or info)
+''')
+
+code(r'''
+# --- master data ----------------------------------------------------------
+# Vendors, purchase orders and contracts, loaded from CSV exactly as an ERP
+# would export them. Order matters: a purchase order names a vendor, so a row
+# pointing at one that has not loaded yet is refused rather than stored broken.
+from docuflow.masterdata.importer import import_csv
+from docuflow.masterdata.repository import MasterDataRepository
+
+REPO = Path("mirtphol_doc_extraction") if Path("mirtphol_doc_extraction").exists() else Path(".")
+CORPUS = REPO / "real_samples"
+
+master = MasterDataRepository(settings.db_path)
+for kind in ("vendors", "purchase_orders", "contracts"):
+    report = import_csv(master, kind, (CORPUS / "master" / f"{kind}.csv").read_bytes())
+    print(" ", report.summary)
+
+print(f"\n{len(master.list_vendors())} vendors, "
+      f"{len(master.list_purchase_orders())} purchase orders, "
+      f"{len(master.list_contracts())} contracts")
 ''')
 
 code(r'''
@@ -251,24 +271,35 @@ if verify is None:
 md(r"""
 ## 4. The document
 
-Either upload your own (PDF, JPG, PNG, TIFF) or use one from the bundled corpus.
-The corpus documents carry known ground truth, which is what makes them useful
-for a walkthrough — you can check the answers.
+Either upload your own (PDF, JPG, PNG, TIFF) or take one from `real_samples/`,
+which ships in the repository. Each of those carries known ground truth, which
+is what makes it useful here — you can check the answers.
 
-| sample | what it demonstrates |
-|---|---|
-| `inv-clean-classic` | the happy path — everything agrees |
-| `inv-bad-math` | stated total ≠ subtotal + tax |
-| `inv-thai-scan` | Thai text, Buddhist-era dates, Thai numerals |
-| `inv-unknown-vendor` | vendor not in the master file, unfamiliar bank account |
-| `inv-eur-over-po` | invoice larger than the purchase order it quotes |
-| `contract-facility` | a contract, not an invoice — a different schema |
+Half the corpus is deliberately not a clean PDF. Three documents are phone
+photographs, two are faded photocopies, three are scans. A clean render puts
+neither the OCR model nor the preprocessing in front of it under any load, so
+a walkthrough built only on clean PDFs shows you a system that has not been
+asked to do anything.
+
+| sample | arrives as | what it demonstrates |
+|---|---|---|
+| `1_invoice_clean_matches_po` | PDF | the happy path — everything agrees, posts without a person |
+| `2_invoice_total_transposed` | PDF | two digits swapped in the total; the system names *which* field is wrong |
+| `3_invoice_photo_on_a_desk` | photo | skewed, lit from one side — preprocessing has to rescue it |
+| `4_invoice_vat_miscalculated` | PDF | the VAT does not match the stated rate, and the vendor is on hold |
+| `5_invoice_bank_account_changed` | PDF | payment-redirection fraud: a correct invoice, new account |
+| `9_invoice_thai_buddhist_dates` | scan | Thai layout, Thai month names, dates in BE 2569 |
+| `11_receipt_photographed` | photo | 80mm thermal paper, photographed — the hardest OCR case here |
+| `13_contract_already_expired` | photocopy | faded, and a contract rather than an invoice |
 """)
 
 code(r'''
-SAMPLE = "inv-clean-classic"     # ← change this, or upload your own below
+SAMPLE = "3_invoice_photo_on_a_desk"     # ← change this, or upload your own below
 
-document_path = settings.sample_dir / f"{SAMPLE}.pdf"
+# The `_*` matches the `_True` / `_False` suffix on every corpus filename, which
+# states the expected outcome before the system is asked. Globbing `{SAMPLE}.*`
+# instead finds nothing at all.
+document_path = next(CORPUS.glob(f"{SAMPLE}_*"))
 
 # --- or upload your own ---------------------------------------------------
 UPLOAD_YOUR_OWN = False
@@ -311,9 +342,74 @@ except ImportError:            # running outside a notebook
     print("page image at", pages[0].path)
 ''')
 
+# ----------------------------------------------------------- preprocess ----
+md(r"""
+## Stage 2 — Clean the page
+
+Every degree of skew and every stop of lost contrast is accuracy the OCR model
+spends on decoding instead of reading, and the loss lands on the characters that
+matter — the digits in an amount.
+
+Four things get measured: how far the page is rotated, how sharp its edges are,
+how far the ink sits from the paper, and how much the paper's own brightness
+drifts across the sheet. Each correction is gated on the measurement that asks
+for it, so a clean digital PDF comes out untouched — and then applied, measured
+again, and **thrown away if the number it exists to improve did not improve**.
+
+Two things are reported rather than corrected: a page tilted further than a
+scanner could be, and a page lying on its side. Telling 90° from 270° needs to
+know which way the glyphs face, and guessing wrong leaves the model reading
+upside down.
+
+The prepared image is written *beside* the rendered one, never over it. OCR
+reads the clean copy; a reviewer checking a value still sees what arrived.
+""")
+
+code(r'''
+from docuflow.ocr.preprocess import prepare_pages
+
+prepared, report = prepare_pages(pages, enabled=settings.ocr_preprocess)
+
+print(report.summary)
+for page in report.pages:
+    b, a = page.before, page.after
+    print(f"\n   page {page.page_number}")
+    print(f"      skew       {b.skew_degrees:+6.2f}°  ->{a.skew_degrees:+6.2f}°")
+    print(f"      sharpness  {b.sharpness:7.5f}  ->{a.sharpness:7.5f}   (floor 0.0012)")
+    print(f"      contrast   {b.contrast:6.3f}   ->{a.contrast:6.3f}    (floor 0.18)")
+    print(f"      lighting   {b.illumination_spread:6.3f}   ->{a.illumination_spread:6.3f}    (ceiling 0.18)")
+    if page.actions:
+        print(f"      applied    {', '.join(page.actions)}")
+    if page.reverted:
+        print(f"      reverted   {', '.join(page.reverted)}  (measured no better)")
+    for note in page.notes:
+        print(f"      note       {note}")
+
+# Separate from "was it corrected", and it carries weight downstream. A page
+# straightened by a degree was always legible; a page whose ink had to be
+# rescued from its paper was not, and everything read from it is treated as
+# degraded — the OCR engine's own quality score cannot see that, because it
+# scores the text that came back and confidently wrong text scores well.
+if report.rescued_pages:
+    print(f"\n{len(report.rescued_pages)} page(s) arrived below the legibility floor;")
+    print("values read from them are marked degraded and cannot post on their own.")
+
+# Side by side, when anything was actually done.
+if report.changed_pages:
+    try:
+        from IPython.display import Image, display
+        print("\nas it arrived, then as the model will read it:")
+        display(Image(filename=str(pages[0].path), width=380))
+        display(Image(filename=str(prepared[0].path), width=380))
+    except ImportError:
+        pass
+
+pages = prepared          # from here on, OCR reads the cleaned pages
+''')
+
 # ------------------------------------------------------------------ ocr ----
 md(r"""
-## Stage 2 — OCR (Typhoon OCR 1.5, cloud)
+## Stage 3 — OCR (Typhoon OCR 1.5, cloud)
 
 Typhoon OCR is trained on documents rather than on photographs of the world, so
 it returns **structured markdown** — tables stay tables — instead of a flat blob
@@ -345,7 +441,7 @@ print("=" * 78)
 
 # ------------------------------------------------------------- classify ----
 md(r"""
-## Stage 3 — Classify
+## Stage 4 — Classify
 
 Which schema applies? Keyword scoring runs first and is usually decisive — the
 words "Tax Invoice" are not ambiguous. The model is only asked when the keywords
@@ -375,7 +471,7 @@ print("           " + ", ".join(spec.name for spec in schema.fields))
 
 # ------------------------------------------------------------- extract A ----
 md(r"""
-## Stage 4 — Reading 1: Typhoon, field-first
+## Stage 5 — Reading 1: Typhoon, field-first
 
 The model is given the page text and the field list, and asked for each field
 **with the span of text it read the value from**. That second part is the whole
@@ -400,7 +496,7 @@ for name, candidate in sorted(primary_read.candidates.items()):
 
 # ------------------------------------------------------------- extract B ----
 md(r"""
-## Stage 5 — Reading 2: Claude, label-first
+## Stage 6 — Reading 2: Claude, label-first
 
 A different model, given a different instruction: walk the labels printed on the
 page and report what sits beside each one. It never sees the first reading, so it
@@ -435,7 +531,7 @@ else:
 
 # ----------------------------------------------------------------- merge ----
 md(r"""
-## Stage 6 — Merge, ground, score
+## Stage 7 — Merge, ground, score
 
 This is where it becomes usable. For every field:
 
@@ -504,7 +600,7 @@ for field in ungrounded:
 
 # ----------------------------------------------------------------- rules ----
 md(r"""
-## Stage 7 — Business rules
+## Stage 8 — Business rules
 
 No model runs here at all. Twenty-six deterministic checks: arithmetic recomputed,
 counterparties looked up in the master file, references checked against what was
@@ -513,6 +609,13 @@ already posted, dates ordered.
 This is on purpose. A model asked "is this VAT correct?" can be talked out of the
 right answer by the document's own wording — which is exactly what a careless
 supplier or an attacker controls. Code cannot be talked out of anything.
+
+Two tolerances, and the difference between them matters. An invoice may differ
+from the **purchase order** it quotes by 2% — freight, a part shipment, a price
+that moved. It may not differ from **itself** by anything but rounding. Lending
+the commercial allowance to a document's own arithmetic is how an 810-baht
+misread passes as "totals add up" on a 200,000-baht invoice, which is a silent
+error rather than a caught one.
 """)
 
 code(r'''
@@ -565,9 +668,74 @@ if not failed:
     print("nothing failed")
 ''')
 
+md(r"""
+### Which value is wrong, and what it should say
+
+Knowing three numbers do not add up is cheap. Knowing *which of the three* is the
+misread one is the part that costs a reviewer five minutes — and it is
+answerable.
+
+The money on an invoice is tied together by more than one relation: the lines sum
+to the subtotal, the tax is a rate applied to it, the subtotal and tax make the
+total. A single misread value breaks every relation it appears in and leaves the
+others standing, so the relations that still hold identify the one that broke
+them.
+
+Where exactly one field explains every failure, the finding names it and carries
+the value. Where two would, it says nothing — an invoice where either the
+subtotal or the total could be the misread number is a page a person has to look
+at, and inventing a preference between them would put a wrong number in front of
+them wearing a suggestion's confidence.
+
+Then it names the slip: a transposition, a decimal point, a digit pair scans
+routinely confuse. That turns a correction the reviewer has to verify from
+scratch into one they confirm by glancing at the page.
+""")
+
+code(r'''
+from docuflow.rules.repair import best_of
+
+fixes = best_of(fix for finding in failed for fix in finding.fixes)
+
+if not fixes:
+    print("nothing here can be diagnosed from the document's own arithmetic.")
+    print("(That is the honest answer for most failures — an unknown vendor or a")
+    print(" changed bank account is not something the page can be asked about.)")
+for fix in fixes:
+    sure = "suggested fix" if fix.confidence >= 0.85 else "worth checking"
+    print(f"[{sure}]  {fix.field}")
+    print(f"     read as   {fix.current!r}")
+    print(f"     should be {fix.suggested!r}   ({fix.confidence:.0%} confidence, from {fix.source})")
+    print(f"     because   {fix.reason}\n")
+''')
+
+code(r'''
+# The diagnosis on its own, without a document, so you can see both answers it
+# gives. No model and no page - four numbers in, a verdict out.
+from docuflow.rules.repair import Money, blame
+
+# Corpus document 2: the lines and the VAT both say 44,940; the total reads
+# 49,440. Two relations stand untouched, and they are what rules out the
+# subtotal and the tax being the misread value.
+settled = Money(subtotal=42_000.0, tax_amount=2_940.0, tax_rate=7.0,
+                total_amount=49_440.0, line_total=42_000.0)
+found = blame(settled)
+print("diagnosable:")
+print(f"   {found.field} reads {found.current:,.2f} and should be {found.suggested:,.2f}")
+print(f"   confirmed by: {', '.join(found.corroborated_by)}\n")
+
+# The same disagreement with nothing else to check it against. Either the
+# subtotal or the total could be the misread one; nothing can choose.
+ambiguous = Money(subtotal=42_000.0, tax_amount=2_940.0, total_amount=49_440.0)
+print("not diagnosable:")
+print(f"   {blame(ambiguous)}  <- and that is the right answer")
+print("   Either value could be the misread one. Naming one would put a wrong")
+print("   number in front of a reviewer wearing a suggestion's confidence.")
+''')
+
 # ----------------------------------------------------------------- route ----
 md(r"""
-## Stage 8 — Route
+## Stage 9 — Route
 
 Straight-through processing requires **all** of: no blocking failure, confidence
 above the threshold, every required field present, and every critical field
@@ -690,12 +858,27 @@ discrepancy analyst, and the trace.
 """)
 
 code(r'''
+import json as _json
 from docuflow.pipeline import Pipeline
+from docuflow.rules.custom import build_rule
 from docuflow.store.custom_rules import CustomRuleStore
 
+store = CustomRuleStore(settings.db_path)
+
 if draft.ok:
-    CustomRuleStore(settings.db_path).save(draft.rule, replace=True)
-    print("saved your rule:", draft.rule.rule_id)
+    store.save(draft.rule, replace=True)
+    print("saved the rule you compiled above:", draft.rule.rule_id)
+
+# Plus the seven that ship with the corpus - five expressions and two agent
+# rules. Loaded from their compiled form rather than recompiled, so the rule set
+# is the same one every time this notebook runs.
+shipped = _json.loads((CORPUS / "rules.json").read_text(encoding="utf-8"))["rules"]
+for entry in shipped:
+    store.save(build_rule(entry, prompt=entry.get("prompt", "")), replace=True)
+
+print(f"\n{len(store.list_rules())} rule(s) written here, on top of the 26 built in:")
+for rule in store.list_rules():
+    print(f"   [{rule.kind:10}] {rule.rule_id}")
 
 outcome = Pipeline(settings).process_file(document_path, source_kind="path")
 processed = outcome.run
@@ -722,6 +905,15 @@ for field in processed.fields:
 print("\nwhy it was routed that way:")
 for reason in processed.decision_reasons:
     print(" •", reason)
+
+# Corrections a reviewer can accept with one click. Gathered across every
+# failing check rather than per check, so two rules failing on the same misread
+# number put one suggestion in front of them instead of two.
+if processed.suggested_fixes:
+    print("\nsuggested corrections:")
+    for fix in processed.suggested_fixes:
+        print(f" • {fix.field}: {fix.current!r} -> {fix.suggested!r} ({fix.confidence:.0%})")
+        print(f"   {fix.reason}")
 ''')
 
 code(r'''
@@ -757,16 +949,22 @@ under the old one.
 and no model call. It re-runs the rules and the routing against the current policy
 and reports what changed.
 
-For this we need a document that is actually **held**, so here is one whose vendor
-is not in the master file.
+For this we need a document that is actually **held**. If the one you ran above
+already is, it will be used; otherwise corpus document 6 stands in — an invoice
+from a company that is not in the vendor file.
 """)
 
 code(r'''
 from docuflow.pipeline import Pipeline
 
-held_outcome = Pipeline(settings).process_file(
-    settings.sample_dir / "inv-unknown-vendor.pdf", source_kind="sample")
-held = held_outcome.run
+if processed.decision == "needs_review":
+    held_outcome, held = outcome, processed
+    print("using the document from above, which is held\n")
+else:
+    held_outcome = Pipeline(settings).process_file(
+        next(CORPUS.glob("6_invoice_unknown_vendor_*")), source_kind="path")
+    held = held_outcome.run
+    print("the document above posted, so here is one that could not\n")
 
 print(f"{held.document_id}  {held.decision.upper()}  ({held.confidence:.0%})")
 for finding in held.findings:
@@ -841,10 +1039,13 @@ PolicyStore(settings).update(disabled_rules=switched_off)
 
 # A rule you wrote lives in its own store, so it is switched off there. The
 # policy only knows about the built-ins - it refuses an id it does not recognise
-# rather than silently accepting a typo that would disable nothing.
-if draft.ok:
-    CustomRuleStore(settings.db_path).set_enabled(draft.rule.rule_id, False)
-    switched_off.append(draft.rule.rule_id)
+# rather than silently accepting a typo that would disable nothing. Two separate
+# switches, deliberately: your rules surviving a change to ours is the point.
+failing_here = {f.rule_id for f in held.findings if not f.passed}
+for rule in CustomRuleStore(settings.db_path).list_rules():
+    if rule.rule_id in failing_here:
+        CustomRuleStore(settings.db_path).set_enabled(rule.rule_id, False)
+        switched_off.append(rule.rule_id)
 
 print("switched off:", ", ".join(switched_off), "\n")
 
@@ -884,8 +1085,9 @@ except RevalidationError as refusal:
 code(r'''
 # Put everything back, so re-running the notebook starts from the same place.
 PolicyStore(settings).update(disabled_rules=[])
-if draft.ok:
-    CustomRuleStore(settings.db_path).set_enabled(draft.rule.rule_id, True)
+for rule in CustomRuleStore(settings.db_path).list_rules():
+    if not rule.enabled:
+        CustomRuleStore(settings.db_path).set_enabled(rule.rule_id, True)
 print("policy restored")
 ''')
 
@@ -899,6 +1101,8 @@ md(r"""
 | **0 model calls in the decision** | rules, grounding, confidence and routing are all code |
 | **Every value carries a quote** | and the quote is checked against the page, not trusted |
 | **The model that writes a rule never runs it** | it compiles English to an expression once, in front of you |
+| **A correction is measured before it is kept** | preprocessing re-measures each page and reverts what did not help |
+| **A failure says which field is wrong** | where the arithmetic can prove it, and says nothing where it cannot |
 
 ### Where the time goes
 

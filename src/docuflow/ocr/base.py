@@ -58,3 +58,15 @@ class OcrProvider(ABC):
 
 class OcrUnavailableError(RuntimeError):
     """Raised when a provider cannot run and no fallback is possible."""
+
+
+class OcrTransientError(RuntimeError):
+    """The engine did not answer, and the same engine is worth asking again.
+
+    Separate from a provider returning poor text, because the two want opposite
+    responses. Bad text from a deterministic model will be bad again, so the
+    engine escalates to the next provider. A timeout or a rate limit says
+    nothing about the model at all, and escalating on one steps off a cloud API
+    onto whatever is next in the chain - which on this project meant a local 3B
+    model and ten minutes per page instead of three seconds.
+    """

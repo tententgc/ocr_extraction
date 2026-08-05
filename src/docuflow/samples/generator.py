@@ -21,11 +21,13 @@ RECEIPT_PAGE = (226.0, 420.0)
 # 72dpi * 2.5 = 180dpi: what a phone photo or an office scanner produces, and
 # enough for OCR without making the corpus enormous.
 IMAGE_SCALE = 2.5
-THAI_LAYOUTS = frozenset({"thai_tax"})
+THAI_LAYOUTS = frozenset({"thai_tax", "thai_modern", "thai_receipt", "thai_contract"})
+# Layouts drawn on the thermal roll rather than A4.
+NARROW_LAYOUTS = frozenset({"narrow", "thai_receipt"})
 
 
 def _page_size(doc: SampleDoc) -> tuple[float, float]:
-    return RECEIPT_PAGE if doc.layout == "narrow" else A4
+    return RECEIPT_PAGE if doc.layout in NARROW_LAYOUTS else A4
 
 
 def _needs_thai_font(doc: SampleDoc) -> bool:
@@ -39,7 +41,7 @@ def _needs_thai_font(doc: SampleDoc) -> bool:
 def render_pdf(doc: SampleDoc, out_path: Path) -> Path:
     """Draw one sample document to a PDF."""
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    margin = 14.0 if doc.layout == "narrow" else 48.0
+    margin = 14.0 if doc.layout in NARROW_LAYOUTS else 48.0
     sheet = Sheet.create(
         str(out_path),
         page_size=_page_size(doc),

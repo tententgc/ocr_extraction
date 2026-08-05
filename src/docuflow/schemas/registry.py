@@ -171,7 +171,15 @@ _RECEIPT = DocumentSchema(
     description="Proof that a payment was already made.",
     record_kind="expense",
     has_line_items=True,
-    keywords=("receipt", "paid", "cash", "change", "ใบเสร็จ", "ใบเสร็จรับเงิน", "เงินสด"),
+    keywords=(
+        "receipt", "paid", "cash", "change",
+        "ใบเสร็จ", "ใบเสร็จรับเงิน", "ใบรับเงิน", "เงินสด", "เงินทอน",
+        # The Revenue Department's term for the slip a till prints: an
+        # *abbreviated* tax invoice. It is a receipt, and it is the heading on
+        # most Thai retail receipts - so it belongs here and not with invoices,
+        # even though `ใบกำกับภาษี` is a substring of it.
+        "ใบกำกับภาษีอย่างย่อ",
+    ),
     fields=(
         FieldSpec(name="receipt_number", label="Receipt No.", required=True, critical=True,
                   aliases=("Receipt No", "No.", "เลขที่ใบเสร็จ")),

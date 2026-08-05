@@ -17,6 +17,10 @@ dependencies = [
     "typhoon-ocr>=0.4.1",
     "pypdfium2>=4.30",
     "pillow>=11.0",
+    # Page preprocessing measures skew, blur and lighting across whole images;
+    # doing that pixel by pixel in Python is minutes per page rather than
+    # milliseconds. Nothing else here needs an array library.
+    "numpy>=1.26",
     "python-dateutil>=2.9",
     "rapidfuzz>=3.10",
     "reportlab>=4.2",

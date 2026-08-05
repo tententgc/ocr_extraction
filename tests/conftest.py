@@ -34,11 +34,25 @@ def settings(tmp_path: Path) -> Settings:
         data_dir=tmp_path,
         ocr_provider="pdftext",
         llm_provider="rules",
+        # The second reading's backend, pinned for the same reason as the first.
+        # The tests that assert which backend `auto` picks were written against
+        # `auto`, and a developer whose .env names one - as they should, once
+        # they have keys - pins the choice and fails all three of them. Caught
+        # exactly that way.
+        llm_verify_provider="auto",
         typhoon_api_key="",
         openai_api_key="",
         anthropic_api_key="",
         auto_post_min_confidence=0.90,
         amount_tolerance=0.02,
+        # Rounding slack for a document's own arithmetic. Separate from the
+        # commercial allowance above and separately pinnable, or a machine that
+        # loosened one would silently loosen the other.
+        arithmetic_tolerance=0.0001,
+        # Preprocessing is measured and reverted when it does not help, so it is
+        # safe on by default - but "safe" is a claim the suite should be testing
+        # rather than inheriting from whoever ran it.
+        ocr_preprocess=True,
         rules_free_mode=False,
         disabled_rules="",
         # Pinned for the same reason: a developer who turned the demo register
@@ -92,6 +106,22 @@ def client(settings: Settings) -> Iterator[TestClient]:
 def master(settings: Settings) -> MasterDataRepository:
     repository = MasterDataRepository(settings.db_path)
     repository.seed(master_data_rows())
+    return repository
+
+
+@pytest.fixture
+def thai_master(settings: Settings) -> MasterDataRepository:
+    """Every vendor from both corpora, which is where the Thai aliases live.
+
+    The demo master data holds a couple of Thai names; the working corpus adds
+    the rest. A test about matching Thai vendors needs all of them - not least
+    because the interesting failure is matching the *wrong* one, and that cannot
+    happen against a register with two rows in it.
+    """
+    from docuflow.samples.real_world import master_rows
+
+    repository = MasterDataRepository(settings.db_path)
+    repository.seed(master_rows())
     return repository
 
 

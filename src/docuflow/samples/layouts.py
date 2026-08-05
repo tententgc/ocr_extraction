@@ -614,10 +614,27 @@ def _draw_totals_block(sheet: Sheet, doc: SampleDoc) -> None:
     sheet.y = row_y - 6
 
 
+def _thai_renderers() -> dict:
+    """Imported here rather than at module scope: `layouts_th` reuses the table
+    and totals helpers defined above, so a top-level import is a cycle."""
+    from docuflow.samples.layouts_th import (
+        draw_thai_contract,
+        draw_thai_modern_invoice,
+        draw_thai_receipt,
+    )
+
+    return {
+        "thai_modern": draw_thai_modern_invoice,
+        "thai_receipt": draw_thai_receipt,
+        "thai_contract": draw_thai_contract,
+    }
+
+
 LAYOUT_RENDERERS = {
     "classic": draw_classic_invoice,
     "modern": draw_modern_invoice,
     "thai_tax": draw_thai_tax_invoice,
+    **_thai_renderers(),
     "dense": draw_dense_invoice,
     "two_column": draw_two_column_invoice,
     "minimal": draw_minimal_invoice,

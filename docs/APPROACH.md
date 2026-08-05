@@ -22,21 +22,16 @@ deployable, because you cannot tell which 1% of payments to chase. A pipeline at
 91% with a 0% silent error rate is, because everything uncertain is visibly
 queued.
 
-Measured on the ten-document ground-truth corpus in this repo:
-
-| Metric | Result |
-|---|---|
-| **Silent error rate** | **0.0%** |
-| Planted defects caught | 8/8 (100%) |
-| Document-type accuracy | 100% |
-| Field accuracy (exact) | 91.2% |
-| Field accuracy (allowing a one-character OCR slip) | 96.8% |
+Full results, per document, with what was read wrong and why:
+[EVALUATION.md](EVALUATION.md). It also records the one silent error this corpus
+did produce, and the two gaps that let it through — the more useful half of an
+evaluation is the half that fails.
 
 ### End-to-end design
 
 ```
-file / URL → ingest → render → OCR → classify → extract → ground
-           → normalize → validate → reconcile → route → post
+file / URL → ingest → render → preprocess → OCR → classify → extract → ground
+           → normalize → validate → diagnose → route → reconcile → post
 ```
 
 Each stage appends to an immutable trace, so any decision can be replayed and
@@ -150,9 +145,17 @@ are reported so confidence stays honest.
 ### Handling varied and unstructured documents
 
 The corpus is deliberately inconsistent: seven layouts, two languages, Buddhist-era
-dates, Thai numerals, HTML tables, and four documents rendered as degraded scans
-(rotated, blurred, noised, JPEG-crushed).
+dates, Thai numerals, HTML tables, and — in the working corpus — three phone
+photographs and two faded photocopies, because that is what an accounts-payable
+inbox contains and a clean render measures nothing.
 
+- **Preprocessing** measures skew, sharpness, ink-to-paper separation and
+  lighting drift, applies only the corrections a measurement asks for, and
+  reverts any that did not improve the number it exists to improve. A clean
+  digital PDF passes through untouched. The ordering is load-bearing and was
+  found by measuring rather than by reasoning: skew is estimated from a mask of
+  where the ink is, so on a page lit from one side that mask marks the shadow,
+  and the lighting has to be flattened before the angle can be trusted.
 - **Classification** is a cheap keyword vote first; the model is consulted only
   when the vote is close. Most documents never cost a model call.
 - **Layout independence** comes from reading labels rather than positions. Where
