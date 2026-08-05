@@ -31,6 +31,7 @@ from docuflow.agents.prompts import (
 from docuflow.agents.rule_agent import RULE_AGENT_SYSTEM
 from docuflow.agents.tools import TOOL_HELP
 from docuflow.ocr import preprocess
+from docuflow.rules.authoring import system_prompt as authoring_system_prompt
 from docuflow.schemas.registry import DOCUMENT_SCHEMAS
 
 NOTEBOOK = Path(__file__).resolve().parents[1] / "notebooks" / "docuflow_live.ipynb"
@@ -135,6 +136,35 @@ class TestToolboxIsTheRealOne:
     def test_arguments_are_checked_against_the_page(self, notebook_text: str) -> None:
         """An invented argument returns a true answer to a question nobody asked."""
         assert "argument_warning" in notebook_text
+
+
+class TestRuleAuthoringIsShown:
+    """Where the model actually sits: writing the rule, not enforcing it."""
+
+    def test_the_authoring_prompt_is_the_real_one(self, notebook_text: str) -> None:
+        assert authoring_system_prompt("agent") in notebook_text.replace('\\"', '"'), (
+            "the notebook's rule-authoring prompt is not the system's - "
+            "rebuild with `python notebooks/build_live.py`"
+        )
+
+    def test_the_tool_catalogue_reaches_the_author(self, notebook_text: str) -> None:
+        """A rule can only ask for tools it was told exist."""
+        for name in TOOL_HELP:
+            assert name in notebook_text
+
+    def test_the_compiled_rule_is_checked_before_it_is_used(
+        self, notebook_text: str
+    ) -> None:
+        """Authoring produced a plan that adds numbers and no arithmetic tool.
+
+        `RULE_AGENT_SYSTEM` tells the agent to use check_arithmetic rather than
+        doing sums itself, and that instruction cannot be obeyed when the tool
+        was never put in the box - the agent adds in its head and carries on.
+        The gate reports it to whoever approves the rule rather than editing
+        the rule behind their back.
+        """
+        assert "def review_before_approving(" in notebook_text
+        assert "ARITHMETIC_WORDS" in notebook_text
 
 
 class TestPreprocessingIsGatedTheSameWay:

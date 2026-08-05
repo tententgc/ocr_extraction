@@ -47,6 +47,7 @@ from docuflow.agents.classifier import KEYWORD_CONFIDENT_MARGIN
 from docuflow.agents.llm_extractor import MAX_DOCUMENT_CHARS, MAX_OUTPUT_TOKENS
 from docuflow.agents.rule_agent import RULE_AGENT_SYSTEM
 from docuflow.agents.tools import TOOL_HELP
+from docuflow.rules.authoring import system_prompt as authoring_system_prompt
 from docuflow.schemas.registry import DOCUMENT_SCHEMAS
 
 OUT = Path("notebooks/docuflow_live.ipynb")
@@ -1082,6 +1083,51 @@ md(r"""
 prompt ของ classifier ก็ของจริง — คัดจาก `agents/prompts.py`
 """)
 
+md(r"""
+### prompt ของ classifier — และเมื่อไหร่ที่มันถูกใช้จริง
+
+**เกือบทุกใบไม่ถึงตรงนี้** ห่างกันตั้งแต่ `3.0` ขึ้นไปคือจบด้วยคำสำคัญ ไม่ต้องจ่ายค่าโมเดล
+
+prompt สั้นมากโดยตั้งใจ — ทุกประโยคที่เพิ่มเข้าไปจ่ายทุก turn และ prompt ยาวเจือจางคำสั่งที่เปลี่ยนพฤติกรรมจริงๆ
+""")
+
+code(f'''
+# ═══════════════════════════════════════════════════════════════════════════
+#  prompt ของ classifier — agents/prompts.py คัดมาตรงๆ
+#  ใช้เฉพาะตอนคะแนนคำสำคัญสูสี ซึ่งบนเอกสารส่วนใหญ่ไม่เกิดขึ้นเลย
+# ═══════════════════════════════════════════════════════════════════════════
+CLASSIFIER_SYSTEM = {literal(real_prompts.CLASSIFIER_SYSTEM)}
+
+
+{source_of(real_prompts.classification_prompt).replace("schema_names()", '"invoice, receipt, purchase_order, contract, form"')}
+
+
+print("SYSTEM:"); print("  " + CLASSIFIER_SYSTEM)
+print("\\nUSER (ตัดข้อความเอกสารออกให้สั้น):")
+for line in classification_prompt(OCR_TEXT).splitlines()[:12]:
+    print("  " + line[:74])
+print("  …")
+''', """
+SYSTEM:
+  You classify business documents. Output JSON only.
+
+USER (ตัดข้อความเอกสารออกให้สั้น):
+  Classify as one of: i, n, v, o, i, c, e, ,,  , r, e, c, e, i, p, t, ,,  , 
+  
+  - invoice: a supplier requests payment
+  - receipt: payment already made
+  - purchase_order: a buyer orders goods or services
+  - contract: a signed agreement between parties
+  - form: a filled-in application or registration
+  
+  Return {"doc_type": "<type>", "confidence": <0-1>, "reason": "<short>"}
+  
+  --- DOCUMENT ---
+  # TAX INVOICE
+  …
+""")
+
+
 code(f'''
 from openai import OpenAI
 
@@ -1093,12 +1139,6 @@ KEYWORDS = {{
 {keyword_literals()}
 }}
 KEYWORD_CONFIDENT_MARGIN = {KEYWORD_CONFIDENT_MARGIN}   # ห่างขนาดนี้ ไม่ต้องถามโมเดล
-
-# ── prompt ของ classifier — จาก agents/prompts.py ──────────────────────────
-CLASSIFIER_SYSTEM = {literal(real_prompts.CLASSIFIER_SYSTEM)}
-
-{source_of(real_prompts.classification_prompt).replace("schema_names()", '"invoice, receipt, purchase_order, contract, form"')}
-
 
 def shadowed(phrase, matched):
     """คำที่ซ้อนอยู่ในคำที่ยาวกว่าและเจอเหมือนกัน ไม่ได้โหวต"""
@@ -1208,29 +1248,11 @@ md(r"""
 code(f'''
 import json
 
-# ═══════════════════════════════════════════════════════════════════════════
-#  agents/prompts.py — ทั้งสี่ก้อนนี้คัดมาตรงๆ ไม่ได้ปรับถ้อยคำ
-# ═══════════════════════════════════════════════════════════════════════════
-
-# ── AGENT 1 · ไล่ตาม schema (llm_extractor.py) ─────────────────────────────
-EXTRACTION_SYSTEM = {literal(real_prompts.EXTRACTION_SYSTEM)}
-
-
-{source_of(real_prompts.extraction_prompt)}
-
-
-# ── AGENT 2 · ไล่ตามป้ายบนหน้า (verify_extractor.py) ───────────────────────
-VERIFY_SYSTEM = {literal(real_prompts.VERIFY_SYSTEM)}
-
-
-{source_of(real_prompts.verification_prompt)}
-
-
 MAX_DOCUMENT_CHARS = {MAX_DOCUMENT_CHARS:_}     # ตัดหน้าที่ยาวเกินก่อนส่ง
 MAX_OUTPUT_TOKENS  = {MAX_OUTPUT_TOKENS:_}
 
-# ── แสดง prompt ให้เห็นก่อนเรียก ──────────────────────────────────────────
 def show(title, system, user, limit=560):
+    """พิมพ์ prompt ทั้งก้อนก่อนเรียก — ทุกตัวอักษรที่โมเดลจะได้เห็น"""
     print("┌" + "─" * 76)
     print(f"│ {{title}}")
     print("├" + "─" * 76)
@@ -1243,11 +1265,17 @@ def show(title, system, user, limit=560):
         print("│   " + line[:72])
     print("└" + "─" * 76)
 
+# ═══════════════════════════════════════════════════════════════════════════
+#  AGENT 1 · ไล่ตาม schema — agents/prompts.py + llm_extractor.py
+# ═══════════════════════════════════════════════════════════════════════════
+EXTRACTION_SYSTEM = {literal(real_prompts.EXTRACTION_SYSTEM)}
+
+
+{source_of(real_prompts.extraction_prompt)}
+
+
 show("AGENT 1 · Typhoon · EXTRACTION_SYSTEM · ไล่ตาม schema",
      EXTRACTION_SYSTEM, extraction_prompt(SCHEMA, OCR_TEXT))
-print()
-show("AGENT 2 · Claude · VERIFY_SYSTEM · ไล่ตามป้ายบนหน้า",
-     VERIFY_SYSTEM, verification_prompt(SCHEMA, OCR_TEXT))
 ''', """
 ┌────────────────────────────────────────────────────────────────────────────
 │ AGENT 1 · Typhoon · EXTRACTION_SYSTEM · ไล่ตาม schema
@@ -1272,7 +1300,31 @@ show("AGENT 2 · Claude · VERIFY_SYSTEM · ไล่ตามป้ายบน
 │   - "vendor_name" - (string) - Legal name of the company issuing the invoi
 │   … (+2,142 ตัวอักษร)
 └────────────────────────────────────────────────────────────────────────────
+""")
 
+md(r"""
+### Agent 2 — ตัวเดียวกัน คำถามเดียวกัน แต่**ไม่เคยเห็นคำตอบของตัวแรก**
+
+`VERIFY_SYSTEM` ถูกเขียนให้เข้าหาหน้ากระดาษ**คนละทาง**: หาป้ายก่อน แล้วดูว่าอะไรอยู่ข้างๆ ไม่ใช่ไล่ตามรายการช่อง
+
+> *"Work label-first, not field-first"* · *"If no label for an item appears anywhere, return null. Do not deduce it from other values"*
+
+**ถ้าให้มันเห็นคำตอบของตัวแรก มันจะเห็นด้วย** แล้วสัญญาณที่ทั้งขั้นนี้มีไว้ให้ก็หายไปหมด — สอง prompt ที่คิดเหมือนกันจะพลาดเหมือนกัน
+""")
+
+code(f'''
+# ═══════════════════════════════════════════════════════════════════════════
+#  AGENT 2 · ไล่ตามป้ายบนหน้า — agents/prompts.py + verify_extractor.py
+# ═══════════════════════════════════════════════════════════════════════════
+VERIFY_SYSTEM = {literal(real_prompts.VERIFY_SYSTEM)}
+
+
+{source_of(real_prompts.verification_prompt)}
+
+
+show("AGENT 2 · Claude · VERIFY_SYSTEM · ไล่ตามป้ายบนหน้า",
+     VERIFY_SYSTEM, verification_prompt(SCHEMA, OCR_TEXT))
+''', """
 ┌────────────────────────────────────────────────────────────────────────────
 │ AGENT 2 · Claude · VERIFY_SYSTEM · ไล่ตามป้ายบนหน้า
 ├────────────────────────────────────────────────────────────────────────────
@@ -1298,6 +1350,7 @@ show("AGENT 2 · Claude · VERIFY_SYSTEM · ไล่ตามป้ายบน
 │   … (+1,403 ตัวอักษร)
 └────────────────────────────────────────────────────────────────────────────
 """)
+
 
 code(r'''
 import json, re, time
@@ -1367,7 +1420,7 @@ if ANTHROPIC_KEY:
 else:
     print("\nAGENT 2 · ข้าม (ไม่มี ANTHROPIC_API_KEY) — ทุกช่องจะเหลือหลักฐานชั้นเดียว")
 ''', """
-AGENT 1 · typhoon-v2.5-30b-a3b-instruct — 4.3 วินาที · ตอบมา 13/14 ช่อง
+AGENT 1 · typhoon-v2.5-30b-a3b-instruct — 6.8 วินาที · ตอบมา 13/14 ช่อง
 
   FIELD                ค่า                      อ้างอิงจากหน้าเอกสาร
   invoice_number       STS-2026-0318            «STS-2026-0318»
@@ -1377,16 +1430,16 @@ AGENT 1 · typhoon-v2.5-30b-a3b-instruct — 4.3 วินาที · ตอบ
   buyer_name           Mirtphol Industries PCL  «Mirtphol Industries PCL»
   purchase_order_ref   PO-2026-0567             «PO-2026-0567»
   currency             THB                      «»
-  subtotal             135,000.00               «135,000.00»
+  subtotal             135,000.00               «Subtotal 135,000.00»
   tax_rate             7%                       «VAT 7%»
-  tax_amount           9,450.00                 «9,450.00»
-  total_amount         144,450.00               «144,450.00»
-  payment_terms        Net 30                   «Net 30»
-  bank_account         1234567890               «1234567890»
+  tax_amount           9,450.00                 «VAT 7% 9,450.00»
+  total_amount         144,450.00               «Amount Due 144,450.00»
+  payment_terms        Net 30                   «Payment Terms: Net 30»
+  bank_account         1234567890               «Remit to Account No: 1234567890»
 
   ตอบ null (= ไม่ได้พิมพ์บนหน้านี้): due_date
 
-AGENT 2 · claude-sonnet-4-5-20250929 — 6.6 วินาที · ตอบมา 12/14 ช่อง
+AGENT 2 · claude-sonnet-4-5-20250929 — 6.3 วินาที · ตอบมา 12/14 ช่อง
 
   FIELD                ค่า                      อ้างอิงจากหน้าเอกสาร
   invoice_number       STS-2026-0318            «Invoice No .: STS-2026-0318»
@@ -2266,26 +2319,97 @@ for t in TOOLBOX:
   validate_tax_id        tax_id                       run the Thai 13-digit tax id check-digit test
 """)
 
+
 md(r"""
-### กฎประกาศเองว่าจะขอ tool ตัวไหน
+### กฎข้อนี้มาจากไหน — คนบัญชี**พิมพ์ประโยค** ไม่ได้เขียน JSON
 
-กล่องมี 8 ตัว แต่ **agent ไม่เคยได้ครบ 8** — `select_tools()` ตัดให้เหลือเฉพาะที่กฎข้อนั้นประกาศไว้ตอนถูกเขียน
+ตรงนี้คือคำตอบของคำถามที่สำคัญที่สุดข้อหนึ่งในระบบ: **โมเดลถูกใช้ตอนไหนกันแน่**
 
-นี่คือ least privilege เวอร์ชันของ agent และมันซื้อสามอย่างพร้อมกัน: **prompt สั้นลง** (ทุก tool กินที่ในทุก turn) · **ถูกลง** · และ **มีที่ให้หลงน้อยลงหนึ่งที่** — agent ที่ไม่มี `find_posted_records` อยู่ในมือ ไปตอบเรื่องเอกสารซ้ำไม่ได้เลย ไม่ใช่แค่ "ไม่ควรตอบ"
+```
+คนบัญชีพิมพ์:  "ก่อนจ่ายตามใบสั่งซื้อ ให้เช็คว่าใบสั่งซื้อยังเปิดอยู่
+                และยอดที่วางบิลไปแล้วรวมกับใบนี้ ยังไม่เกินวงเงิน"
+                          ↓  โมเดลแปลให้ **ครั้งเดียว** ต่อหน้าคนอนุมัติ
+กฎที่ได้:      instruction + plan 5 ขั้น + รายชื่อ tool + severity
+                          ↓  จากนี้ไปเป็น **ข้อมูลตายตัว**
+เอกสารทุกใบ:   เดินตามแผนนั้น ไม่มีการแปลใหม่ ไม่มีการตีความใหม่
+```
 
-กฎ 2 ข้อที่ ship มากับระบบจริงประกาศไว้แบบนี้:
+**โมเดลอยู่ตอนเขียนกฎ ไม่ได้อยู่ตอนบังคับใช้กฎ** และความต่างนี้คือทั้งหมด — เอกสารที่กำลังถูกตัดสิน**ไม่เคยได้มีส่วนร่วม**ในการเขียนกฎที่ตัดสินมัน ต่างจากการถามโมเดลทุกใบว่า "ใบนี้จ่ายได้ไหม" ซึ่งคำตอบขึ้นกับถ้อยคำบนเอกสาร ที่ผู้ขายเป็นคนคุม
 
-| กฎ | ขอ tool |
-|---|---|
-| ตรวจวงเงินใบสั่งซื้อ | `lookup_purchase_order` · `find_posted_records` · `read_document` |
-| ตรวจเลขผู้เสียภาษี | `validate_tax_id` · `lookup_vendor` · `read_document` |
+`AUTHORING_SYSTEM` ยังมีบรรทัดที่บอกโมเดลให้**ไม่ใช้ตัวเอง**ถ้าไม่จำเป็น:
 
-`read_document` อยู่ในทั้งสองข้อ เพราะ `RULE_AGENT_SYSTEM` สั่งว่า *"Look things up rather than recalling them"* — **agent ต้องมีทางกลับไปดูหน้ากระดาษเสมอ** ไม่งั้นคำสั่งนั้นเป็นคำสั่งที่ทำตามไม่ได้
+> *"Prefer a plain condition wherever one will do. It costs nothing, gives the same answer every time, and needs no model on the day a document arrives."*
+
+กฎที่เขียนเป็นเงื่อนไขได้ ไม่ควรกลายเป็น agent — 26 กฎในระบบจริงเป็นเงื่อนไขล้วนทั้งหมด มีแค่ 2 ข้อที่เป็น agent
+
+### และนี่คือเหตุผลที่กฎถูกเขียน**ต่อหน้าคน** ไม่ใช่ให้โมเดลเขียนแล้วใช้เลย
+
+รันจริงแล้วเจอ: โมเดลเขียนแผนที่มีขั้น *"บวกยอดสะสม แล้วเทียบกับวงเงิน"* แต่**ไม่ได้ใส่ `check_arithmetic` ในรายการ tool**
+
+`RULE_AGENT_SYSTEM` สั่งไว้ชัดว่า *"use check_arithmetic rather than doing sums yourself"* — แต่คำสั่งนั้น **บังคับไม่ได้ถ้าเครื่องมือไม่อยู่ในกล่อง** agent ที่เจอทางตันจะไม่หยุด มันจะบวกในหัวแล้วเดินต่อ
+
+> **least privilege ที่ตัดลึกเกินไป ไม่ได้ทำให้ปลอดภัยขึ้น — มันแค่ย้ายงานกลับเข้าไปในหัวโมเดล**
+
+cell ข้างล่างจึงมีด่านตรวจก่อนกฎถูกใช้: ถ้าแผนพูดถึงการคำนวณแต่ไม่ได้ขอ `check_arithmetic` มันจะบอกคนอนุมัติ **ไม่ใช่แก้กฎให้เงียบๆ** — กฎที่ถูกแก้โดยที่คนเขียนไม่รู้ ก็ไม่ใช่กฎที่คนนั้นอนุมัติอีกต่อไป
+""")
+
+code(f'''
+# ═══════════════════════════════════════════════════════════════════════════
+#  rules/authoring.py — prompt ที่แปลงประโยคภาษาคนเป็นกฎ คัดมาตรงๆ
+#  (โหมด agent · รายชื่อ tool ข้างในถูกเติมจาก TOOL_HELP ของระบบ)
+# ═══════════════════════════════════════════════════════════════════════════
+AUTHORING_SYSTEM = {literal(authoring_system_prompt("agent"))}
+
+print(AUTHORING_SYSTEM)
+''', """
+You convert a finance team's plain-English check into one agent rule:
+a short plan that an agent works through against each document, with tools.
+Reply with JSON only.
+
+{"kind":"agent","rule_id":"snake_case","title":"short",
+ "message":"what a reviewer reads when it fails","doc_types":["invoice"],
+ "severity":"blocking|warning|info","when":<condition or null>,
+ "instruction":"what the agent must decide about each document, in 1-2 sentences",
+ "plan":["step","step"],"tools":["tool_name"]}
+
+Tools the agent may use:
+- read_document: search the recognised page text for a word or number
+- read_line_items: list the table rows already read from the document, with amounts
+- lookup_vendor: find a vendor in the master file by name or tax id
+- lookup_purchase_order: fetch a purchase order: vendor, amount, currency, status
+- lookup_contract: fetch a contract from the register: parties, dates, value
+- find_posted_records: check whether a reference was already posted downstream
+- check_arithmetic: recompute subtotal + tax and compare with the stated total
+- validate_tax_id: run the Thai 13-digit tax id check-digit test
+
+"when" decides which documents the agent looks at, and is evaluated without a
+model. null means every document of these types. It is one of:
+{"all":[c,...]} {"any":[c,...]} {"not":c}
+{"field":"name","op":"OP","value":X}
+{"field":"name","op":"OP","other_field":"name"}
+OP: eq ne gt gte lt lte in not_in contains not_contains starts_with ends_with present absent
+
+Rules:
+- The plan is 2 to 5 steps. Each step is one thing to look up or compare, in
+  order. Plain sentences, no code.
+- List only the tools the plan actually uses. Use only the field names given.
+- Encode only what was asked. Add no extra condition or escape clause.
+- Make "when" as narrow as the request honestly allows: it decides how often the
+  agent runs at all.
+- severity "blocking" stops the document posting; "warning" lets it through flagged.
 """)
 
 code(r'''
-# ═══ กฎ (ภาษาคน) + แผน + tool ที่ขอ — เขียนครั้งเดียวตอนสร้างกฎ ══════════
-AGENT_RULE = {
+# ── ประโยคที่คนบัญชีพิมพ์เข้ามา ────────────────────────────────────────────
+WRITTEN_BY_A_HUMAN = (
+    "ก่อนจ่ายตามใบสั่งซื้อ ให้เช็คว่าใบสั่งซื้อยังเปิดอยู่ "
+    "และยอดที่วางบิลไปแล้วรวมกับใบนี้ ยังไม่เกินวงเงิน "
+    "และใบแจ้งหนี้เลขนี้ต้องยังไม่เคยถูกโพสต์มาก่อน"
+)
+
+# ── กฎที่ pin ไว้ ใช้เมื่อไม่มีคีย์ หรือโมเดลตอบมาไม่ครบ ───────────────────
+# notebook ต้องเดินต่อได้เสมอ และกฎที่ compile ไม่ผ่านคือกฎที่ไม่ควรใช้
+PINNED_RULE = {
     "id": "purchase_order_still_has_room",
     "instruction": "Before paying against a purchase order, confirm it is still "
                    "open and that everything billed so far plus this invoice "
@@ -2298,11 +2422,147 @@ AGENT_RULE = {
         "Compare that sum against the ordered amount - over is fail, within is pass, not found is unsure.",
         "Confirm this invoice number has not already been posted.",
     ],
-    # ← กฎเลือกเอง ไม่ใช่ระบบยัดให้
     "tools": ["lookup_purchase_order", "check_arithmetic",
               "find_posted_records", "read_document"],
 }
 
+FIELD_CATALOGUE = "\n".join(f"- {f.name}: {f.label} ({f.type})" for f in SCHEMA.fields)
+
+def authoring_request(sentence, doc_type):
+    """คำขอที่ส่งไปกับ AUTHORING_SYSTEM — จาก compile_rule()
+
+    ส่ง *รายชื่อช่องที่มีจริง* ไปด้วย ไม่ใช่ปล่อยให้โมเดลนึกเอง เพราะกฎที่อ้าง
+    ช่องที่ไม่มีอยู่ จะพังตอนเอกสารใบแรกมาถึง ไม่ใช่ตอนเขียน
+    """
+    return (f"Document types: {doc_type}\n\n"
+            f"Fields available:\n{FIELD_CATALOGUE}\n\n"
+            f"The check to encode:\n{sentence}")
+
+def compile_rule(sentence, doc_type):
+    """แปลประโยคเป็นกฎ **ครั้งเดียว** — ไม่ได้เรียกต่อเอกสารหนึ่งใบ"""
+    reply = claude.messages.create(
+        model=CLAUDE_MODEL, max_tokens=1200, temperature=0.0,
+        system=AUTHORING_SYSTEM,
+        messages=[{"role": "user", "content": authoring_request(sentence, doc_type)}],
+    )
+    got = extract_json(reply.content[0].text)
+    plan = [str(s) for s in got.get("plan", []) if str(s).strip()]
+    tools = [t for t in got.get("tools", []) if t in {x.name for x in TOOLBOX}]
+    if not got.get("instruction") or not (2 <= len(plan) <= 5) or not tools:
+        # ตรวจก่อนใช้ ไม่ใช่เชื่อ — กฎที่ไม่ผ่านคือกฎที่ไม่ควรบังคับใช้
+        raise ValueError("กฎที่ได้ไม่ครบตามรูปแบบ")
+    return {"id": got.get("rule_id") or PINNED_RULE["id"],
+            "instruction": got["instruction"],
+            "severity": got.get("severity", "blocking"),
+            "plan": plan, "tools": tools}
+
+# คำที่แปลว่า "ขั้นนี้ต้องคำนวณ" — ไทยและอังกฤษ
+ARITHMETIC_WORDS = ("add ", "sum", "total", "compare", "exceed", "calculat",
+                    "cumulative", "บวก", "รวม", "เกิน", "เทียบ")
+
+def review_before_approving(rule):
+    """สิ่งที่คนอนุมัติกฎควรถูกบอก ก่อนกดอนุมัติ
+
+    ด่านนี้มีอยู่เพราะรันจริงแล้วเจอ: โมเดลเขียนแผนที่มีขั้น "บวกยอดสะสม แล้ว
+    เทียบกับวงเงิน" แต่ไม่ได้ใส่ `check_arithmetic` ในรายการ tool
+
+    `RULE_AGENT_SYSTEM` สั่งว่า *"use check_arithmetic rather than doing sums
+    yourself"* — แต่คำสั่งนั้น **บังคับไม่ได้ถ้าเครื่องมือไม่ได้อยู่ในกล่อง**
+    agent ที่เจอทางตันจะบวกในหัวแล้วเดินต่อ ไม่ได้หยุด · least privilege ที่
+    ตัดลึกเกินไป ไม่ได้ทำให้ปลอดภัยขึ้น มันแค่ย้ายงานกลับเข้าไปในหัวโมเดล
+    """
+    warnings = []
+    text = " ".join(rule["plan"]).lower()
+    if any(w in text for w in ARITHMETIC_WORDS) and "check_arithmetic" not in rule["tools"]:
+        warnings.append("แผนมีขั้นที่ต้องคำนวณ แต่ไม่ได้ขอ check_arithmetic — "
+                        "agent จะบวกในหัวเอง ซึ่ง RULE_AGENT_SYSTEM ห้ามไว้")
+    if "read_document" not in rule["tools"]:
+        warnings.append("ไม่ได้ขอ read_document — agent กลับไปดูหน้ากระดาษไม่ได้เลย")
+    return warnings
+
+print("ประโยคที่คนพิมพ์เข้ามา:")
+print(f"  {WRITTEN_BY_A_HUMAN}\n")
+
+if not ANTHROPIC_KEY:
+    AGENT_RULE, HOW_WRITTEN = PINNED_RULE, "ใช้กฎที่ pin ไว้ (ไม่มี ANTHROPIC_API_KEY)"
+else:
+    try:
+        AGENT_RULE = compile_rule(WRITTEN_BY_A_HUMAN, DOC_TYPE)
+        HOW_WRITTEN = "โมเดลแปลให้ ณ ตอนนี้ ครั้งเดียว"
+    except Exception as exc:
+        AGENT_RULE, HOW_WRITTEN = PINNED_RULE, f"ใช้กฎที่ pin ไว้ ({exc})"
+
+print(f"กฎที่ได้ ({HOW_WRITTEN}):\n")
+print(f"  id        : {AGENT_RULE['id']}")
+print(f"  severity  : {AGENT_RULE['severity']}")
+print(f"  instruction:")
+for line in AGENT_RULE["instruction"].split(". "):
+    if line.strip():
+        print(f"      {line.strip().rstrip('.')}.")
+print(f"  plan      : {len(AGENT_RULE['plan'])} ขั้น")
+for i, step in enumerate(AGENT_RULE["plan"], 1):
+    print(f"      {i}. {step[:88]}")
+print(f"  tools     : {', '.join(AGENT_RULE['tools'])}")
+
+# ── ด่านสุดท้ายก่อนกฎถูกใช้: บอกคนอนุมัติว่ามีอะไรน่าห่วง ─────────────────
+REVIEW = review_before_approving(AGENT_RULE)
+if REVIEW:
+    print("\n  ⚠ สิ่งที่คนอนุมัติควรเห็นก่อนกดอนุมัติ:")
+    for w in REVIEW:
+        print(f"      • {w}")
+    print("\n  ตรงนี้แหละคือเหตุผลที่กฎถูกเขียนต่อหน้าคน ไม่ใช่ให้โมเดลเขียนแล้วใช้เลย")
+else:
+    print("\n  ตรวจแล้ว: แผนกับรายชื่อ tool สอดคล้องกัน")
+
+print("\n" + "─" * 78)
+print("จากบรรทัดนี้ไป กฎข้างบนเป็น **ข้อมูล** ไม่ใช่ prompt")
+print("เอกสารใบต่อไปอีกหมื่นใบเดินตามแผนชุดนี้ โดยไม่มีการเรียกโมเดลแปลใหม่อีก")
+''', """
+ประโยคที่คนพิมพ์เข้ามา:
+  ก่อนจ่ายตามใบสั่งซื้อ ให้เช็คว่าใบสั่งซื้อยังเปิดอยู่ และยอดที่วางบิลไปแล้วรวมกับใบนี้ ยังไม่เกินวงเงิน และใบแจ้งหนี้เลขนี้ต้องยังไม่เคยถูกโพสต์มาก่อน
+
+กฎที่ได้ (โมเดลแปลให้ ณ ตอนนี้ ครั้งเดียว):
+
+  id        : check_po_budget_and_duplicate_posting
+  severity  : blocking
+  instruction:
+      Verify that the purchase order is still open, that the cumulative amount invoiced (including this invoice) does not exceed the PO limit, and that this invoice number has not been posted before.
+  plan      : 4 ขั้น
+      1. Look up the purchase order using the PO reference to get its status, approved amount, an
+      2. Check if this invoice number has already been posted in downstream systems
+      3. Calculate the cumulative invoiced amount by adding this invoice total to any previously 
+      4. Compare the cumulative amount with the PO limit to ensure it does not exceed the approve
+  tools     : lookup_purchase_order, find_posted_records
+
+  ⚠ สิ่งที่คนอนุมัติควรเห็นก่อนกดอนุมัติ:
+      • แผนมีขั้นที่ต้องคำนวณ แต่ไม่ได้ขอ check_arithmetic — agent จะบวกในหัวเอง ซึ่ง RULE_AGENT_SYSTEM ห้ามไว้
+      • ไม่ได้ขอ read_document — agent กลับไปดูหน้ากระดาษไม่ได้เลย
+
+  ตรงนี้แหละคือเหตุผลที่กฎถูกเขียนต่อหน้าคน ไม่ใช่ให้โมเดลเขียนแล้วใช้เลย
+
+──────────────────────────────────────────────────────────────────────────────
+จากบรรทัดนี้ไป กฎข้างบนเป็น **ข้อมูล** ไม่ใช่ prompt
+เอกสารใบต่อไปอีกหมื่นใบเดินตามแผนชุดนี้ โดยไม่มีการเรียกโมเดลแปลใหม่อีก
+""")
+
+md(r"""
+### กฎประกาศเองว่าจะขอ tool ตัวไหน
+
+กล่องมี 8 ตัว แต่ **agent ไม่เคยได้ครบ 8** — `select_tools()` ตัดให้เหลือเฉพาะที่กฎข้อนั้นประกาศไว้ตอนถูกเขียน
+
+นี่คือ least privilege เวอร์ชันของ agent และมันซื้อสามอย่างพร้อมกัน: **prompt สั้นลง** (ทุก tool กินที่ในทุก turn) · **ถูกลง** · และ **มีที่ให้หลงน้อยลงหนึ่งที่** — agent ที่ไม่มี `find_posted_records` อยู่ในมือ ไปตอบเรื่องเอกสารซ้ำไม่ได้เลย ไม่ใช่แค่ "ไม่ควรตอบ"
+
+กฎที่เพิ่งถูกเขียนขึ้นข้างบน **ประกาศ tool ของมันเอง** — กฎ 2 ข้อที่ ship มากับระบบจริงก็ประกาศไว้แบบนี้:
+
+| กฎ | ขอ tool |
+|---|---|
+| ตรวจวงเงินใบสั่งซื้อ | `lookup_purchase_order` · `find_posted_records` · `read_document` |
+| ตรวจเลขผู้เสียภาษี | `validate_tax_id` · `lookup_vendor` · `read_document` |
+
+`read_document` อยู่ในทั้งสองข้อ เพราะ `RULE_AGENT_SYSTEM` สั่งว่า *"Look things up rather than recalling them"* — **agent ต้องมีทางกลับไปดูหน้ากระดาษเสมอ** ไม่งั้นคำสั่งนั้นเป็นคำสั่งที่ทำตามไม่ได้
+""")
+
+code(r'''
 RULE_TOOLS = select_tools(TOOLBOX, AGENT_RULE["tools"])
 TOOL_SCHEMAS = [t.anthropic_schema() for t in RULE_TOOLS]
 
@@ -2406,44 +2666,43 @@ else:
           f"{'ผ่าน' if verdict == 'pass' else 'ไม่ผ่าน'} · ระดับ {severity}")
 ''', """
 กล่องทั้งหมด : 8 ตัว
-กฎนี้ขอ      : 4 ตัว
+กฎนี้ขอ      : 2 ตัว
 
-  ให้      read_document
+  ตัดออก   read_document
   ตัดออก   read_line_items
   ตัดออก   lookup_vendor
   ให้      lookup_purchase_order
   ตัดออก   lookup_contract
   ให้      find_posted_records
-  ให้      check_arithmetic
+  ตัดออก   check_arithmetic
   ตัดออก   validate_tax_id
 
-ที่ส่งเข้าโมเดลจริงๆ (4 schema):
+ที่ส่งเข้าโมเดลจริงๆ (2 schema):
 {
-  "name": "read_document",
-  "description": "Search the recognised page text. Use this to check what is actually printed before claiming a value.",
+  "name": "lookup_purchase_order",
+  "description": "Fetch a purchase order: its vendor, amount, currency and status.",
   "input_schema": {
     "type": "object",
     "properties": {
-      "query": {
+      "po_number": {
         "type": "string",
-        "description": "Text or number to look for"
+        "description": "e.g. PO-2026-0412"
       }
     },
     "required": [
-      "query"
+      "po_number"
     ]
   }
 }
-  … อีก 3 ตัวรูปแบบเดียวกัน
+  … อีก 1 ตัวรูปแบบเดียวกัน
 ──────────────────────────────────────────────────────────────────────────────
-CHECK: Before paying against a purchase order, confirm it is still open and that everything billed so far plus this invoice stays within the ordered amount.
+CHECK: Verify that the purchase order is still open, that the cumulative amount invoiced (including this invoice) does not exceed the PO limit, and that this invoice number has not been posted before.
 
 PLAN:
-1. Look up the purchase order this invoice references; note its amount, status and how much has been billed.
-2. If the status is not open, answer fail and say what the status is.
-3. Add the amount billed so far to this invoice's subtotal using check_arithmetic.
-4. Compare that sum against the ordered amount - over is fail, within is pass, not found is unsure.
-5. Confirm this invoice number has not already been posted.
+1. Look up the purchase order using the PO reference to get its status, approved amount, and currency
+2. Check if this invoice number has already been posted in downstream systems
+3. Calculate the cumulative invoiced amount by adding this invoice total to any previously posted amounts against the same PO
+4. Compare the cumulative amount with the PO limit to ensure it does not exceed the approved budget
 
 DOCUMENT invoice_test.png
 Facts:
@@ -2471,21 +2730,19 @@ Work through the plan, then return the verdict JSON.
 
   รอบ 1 · เรียก lookup_purchase_order({"po_number": "PO-2026-0567"})
            ได้ → {"found": true, "po_number": "PO-2026-0567", "vendor_id": "V-1001", "amount": 135000.0, "currency": "THB", "status": "open", "billed_so_far": 0.0, "vendor_name": "Siam Tech Supply Co., Ltd."}
-  รอบ 2 · เรียก check_arithmetic({"subtotal": 135000.0, "tax_amount": 9450.0, "tax_rate": 7.0, "total": 144450.0})
-           ได้ → {"inputs": {"subtotal": 135000.0, "tax_rate": 7.0, "tax_amount": 9450.0, "total": 144450.0}, "expected_tax_amount": 9450.0, "computed_total": 144450.0, "difference": 0.0, "consistent": true, "problems…
-  รอบ 3 · เรียก find_posted_records({"reference": "STS-2026-0318", "vendor_id": "V-1001"})
+  รอบ 1 · เรียก find_posted_records({"reference": "STS-2026-0318", "vendor_id": "V-1001"})
            ได้ → {"found": false, "note": "nothing posted under reference STS-2026-0318", "scoped_to_vendor": "Siam Tech Supply Co., Ltd."}
 
-  เดินไป 4 รอบ · เรียก tool 3 ครั้ง
+  เดินไป 2 รอบ · เรียก tool 2 ครั้ง
 
-  คำตอบ  : PASS
-  เพราะ  : PO-2026-0567 is open with 135,000 THB ordered; this invoice for 135,000 THB subtotal brings total billed to exactly the ordered amount and has not been posted before.
-  หลักฐาน: PO lookup returned: status=open, amount=135000.0, billed_so_far=0.0, currency=THB
-  หลักฐาน: Invoice subtotal: 135000.0
-  หลักฐาน: Total to be billed: 0.0 + 135000.0 = 135000.0, which equals ordered amount 135000.0
-  หลักฐาน: find_posted_records returned: found=false for STS-2026-0318
+  คำตอบ  : FAIL
+  เพราะ  : Cumulative invoiced amount of 144,450.00 THB exceeds the PO limit of 135,000.00 THB by 9,450.00 THB
+  หลักฐาน: PO-2026-0567 status: open, amount: 135000.0 THB, billed_so_far: 0.0
+  หลักฐาน: Invoice STS-2026-0318 not previously posted
+  หลักฐาน: Invoice total from document: 144450.0 THB (subtotal 135000.0 + tax 9450.0)
+  หลักฐาน: Cumulative amount (0.0 + 144450.0 = 144450.0) exceeds PO limit (135000.0)
 
-  บันทึกเป็น: purchase_order_still_has_room · ผ่าน · ระดับ blocking
+  บันทึกเป็น: check_po_budget_and_duplicate_posting · ไม่ผ่าน · ระดับ blocking
 """)
 
 # ================================================================ decide ====
@@ -2604,19 +2861,22 @@ print(json.dumps(RESULT, ensure_ascii=False, indent=2)[:1200])
   ผ่าน                   tax_rate_consistent            ภาษี 9,450.00 ตรงกับอัตรา 7%
   ผ่าน                   line_items_sum_to_subtotal     2 แถวรวมได้ 135,000.00 ตรงกับ subtotal
   ผ่าน                   bank_account_matches           เลขบัญชี 1234567890 ตรงกับทะเบียน
-  ผ่าน                   purchase_order_still_has_room  PO-2026-0567 is open with 135,000 THB ordered; this invoice 
+  ไม่ผ่าน [blocking]     check_po_budget_and_duplicate_posting Cumulative invoiced amount of 144,450.00 THB exceeds the PO 
 
 ── สรุป ──────────────────────────────────────────────────────────────────
   Confidence      : 95%   (เกณฑ์ 84%)
-  กฎที่ไม่ผ่าน      : 0 จาก 5
-  เรียกโมเดล      : OCR 1 + agent อ่าน 2 + agent กฎ (tool 3 ครั้ง)
+  กฎที่ไม่ผ่าน      : 1 จาก 5
+  เรียกโมเดล      : OCR 1 + agent อ่าน 2 + agent กฎ (tool 2 ครั้ง)
   โมเดลในการตัดสิน : 0
 
 ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃  POST = True                                                               ┃
+┃  POST = False                                                              ┃
 ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
 
-→ เขียนลงบัญชีอัตโนมัติ ไม่ต้องมีคนดู
+ไม่ POST เพราะ:
+  • Cumulative invoiced amount of 144,450.00 THB exceeds the PO limit of 135,000.00 THB by 9,450.00 THB
+
+→ เข้าคิวให้คนตรวจ
 
 ── ผลลัพธ์เป็น JSON (พร้อมส่งต่อ) ──────────────────────────────────────────
 {
@@ -2660,15 +2920,15 @@ print(json.dumps(RESULT, ensure_ascii=False, indent=2)[:1200])
       "severity": "blocking"
     },
     {
-      "rule": "purchase_order_still_has_room",
-      "ok": true,
+      "rule": "check_po_budget_and_duplicate_posting",
+      "ok": false,
       "severity": "blocking"
     }
   ],
   "confidence": 0.946,
-  "post": true,
-  "reasons": []
-}
+  "post": false,
+  "reasons": [
+    "Cumulative invoiced amount of 144,450.00 THB exceeds the PO limit of 135,000.00
 """)
 
 # =============================================================== closing ====

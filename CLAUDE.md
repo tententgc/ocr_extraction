@@ -123,6 +123,21 @@ All eight tools are written out too, with `select_tools` narrowing them to the
 four the demo rule declares — the notebook would otherwise show an agent holding
 every tool in the system, which is neither what happens nor what should.
 
+Prompts get **one cell each** — the two extraction agents, the classifier, the
+rule agent, the rule author — because a reader comparing two prompts should not
+have to scroll past a third. The rule is no longer a hand-written dict: the
+notebook sends a Thai sentence through `AUTHORING_SYSTEM` and shows the plan and
+tool list that come back, which is the only way to demonstrate that **the model
+writes the rule and never enforces it**.
+
+That call surfaced something real. The authored plan says "add the cumulative
+amount and compare against the limit" and does not ask for `check_arithmetic`,
+so the agent adds in its head — `RULE_AGENT_SYSTEM` forbids exactly that, and
+the instruction is unenforceable once the tool is out of the box. Least
+privilege cut too deep does not make an agent safer, it moves the work back
+inside the model. `review_before_approving` reports it to whoever approves the
+rule rather than rewriting the rule behind their back.
+
 Stage ① is preprocessing, with the thresholds pinned to `ocr/preprocess.py` by a
 test. On a clean page it applies nothing, which is the invariant and not a gap,
 so the cell after it damages a copy — 3° of tilt and a lighting gradient — and
