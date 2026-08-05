@@ -7,24 +7,33 @@ only contains easy cases reports a number nobody should believe.
 This set exists to be *watched*. Every outcome here is unarguable, and each
 document fails - or passes - for one reason that can be pointed at in a sentence:
 
-    1  clean            PDF    posts     nothing is wrong with it
-    2  bank account     PNG    held      the page says an account the register does not
-    3  VAT wrong        PDF    held      7% of the subtotal is not the tax charged
-    4  Thai, correct    PNG    posts     Buddhist dates and Thai labels, all consistent
-    5  over the PO      PDF    held      the invoice bills more than the order allows
+    01 PASS  clean              PDF   nothing is wrong with it
+    02 PASS  Thai, correct      PNG   Buddhist dates and Thai labels, all consistent
+    03 PASS  no purchase order  PDF   absent is not wrong, and it is under the threshold
+    04 PASS  fuel receipt       PNG   a different document type, so the classifier works
+    05 PASS  photographed       JPG   tilted and unevenly lit, and still read correctly
+    06 FAIL  bank account       PNG   the page pays an account the register does not hold
+    07 FAIL  VAT wrong          PDF   7% of the subtotal is not the tax charged
+    08 FAIL  over the PO        PDF   bills more than the order allows
+    09 FAIL  unknown vendor     PDF   nobody in the register issued this
+    10 FAIL  total transposed   PNG   two digits swapped in the one number that matters
 
-Two of the five pass, three fail, and the three fail in three different *kinds*
-of way: one is a fact about the world (the register), one is the document
-contradicting itself (arithmetic), one needs a lookup and a sum before anyone
-can tell (the agent rule). A demo where every failure is caught by the same
-mechanism teaches that the system has one mechanism.
+Five pass, five fail, and the five failures fail in five different *kinds* of
+way: two are the document contradicting itself (07, 10), two are facts about the
+world that no amount of careful reading finds (06, 09), and one needs a lookup
+and a sum before anyone can tell (08). A demo where every failure is caught by
+the same mechanism teaches that the system has one mechanism.
+
+The passes are not five copies of each other either. 03 posts *because* a field
+is missing and that is allowed; 04 is a different schema; 05 is the arrival
+format that actually puts OCR and preprocessing under load.
 
 Both formats appear because they are not the same path. A PDF carries a text
 layer; a PNG carries none, so the OCR model is the only thing standing between
 the page and the extraction. Demonstrating on PDFs alone demonstrates the easy
 half.
 
-The register below is deliberately small - four vendors, three purchase orders -
+The register below is deliberately small - six vendors, five purchase orders -
 so a viewer can hold all of it in their head while a document is checked against
 it. It is written out as the same CSVs an ERP would export, and the same rows are
 mirrored in `notebooks/build_live.py` so these five files behave identically
@@ -37,6 +46,7 @@ import csv
 import io
 import json
 import logging
+import re
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
@@ -50,6 +60,9 @@ BUYER = "Mirtphol Industries PCL"
 MASTER_DIR = "master"
 # 72dpi × 2.5 = 180dpi, what an office scanner produces.
 PAGE_SCALE = 2.5
+# A phone shoots at more resolution than it needs; downsampling afterwards
+# would hide exactly the softness the file exists to carry.
+PHOTO_SCALE = 3.0
 
 CSV_COLUMNS: dict[str, tuple[str, ...]] = {
     "vendors": ("vendor_id", "legal_name", "aliases", "tax_id", "bank_account",
@@ -97,6 +110,22 @@ VENDORS: tuple[dict[str, Any], ...] = (
         "bank_account": "9876543210",
         "status": "active", "payment_terms": "Net 45", "currency": "THB",
     },
+    {
+        "vendor_id": "V-9005",
+        "legal_name": "บริษัท ปตท. น้ำมันและการค้าปลีก จำกัด",
+        "aliases": "PTT Oil and Retail;PTT OR;ปตท. น้ำมันและการค้าปลีก",
+        "tax_id": "0105554000770",
+        "bank_account": "2210556677",
+        "status": "active", "payment_terms": "Immediate", "currency": "THB",
+    },
+    {
+        "vendor_id": "V-9006",
+        "legal_name": "Chao Phraya Print & Pack Co., Ltd.",
+        "aliases": "Chao Phraya Print;CP Print & Pack",
+        "tax_id": "0105559000188",
+        "bank_account": "6680033445",
+        "status": "active", "payment_terms": "Net 30", "currency": "THB",
+    },
 )
 
 PURCHASE_ORDERS: tuple[dict[str, Any], ...] = (
@@ -115,6 +144,12 @@ PURCHASE_ORDERS: tuple[dict[str, Any], ...] = (
     {"po_number": "PO-2026-9104", "vendor_id": "V-9003", "po_date": "2026-06-28",
      "currency": "THB", "amount": 60_000.00, "status": "open",
      "description": "งานติดตั้งระบบไฟฟ้า อาคาร B"},
+    {"po_number": "PO-2026-9105", "vendor_id": "V-9006", "po_date": "2026-07-05",
+     "currency": "THB", "amount": 128_000.00, "status": "open",
+     "description": "Printed cartons and labels"},
+    {"po_number": "PO-2026-9106", "vendor_id": "V-9004", "po_date": "2026-07-19",
+     "currency": "THB", "amount": 35_000.00, "status": "open",
+     "description": "Inbound freight, late July"},
 )
 
 CONTRACTS: tuple[dict[str, Any], ...] = ()
@@ -277,6 +312,158 @@ DEMO_DOCUMENTS: tuple[tuple[str, str, bool, SampleDoc], ...] = (
             expected_findings=("invoice_within_purchase_order",),
         ),
     ),
+    # ── 6-10 ──────────────────────────────────────────────────────────────
+    (
+        "invoice_no_purchase_order", "pdf", True,
+        SampleDoc(
+            doc_id="demo_invoice_no_purchase_order",
+            doc_type="invoice", layout="two_column",
+            title="Chao Phraya Print invoice quoting no purchase order",
+            demonstrates=(
+                "There is no PO reference anywhere on this page, and it posts. "
+                "`critical` is about consequence, not presence: it means a wrong "
+                "value here pays the wrong amount, not that the field must exist. "
+                "Whether an order is *required* is business policy, answered by a "
+                "threshold, and 42,000.00 is under it."
+            ),
+            ground_truth={
+                "invoice_number": "CPP-2026-0655", "invoice_date": "2026-07-11",
+                "due_date": "2026-08-10",
+                "vendor_name": "Chao Phraya Print & Pack Co., Ltd.",
+                "vendor_tax_id": "0105559000188", "buyer_name": BUYER,
+                "currency": "THB",
+                "subtotal": 42_000.00, "tax_rate": 7.0, "tax_amount": 2_940.00,
+                "total_amount": 44_940.00, "payment_terms": "Net 30",
+                "bank_account": "6680033445",
+            },
+            line_items=(
+                {"description": "Printed carton, 3-ply, B-flute", "quantity": 3_000,
+                 "unit_price": 12.00, "amount": 36_000.00},
+                {"description": "Label printing, 4-colour", "quantity": 1,
+                 "unit_price": 6_000.00, "amount": 6_000.00},
+            ),
+        ),
+    ),
+    (
+        "receipt_fuel_correct", "png", True,
+        SampleDoc(
+            doc_id="demo_receipt_fuel_correct",
+            doc_type="receipt", layout="narrow",
+            title="PTT fuel receipt, nothing wrong with it",
+            demonstrates=(
+                "A different document type, so the classifier has something to do. "
+                "A till receipt has no purchase order, no payment terms and no bank "
+                "account, and none of that holds it - the rules that need those "
+                "fields abstain rather than fail, which is not the same thing."
+            ),
+            ground_truth={
+                "receipt_number": "PTT-880451", "receipt_date": "2026-07-28",
+                "merchant_name": "บริษัท ปตท. น้ำมันและการค้าปลีก จำกัด",
+                "merchant_tax_id": "0105554000770", "currency": "THB",
+                "subtotal": 2_000.00, "tax_amount": 140.00,
+                "total_amount": 2_140.00,
+                "payment_method": "cash", "expense_category": "fuel",
+            },
+            line_items=(
+                {"description": "Diesel B7", "quantity": 50,
+                 "unit_price": 40.00, "amount": 2_000.00},
+            ),
+        ),
+    ),
+    (
+        "invoice_photographed", "photo", True,
+        SampleDoc(
+            doc_id="demo_invoice_photographed",
+            doc_type="invoice", layout="modern",
+            title="Northwind invoice photographed on a desk",
+            demonstrates=(
+                "The same kind of correct invoice as document 1, arriving the way "
+                "most documents actually arrive: a phone photograph, tilted and "
+                "unevenly lit. Preprocessing has something to do here, and this is "
+                "the only document in the set where it does."
+            ),
+            ground_truth={
+                "invoice_number": "NWL-2026-0518", "invoice_date": "2026-07-26",
+                "due_date": "2026-09-09", "vendor_name": "Northwind Logistics Ltd.",
+                "vendor_tax_id": "0105561071237", "buyer_name": BUYER,
+                "purchase_order_ref": "PO-2026-9106", "currency": "THB",
+                "subtotal": 35_000.00, "tax_rate": 7.0, "tax_amount": 2_450.00,
+                "total_amount": 37_450.00, "payment_terms": "Net 45",
+                "bank_account": "9876543210",
+            },
+            line_items=(
+                {"description": "Inbound freight, Laem Chabang to Bangkok", "quantity": 7,
+                 "unit_price": 3_500.00, "amount": 24_500.00},
+                {"description": "Customs clearance handling", "quantity": 2,
+                 "unit_price": 5_250.00, "amount": 10_500.00},
+            ),
+        ),
+    ),
+    (
+        "invoice_unknown_vendor", "pdf", False,
+        SampleDoc(
+            doc_id="demo_invoice_unknown_vendor",
+            doc_type="invoice", layout="classic",
+            title="Invoice from a company nobody has registered",
+            demonstrates=(
+                "Every number adds up and the page is perfectly legible. Nobody in "
+                "the register is Sathorn Metalworks, and its tax id belongs to no "
+                "vendor either - so there is nothing to check the bank account "
+                "against. An unrecognised counterparty is not a small problem; it is "
+                "the shape most invoice fraud arrives in."
+            ),
+            ground_truth={
+                "invoice_number": "SMW-2026-0091", "invoice_date": "2026-07-22",
+                "due_date": "2026-08-21",
+                "vendor_name": "Sathorn Metalworks Co., Ltd.",
+                "vendor_tax_id": "0105566000451", "buyer_name": BUYER,
+                "currency": "THB",
+                "subtotal": 42_000.00, "tax_rate": 7.0, "tax_amount": 2_940.00,
+                "total_amount": 44_940.00, "payment_terms": "Net 30",
+                "bank_account": "7730099001",
+            },
+            line_items=(
+                {"description": "Fabricated steel bracket, galvanised", "quantity": 200,
+                 "unit_price": 160.00, "amount": 32_000.00},
+                {"description": "Powder coating", "quantity": 200,
+                 "unit_price": 50.00, "amount": 10_000.00},
+            ),
+            expected_findings=("vendor_known",),
+        ),
+    ),
+    (
+        "invoice_total_transposed", "png", False,
+        SampleDoc(
+            doc_id="demo_invoice_total_transposed",
+            doc_type="invoice", layout="modern",
+            title="Chao Phraya Print invoice whose total has two digits swapped",
+            demonstrates=(
+                "The line items, the subtotal and the VAT all agree on 128,000.00 "
+                "and 8,960.00. The total should read 136,960.00 and reads "
+                "139,660.00. Three relations tie those numbers together, one value "
+                "breaks all of them, and the others stand - which is how the finding "
+                "can name the total rather than shrug at the page."
+            ),
+            ground_truth={
+                "invoice_number": "CPP-2026-0702", "invoice_date": "2026-07-27",
+                "due_date": "2026-08-26",
+                "vendor_name": "Chao Phraya Print & Pack Co., Ltd.",
+                "vendor_tax_id": "0105559000188", "buyer_name": BUYER,
+                "purchase_order_ref": "PO-2026-9105", "currency": "THB",
+                "subtotal": 128_000.00, "tax_rate": 7.0, "tax_amount": 8_960.00,
+                # 136,960.00 with the 6 and the 9 swapped.
+                "total_amount": 139_660.00, "payment_terms": "Net 30",
+                "bank_account": "6680033445",
+            },
+            line_items=(
+                {"description": "Printed carton, 3-ply, B-flute", "quantity": 8_000,
+                 "unit_price": 14.00, "amount": 112_000.00},
+                {"description": "Label printing, 4-colour", "quantity": 1,
+                 "unit_price": 16_000.00, "amount": 16_000.00},
+            ),
+            expected_findings=("invoice_totals_consistent",),
+        ),
+    ),
 )
 
 
@@ -327,9 +514,22 @@ def _page_text(pdf_path: Path) -> str:
         document.close()
 
 
+# Anything at the top of the directory that looks like a document this module
+# rendered on a previous run.
+_GENERATED = re.compile(r"^\d+_.*\.(pdf|png|jpg)$")
+
+
 def generate(out_dir: Path) -> list[dict[str, Any]]:
-    """Render the five documents, their register, and a ground-truth manifest."""
+    """Render the ten documents, their register, and a ground-truth manifest."""
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    # Clear what a previous run left. Renaming or reordering the set otherwise
+    # leaves the old files sitting beside the new ones, and a demonstration
+    # folder holding two answers for the same document is worse than one holding
+    # none. Only the generated pattern is touched - README.md and master/ stay.
+    for stale in out_dir.iterdir():
+        if stale.is_file() and _GENERATED.match(stale.name):
+            stale.unlink()
 
     master = out_dir / MASTER_DIR
     master.mkdir(parents=True, exist_ok=True)
@@ -342,12 +542,19 @@ def generate(out_dir: Path) -> list[dict[str, Any]]:
             continue
         (master / f"{kind}.csv").write_text(to_csv(kind), encoding="utf-8")
 
+    # Passes first, then failures, each group keeping the order it is declared
+    # in. Numbering them as they happen to appear in the source interleaves the
+    # two, and a directory listing is the first thing anyone looks at.
+    ordered = sorted(DEMO_DOCUMENTS, key=lambda row: not row[2])
+
     manifest: list[dict[str, Any]] = []
-    for index, (slug, arrival, posts, doc) in enumerate(DEMO_DOCUMENTS, start=1):
-        # The expected outcome is in the filename, decided before the system is
-        # asked. A demo whose answers are only known after the run is a demo
-        # that can be talked into agreeing with whatever happened.
-        name = f"{index}_{slug}_{'POST' if posts else 'HOLD'}"
+    for index, (slug, arrival, posts, doc) in enumerate(ordered, start=1):
+        # The verdict comes *before* the description, so a directory listing
+        # reads as five PASS then five FAIL rather than as ten filenames whose
+        # last word has to be hunted for. It is decided before the system is
+        # asked: a set whose answers are only known after the run is a set that
+        # can be talked into agreeing with whatever happened.
+        name = f"{index:02d}_{'PASS' if posts else 'FAIL'}_{slug}"
 
         pdf_path = out_dir / f"{name}.pdf"
         render_pdf(doc, pdf_path)
@@ -356,6 +563,16 @@ def generate(out_dir: Path) -> list[dict[str, Any]]:
         if arrival == "png":
             artifact = out_dir / f"{name}.png"
             _render_page(pdf_path).save(artifact, format="PNG")
+            pdf_path.unlink()
+        elif arrival == "photo":
+            # A phone snap: tilted, unevenly lit, softened. The only document in
+            # the set that gives preprocessing anything to do.
+            from docuflow.samples.degrade import photograph
+
+            artifact = out_dir / f"{name}.jpg"
+            photograph(_render_page(pdf_path, PHOTO_SCALE), seed=index * 13 + 5).save(
+                artifact, format="JPEG", quality=72
+            )
             pdf_path.unlink()
         elif arrival == "pdf":
             artifact = pdf_path

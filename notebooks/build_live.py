@@ -1924,21 +1924,29 @@ code(r'''
 # ═══════════════════════════════════════════════════════════════════════════
 VENDORS = {
     "V-9001": {"vendor_id": "V-9001", "legal_name": "Siam Tech Supply Co., Ltd.",
-               "aliases": ["Siam Tech", "บริษัท สยามเทค ซัพพลาย จำกัด"],
+               "aliases": ['Siam Tech', 'Siam Tech Supply', 'บริษัท สยามเทค ซัพพลาย จำกัด'],
                "tax_id": "0105543000129", "bank_account": "1234567890",
                "status": "active", "payment_terms": "Net 30", "currency": "THB"},
     "V-9002": {"vendor_id": "V-9002", "legal_name": "Rungruang Steel Works Co., Ltd.",
-               "aliases": ["Rungruang Steel", "บริษัท รุ่งเรือง สตีล เวิร์ค จำกัด"],
+               "aliases": ['Rungruang Steel', 'บริษัท รุ่งเรือง สตีล เวิร์ค จำกัด'],
                "tax_id": "0105552000110", "bank_account": "3120045678",
                "status": "active", "payment_terms": "Net 60", "currency": "THB"},
     "V-9003": {"vendor_id": "V-9003", "legal_name": "บริษัท ไทยพัฒนา วิศวกรรม จำกัด",
-               "aliases": ["Thai Pattana Engineering", "ไทยพัฒนา วิศวกรรม"],
+               "aliases": ['Thai Pattana Engineering', 'ไทยพัฒนา วิศวกรรม'],
                "tax_id": "0105548000117", "bank_account": "4450091122",
                "status": "active", "payment_terms": "Net 30", "currency": "THB"},
     "V-9004": {"vendor_id": "V-9004", "legal_name": "Northwind Logistics Ltd.",
-               "aliases": ["Northwind", "Northwind Logistics"],
+               "aliases": ['Northwind', 'Northwind Logistics'],
                "tax_id": "0105561071237", "bank_account": "9876543210",
                "status": "active", "payment_terms": "Net 45", "currency": "THB"},
+    "V-9005": {"vendor_id": "V-9005", "legal_name": "บริษัท ปตท. น้ำมันและการค้าปลีก จำกัด",
+               "aliases": ['PTT Oil and Retail', 'PTT OR', 'ปตท. น้ำมันและการค้าปลีก'],
+               "tax_id": "0105554000770", "bank_account": "2210556677",
+               "status": "active", "payment_terms": "Immediate", "currency": "THB"},
+    "V-9006": {"vendor_id": "V-9006", "legal_name": "Chao Phraya Print & Pack Co., Ltd.",
+               "aliases": ['Chao Phraya Print', 'CP Print & Pack'],
+               "tax_id": "0105559000188", "bank_account": "6680033445",
+               "status": "active", "payment_terms": "Net 30", "currency": "THB"},
 }
 PURCHASE_ORDERS = {   # ยอดไม่รวม VAT — ใบสั่งซื้อบันทึกสิ่งที่ตกลง ภาษีบวกตอนวางบิล
     "PO-2026-9101": {"po_number": "PO-2026-9101", "vendor_id": "V-9001",
@@ -1952,6 +1960,12 @@ PURCHASE_ORDERS = {   # ยอดไม่รวม VAT — ใบสั่ง�
                      "status": "open", "billed_so_far": 0.00},
     "PO-2026-9104": {"po_number": "PO-2026-9104", "vendor_id": "V-9003",
                      "amount": 60_000.00, "currency": "THB",
+                     "status": "open", "billed_so_far": 0.00},
+    "PO-2026-9105": {"po_number": "PO-2026-9105", "vendor_id": "V-9006",
+                     "amount": 128_000.00, "currency": "THB",
+                     "status": "open", "billed_so_far": 0.00},
+    "PO-2026-9106": {"po_number": "PO-2026-9106", "vendor_id": "V-9004",
+                     "amount": 35_000.00, "currency": "THB",
                      "status": "open", "billed_so_far": 0.00},
 }
 CONTRACTS = {
@@ -1984,8 +1998,14 @@ def num(name):
         return None
 
 def find_vendor():
-    """เลขผู้เสียภาษีก่อน แล้วค่อยชื่อ — เลขเป็นกุญแจ ชื่อสะกดได้หลายแบบ"""
-    tax, name = val("vendor_tax_id"), val("vendor_name")
+    """เลขผู้เสียภาษีก่อน แล้วค่อยชื่อ — เลขเป็นกุญแจ ชื่อสะกดได้หลายแบบ
+
+    ดูทั้ง vendor_* และ merchant_* เพราะใบเสร็จเรียกคู่ค้าว่า "ร้าน" ไม่ใช่
+    "ผู้ขาย" — มองแต่ชื่อช่องของใบแจ้งหนี้ แล้วใบเสร็จที่ถูกต้องทุกใบจะกลายเป็น
+    "ไม่รู้จักผู้ขาย" ซึ่งเป็น blocking
+    """
+    tax = val("vendor_tax_id") or val("merchant_tax_id")
+    name = val("vendor_name") or val("merchant_name")
     for vid, v in VENDORS.items():
         if tax and v["tax_id"] == str(tax).strip():
             return vid, v, "เลขผู้เสียภาษี"

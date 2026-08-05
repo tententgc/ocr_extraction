@@ -510,8 +510,8 @@ def cmd_demo_set(args: argparse.Namespace) -> int:
 
     print(f"Wrote {len(manifest)} document(s) to {out_dir}:\n")
     for entry in manifest:
-        verdict = "POST" if entry["expected_post"] else "HOLD"
-        print(f"  {verdict:5} {entry['file']:44} {entry['demonstrates'].split('.')[0]}.")
+        verdict = "PASS" if entry["expected_post"] else "FAIL"
+        print(f"  {verdict}  {entry['file']:46} {entry['demonstrates'].split('.')[0][:64]}.")
     from docuflow.samples.demo_set import PURCHASE_ORDERS, VENDORS
 
     print(f"\n  register: {out_dir / 'master'}  "

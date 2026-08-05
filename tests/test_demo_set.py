@@ -39,8 +39,10 @@ def _order(number: str) -> dict | None:
 
 
 class TestTheSetIsBalanced:
-    def test_five_documents(self) -> None:
-        assert len(DEMO_DOCUMENTS) == 5
+    def test_ten_documents_split_evenly(self) -> None:
+        posting = [posts for _, _, posts, _ in DEMO_DOCUMENTS]
+        assert len(DEMO_DOCUMENTS) == 10
+        assert sum(posting) == 5, "five must pass and five must fail"
 
     def test_both_arrival_formats_are_present(self) -> None:
         arrivals = {arrival for _, arrival, _, _ in DEMO_DOCUMENTS}
@@ -49,12 +51,18 @@ class TestTheSetIsBalanced:
             "puts the OCR model under real load"
         )
 
-    def test_it_shows_both_outcomes(self) -> None:
-        posting = [posts for _, _, posts, _ in DEMO_DOCUMENTS]
-        assert any(posting) and not all(posting), (
-            "a demonstration where everything passes shows nothing being caught, "
-            "and one where nothing passes shows a system that never posts"
+    def test_the_failures_fail_for_different_reasons(self) -> None:
+        """Five documents failing the same check demonstrate one check."""
+        reasons = [doc.expected_findings for _, _, posts, doc in DEMO_DOCUMENTS if not posts]
+        assert all(reasons), "every failing document must name what it trips"
+        assert len(set(reasons)) == len(reasons), (
+            "two failing documents trip the same rule; a demo where every failure "
+            "is caught the same way teaches that the system has one mechanism"
         )
+
+    def test_more_than_one_document_type(self) -> None:
+        """A classifier that only ever sees invoices demonstrates no classifier."""
+        assert len({doc.doc_type for _, _, _, doc in DEMO_DOCUMENTS}) > 1
 
     def test_every_slug_is_unique(self) -> None:
         slugs = [slug for slug, _, _, _ in DEMO_DOCUMENTS]
@@ -71,11 +79,14 @@ class TestEachDocumentCarriesWhatItsNameClaims:
         self, slug: str, posts: bool, doc
     ) -> None:
         gt = doc.ground_truth
-        subtotal, tax, total = gt["subtotal"], gt["tax_amount"], gt["total_amount"]
-        assert abs(subtotal + tax - total) <= ARITHMETIC_SLACK, (
-            f"{slug}: the stated total is not the stated subtotal plus tax, which "
-            "is a second defect on a document meant to have at most one"
-        )
+        adds_up = abs(gt["subtotal"] + gt["tax_amount"] - gt["total_amount"]) <= ARITHMETIC_SLACK
+        if "total_transposed" in slug:
+            assert not adds_up, f"{slug} is named for a total that does not add up"
+        else:
+            assert adds_up, (
+                f"{slug}: the stated total is not the stated subtotal plus tax, "
+                "which is a second defect on a document meant to have at most one"
+            )
 
     @pytest.mark.parametrize("slug,posts,doc", [
         (slug, posts, doc) for slug, _, posts, doc in DEMO_DOCUMENTS
@@ -84,6 +95,8 @@ class TestEachDocumentCarriesWhatItsNameClaims:
         self, slug: str, posts: bool, doc
     ) -> None:
         gt = doc.ground_truth
+        if "tax_rate" not in gt:
+            return                      # a till receipt prints tax, never a rate
         expected = round(gt["subtotal"] * gt["tax_rate"] / 100.0, 2)
         consistent = abs(expected - gt["tax_amount"]) <= ARITHMETIC_SLACK
         if "vat_wrong" in slug:
@@ -101,6 +114,13 @@ class TestEachDocumentCarriesWhatItsNameClaims:
         self, slug: str, posts: bool, doc
     ) -> None:
         gt = doc.ground_truth
+        if "unknown_vendor" in slug:
+            assert _vendor_by_tax_id(gt["vendor_tax_id"]) is None, (
+                f"{slug} is named for an unregistered vendor and the register has it"
+            )
+            return
+        if "bank_account" not in gt:
+            return                      # a receipt names no account to pay into
         vendor = _vendor_by_tax_id(gt["vendor_tax_id"])
         assert vendor is not None, f"{slug} quotes a tax id nobody in the register has"
         matches = gt["bank_account"] == vendor["bank_account"]
@@ -148,11 +168,18 @@ class TestEachDocumentCarriesWhatItsNameClaims:
 
 class TestTheRegisterSupportsTheSet:
     def test_every_vendor_on_a_page_is_registered(self) -> None:
+        """Except the one whose whole point is that it is not."""
         for slug, _, _, doc in DEMO_DOCUMENTS:
-            assert _vendor_by_tax_id(doc.ground_truth["vendor_tax_id"]), (
-                f"{slug} names a vendor the register does not have, so every rule "
-                "that needs a lookup will abstain rather than decide"
-            )
+            tax_id = doc.ground_truth.get("vendor_tax_id") or doc.ground_truth.get("merchant_tax_id")
+            assert tax_id, f"{slug} names no counterparty at all"
+            registered = _vendor_by_tax_id(tax_id) is not None
+            if "unknown_vendor" in slug:
+                assert not registered, f"{slug} is meant to be unregistered"
+            else:
+                assert registered, (
+                    f"{slug} names a vendor the register does not have, so every "
+                    "rule that needs a lookup will abstain rather than decide"
+                )
 
     def test_every_purchase_order_quoted_exists(self) -> None:
         for slug, _, _, doc in DEMO_DOCUMENTS:
@@ -166,7 +193,9 @@ class TestTheRegisterSupportsTheSet:
             if not reference:
                 continue
             order = _order(reference)
-            vendor = _vendor_by_tax_id(doc.ground_truth["vendor_tax_id"])
+            vendor = _vendor_by_tax_id(doc.ground_truth.get("vendor_tax_id", ""))
+            if vendor is None:
+                continue                # the unregistered vendor quotes no order
             assert order["vendor_id"] == vendor["vendor_id"], (
                 f"{slug}: {reference} was raised for {order['vendor_id']} and the "
                 f"invoice comes from {vendor['vendor_id']} - an unintended second defect"
