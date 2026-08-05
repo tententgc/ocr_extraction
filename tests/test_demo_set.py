@@ -167,14 +167,17 @@ class TestEachDocumentCarriesWhatItsNameClaims:
     def test_no_document_is_accidentally_under_its_purchase_order(
         self, slug: str, posts: bool, doc
     ) -> None:
-        """`po_amount_within_tolerance` tests `abs(difference)`.
+        """An underrun no longer *blocks*, but it is still a finding.
 
-        So it flags an underrun exactly as loudly as an overrun, and a document
-        billing comfortably *below* its order arrives with a second, unintended
-        blocking finding. This has caught three documents during the life of
-        this set - each looked like the system misbehaving until the rule was
-        read. Until the rule distinguishes the two directions, every document
-        here has to sit inside the band in both.
+        The rule used to test `abs(difference)` and hold a document for billing
+        below its order, which caught three documents during the life of this
+        set - each looking like the system misbehaving until the rule was read.
+        It is graded now: an overrun blocks, an underrun is a warning.
+
+        The guard stays because the demonstration set has a stricter standard
+        than the system does. A warning holds nothing, but it still appears
+        against the document, and a PASS document carrying an unexplained
+        amber chip invites exactly the question the demo is not about.
         """
         reference = doc.ground_truth.get("purchase_order_ref")
         if not reference or "over_purchase_order" in slug:
