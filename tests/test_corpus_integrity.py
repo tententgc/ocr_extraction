@@ -150,18 +150,30 @@ class TestThisCorpus:
         report = integrity.check(load_manifest(CORPUS))
         assert report["documents_without_ground_truth"] == []
 
-    def test_the_undrawn_values_do_not_grow(self) -> None:
-        """Eleven values are claimed by ground truth and not printed on their
-        page - three `purchase_order_ref` on layouts with no purchase-order
-        line, two `vendor_tax_id` and two `payment_terms` on the `minimal`
-        layout that labels nothing, two `payment_method` on receipts that do not
-        print one, and two `due_date` that are derivable from the payment terms
-        but never written down.
+    def test_no_ground_truth_value_is_absent_from_its_page(self) -> None:
+        """This was eleven values on 2026-08-06 and is now zero.
 
-        The bound is what stops it silently getting worse.
+        Three `purchase_order_ref` on layouts that draw no purchase-order line,
+        two `vendor_tax_id` and two `payment_terms` on `minimal` - which labels
+        nothing, by design - two `payment_method` on receipts that print none,
+        and two `due_date` derivable from the payment terms but never written
+        down. Every one reported as missing on every engine, and understated
+        field recall by 3.7% permanently.
+
+        Removing them changed no page: regenerating the corpus afterwards
+        produced byte-identical printed text for all thirty documents, which is
+        the proof that they were never drawn.
         """
         report = integrity.check(load_manifest(CORPUS))
-        assert report["undrawn_values"] <= 11, (
-            "ground truth now claims more values than the pages print: "
+        assert report["undrawn_values"] == 0, (
+            "ground truth claims values the pages do not print: "
             f"{report['undrawn_by_field']}"
         )
+
+    def test_every_document_that_must_be_held_names_a_rule(self) -> None:
+        """Otherwise the defect is real but unstated, whichever rule catches it
+        is scored as having fired unexpectedly, and defect recall cannot count
+        it. `3_invoice_photo_on_a_desk_False.jpg` was the live case - its defect
+        is the closed purchase order it quotes, not the photograph."""
+        report = integrity.check(load_manifest(CORPUS))
+        assert report["held_without_a_declared_rule"] == []

@@ -273,7 +273,7 @@ REAL_DOCUMENTS: tuple[tuple[str, Arrival, bool, SampleDoc], ...] = (
             doc_id="invoice_photo_on_a_desk",
             doc_type="invoice", layout="classic",
             title="Sunrise Electrical invoice photographed at an angle",
-            demonstrates="A phone photo: skewed, lit from one side, slightly soft. Preprocessing has to straighten and relight it before OCR sees it.",
+            demonstrates="A phone photo: skewed, lit from one side, slightly soft. Preprocessing has to straighten and relight it before OCR sees it. It also quotes PO-2026-0545, the only closed order in the register, which no built-in rule reads.",
             ground_truth={
                 "invoice_number": "SE-2026-0442", "invoice_date": "2026-07-18",
                 "due_date": "2026-09-01", "vendor_name": "Sunrise Electrical Co., Ltd.",
@@ -287,6 +287,16 @@ REAL_DOCUMENTS: tuple[tuple[str, Arrival, bool, SampleDoc], ...] = (
                 {"description": "LV switchgear panel, 8-way", "quantity": 4, "unit_price": 26_000.00, "amount": 104_000.00},
                 {"description": "Installation and commissioning", "quantity": 1, "unit_price": 24_000.00, "amount": 24_000.00},
             ),
+            # The defect is the closed purchase order, not the photograph -
+            # nothing about the document is wrong except the order it quotes,
+            # and `status` is a column no built-in rule reads. It is caught by
+            # `purchase_order_still_has_room` from `rules.json`, so skipping
+            # `docuflow rules load` posts this document.
+            #
+            # Left undeclared it was worse than untested: whichever rule caught
+            # it scored as having fired unexpectedly, and defect recall could
+            # not count a defect the corpus never named.
+            expected_findings=("purchase_order_still_has_room",),
         ),
     ),
     (
@@ -300,7 +310,7 @@ REAL_DOCUMENTS: tuple[tuple[str, Arrival, bool, SampleDoc], ...] = (
                 "invoice_number": "NCC-30187", "invoice_date": "2026-07-20",
                 "due_date": "2026-08-19", "vendor_name": "Nakhon Chemicals Co., Ltd.",
                 "vendor_tax_id": "0105539000551", "buyer_name": BUYER,
-                "purchase_order_ref": "PO-2026-0556", "currency": "THB",
+                "currency": "THB",
                 # 7% of 76,500 is 5,355. The document charges 4,590, and the
                 # total it prints is consistent with the wrong tax rather than
                 # with the rate it states - so the tax is the single value that
@@ -347,10 +357,9 @@ REAL_DOCUMENTS: tuple[tuple[str, Arrival, bool, SampleDoc], ...] = (
             ground_truth={
                 "invoice_number": "AX-2026-556", "invoice_date": "2026-07-22",
                 "due_date": "2026-08-21", "vendor_name": "Apex Industrial Fasteners Ltd.",
-                "vendor_tax_id": "0105568000661", "buyer_name": BUYER,
+                "buyer_name": BUYER,
                 "currency": "THB", "subtotal": 31_400.00, "tax_rate": 7.0,
                 "tax_amount": 2_198.00, "total_amount": 33_598.00,
-                "payment_terms": "Net 30",
             },
             line_items=(
                 {"description": "Stainless bolt M12 x 60, box of 100", "quantity": 40, "unit_price": 785.00, "amount": 31_400.00},
@@ -367,7 +376,7 @@ REAL_DOCUMENTS: tuple[tuple[str, Arrival, bool, SampleDoc], ...] = (
             demonstrates="A clean, correct invoice that must still not pay automatically, because the block is a decision someone made deliberately.",
             ground_truth={
                 "invoice_number": "KPH-2026-0912", "invoice_date": "2026-07-23",
-                "due_date": "2026-08-22", "vendor_name": "Krungthep Print House Co., Ltd.",
+                "vendor_name": "Krungthep Print House Co., Ltd.",
                 "vendor_tax_id": "0105547000336", "buyer_name": BUYER,
                 "currency": "THB", "subtotal": 18_600.00, "tax_rate": 7.0,
                 "tax_amount": 1_302.00, "total_amount": 19_902.00,
@@ -433,10 +442,10 @@ REAL_DOCUMENTS: tuple[tuple[str, Arrival, bool, SampleDoc], ...] = (
             ground_truth={
                 "invoice_number": "SE-2026-0471", "invoice_date": "2026-07-26",
                 "due_date": "2026-09-09", "vendor_name": "Sunrise Electrical Co., Ltd.",
-                "vendor_tax_id": "0105571000448", "buyer_name": BUYER,
+                "buyer_name": BUYER,
                 "currency": "THB", "subtotal": 200_000.00, "tax_rate": 7.0,
                 "tax_amount": 14_000.00, "total_amount": 214_000.00,
-                "payment_terms": "Net 45", "bank_account": "8890014455",
+                "bank_account": "8890014455",
             },
             line_items=(
                 {"description": "Emergency cable replacement, plant 2", "quantity": 1, "unit_price": 200_000.00, "amount": 200_000.00},
@@ -455,7 +464,7 @@ REAL_DOCUMENTS: tuple[tuple[str, Arrival, bool, SampleDoc], ...] = (
                 "receipt_number": "PTT-556123", "receipt_date": "2026-07-19",
                 "merchant_name": "PTT Station Rama IV", "currency": "THB",
                 "subtotal": 1_869.16, "tax_rate": 7.0, "tax_amount": 130.84,
-                "total_amount": 2_000.00, "payment_method": "Corporate card",
+                "total_amount": 2_000.00,
             },
             line_items=(
                 {"description": "Diesel B7", "quantity": 61.35, "unit_price": 32.60, "amount": 2_000.00},
@@ -591,7 +600,7 @@ REAL_DOCUMENTS: tuple[tuple[str, Arrival, bool, SampleDoc], ...] = (
             ground_truth={
                 "invoice_number": "PRF-SG-20416", "invoice_date": "2026-07-17",
                 "due_date": "2026-08-16", "vendor_name": "Pacific Rim Freight Pte. Ltd.",
-                "buyer_name": BUYER, "purchase_order_ref": "PO-2026-0512",
+                "buyer_name": BUYER,
                 "currency": "SGD", "subtotal": 18_500.00, "tax_rate": 0.0,
                 "tax_amount": 0.00, "total_amount": 18_500.00,
                 "payment_terms": "Net 30", "bank_account": "SG21DBSS0110001234567",
@@ -675,9 +684,9 @@ VARIED_DOCUMENTS: tuple[tuple[str, Arrival, bool, SampleDoc], ...] = (
             demonstrates="Correct in every way; the header sits in two columns instead of one. Must post.",
             ground_truth={
                 "invoice_number": "TBS-7855", "invoice_date": "2026-07-29",
-                "due_date": "2026-08-13", "vendor_name": "Thai Beverage Supply Co., Ltd.",
+                "vendor_name": "Thai Beverage Supply Co., Ltd.",
                 "vendor_tax_id": "0105563000221", "buyer_name": BUYER,
-                "purchase_order_ref": "PO-2026-0523", "currency": "THB",
+                "currency": "THB",
                 "subtotal": 38_000.00, "tax_rate": 7.0, "tax_amount": 2_660.00,
                 "total_amount": 40_660.00, "payment_terms": "Net 15",
                 "bank_account": "7710028899",
@@ -795,7 +804,7 @@ VARIED_DOCUMENTS: tuple[tuple[str, Arrival, bool, SampleDoc], ...] = (
                 "receipt_number": "PTT-556890", "receipt_date": "2026-07-28",
                 "merchant_name": "PTT Station Rama IV", "currency": "THB",
                 "subtotal": 1_401.87, "tax_rate": 7.0, "tax_amount": 98.13,
-                "total_amount": 1_500.00, "payment_method": "Corporate card",
+                "total_amount": 1_500.00,
             },
             # Net, not gross. A line item priced at the VAT-inclusive total makes
             # the rows disagree with the subtotal by exactly the tax, and

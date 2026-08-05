@@ -101,7 +101,7 @@
       "doc_type": "invoice",
       "layout": "classic",
       "title": "Sunrise Electrical invoice photographed at an angle",
-      "demonstrates": "A phone photo: skewed, lit from one side, slightly soft. Preprocessing has to straighten and relight it before OCR sees it.",
+      "demonstrates": "A phone photo: skewed, lit from one side, slightly soft. Preprocessing has to straighten and relight it before OCR sees it. It also quotes PO-2026-0545, the only closed order in the register, which no built-in rule reads.",
       "ground_truth": {
         "invoice_number": "SE-2026-0442",
         "invoice_date": "2026-07-18",
@@ -135,7 +135,9 @@
       "body": [],
       "degrade": 0.0,
       "language": "en",
-      "expected_findings": [],
+      "expected_findings": [
+        "purchase_order_still_has_room"
+      ],
       "requires_posted": null,
       "file": "3_invoice_photo_on_a_desk_False.jpg",
       "arrival": "photo",
@@ -156,7 +158,6 @@
         "vendor_name": "Nakhon Chemicals Co., Ltd.",
         "vendor_tax_id": "0105539000551",
         "buyer_name": "Mirtphol Industries PCL",
-        "purchase_order_ref": "PO-2026-0556",
         "currency": "THB",
         "subtotal": 76500.0,
         "tax_rate": 7.0,
@@ -246,14 +247,12 @@
         "invoice_date": "2026-07-22",
         "due_date": "2026-08-21",
         "vendor_name": "Apex Industrial Fasteners Ltd.",
-        "vendor_tax_id": "0105568000661",
         "buyer_name": "Mirtphol Industries PCL",
         "currency": "THB",
         "subtotal": 31400.0,
         "tax_rate": 7.0,
         "tax_amount": 2198.0,
-        "total_amount": 33598.0,
-        "payment_terms": "Net 30"
+        "total_amount": 33598.0
       },
       "line_items": [
         {
@@ -285,7 +284,6 @@
       "ground_truth": {
         "invoice_number": "KPH-2026-0912",
         "invoice_date": "2026-07-23",
-        "due_date": "2026-08-22",
         "vendor_name": "Krungthep Print House Co., Ltd.",
         "vendor_tax_id": "0105547000336",
         "buyer_name": "Mirtphol Industries PCL",
@@ -424,14 +422,12 @@
         "invoice_date": "2026-07-26",
         "due_date": "2026-09-09",
         "vendor_name": "Sunrise Electrical Co., Ltd.",
-        "vendor_tax_id": "0105571000448",
         "buyer_name": "Mirtphol Industries PCL",
         "currency": "THB",
         "subtotal": 200000.0,
         "tax_rate": 7.0,
         "tax_amount": 14000.0,
         "total_amount": 214000.0,
-        "payment_terms": "Net 45",
         "bank_account": "8890014455"
       },
       "line_items": [
@@ -469,8 +465,7 @@
         "subtotal": 1869.16,
         "tax_rate": 7.0,
         "tax_amount": 130.84,
-        "total_amount": 2000.0,
-        "payment_method": "Corporate card"
+        "total_amount": 2000.0
       },
       "line_items": [
         {
@@ -655,7 +650,6 @@
         "due_date": "2026-08-16",
         "vendor_name": "Pacific Rim Freight Pte. Ltd.",
         "buyer_name": "Mirtphol Industries PCL",
-        "purchase_order_ref": "PO-2026-0512",
         "currency": "SGD",
         "subtotal": 18500.0,
         "tax_rate": 0.0,
@@ -785,11 +779,9 @@
       "ground_truth": {
         "invoice_number": "TBS-7855",
         "invoice_date": "2026-07-29",
-        "due_date": "2026-08-13",
         "vendor_name": "Thai Beverage Supply Co., Ltd.",
         "vendor_tax_id": "0105563000221",
         "buyer_name": "Mirtphol Industries PCL",
-        "purchase_order_ref": "PO-2026-0523",
         "currency": "THB",
         "subtotal": 38000.0,
         "tax_rate": 7.0,
@@ -1007,8 +999,7 @@
         "subtotal": 1401.87,
         "tax_rate": 7.0,
         "tax_amount": 98.13,
-        "total_amount": 1500.0,
-        "payment_method": "Corporate card"
+        "total_amount": 1500.0
       },
       "line_items": [
         {

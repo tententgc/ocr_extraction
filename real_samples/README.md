@@ -21,7 +21,7 @@ compares that against what actually happened.
 |---|------|-----------|---|----------------|------------------|
 | 1 | `1_invoice_clean_matches_po_True.pdf` | digital PDF | yes | Everything reconciles: PO, vendor, bank account, arithmetic. Should post without a person. | — |
 | 2 | `2_invoice_total_transposed_False.pdf` | digital PDF | no | Subtotal, VAT and the line items all agree on 44,940.00; the total reads 49,440.00. The suggestion should name the total and call the transposition. | `invoice_totals_consistent` |
-| 3 | `3_invoice_photo_on_a_desk_False.jpg` | phone photograph | no | A phone photo: skewed, lit from one side, slightly soft. Preprocessing has to straighten and relight it before OCR sees it. | — |
+| 3 | `3_invoice_photo_on_a_desk_False.jpg` | phone photograph | no | A phone photo: skewed, lit from one side, slightly soft. Preprocessing has to straighten and relight it before OCR sees it. It also quotes PO-2026-0545, the only closed order in the register, which no built-in rule reads. | `purchase_order_still_has_room` |
 | 4 | `4_invoice_vat_miscalculated_False.pdf` | digital PDF | no | States 7% but charges 4,590.00 on 76,500.00, which is 6%. The tax is the only value the arithmetic can blame, and the vendor is on hold as well. | `tax_rate_consistent`, `vendor_active` |
 | 5 | `5_invoice_bank_account_changed_False.pdf` | digital PDF | no | The signature of payment-redirection fraud: a correct invoice with new remittance details. Must block, and must not offer a one-click fix. | `bank_account_matches_vendor` |
 | 6 | `6_invoice_unknown_vendor_False.png` | scanned page | no | Nothing about the document is wrong; the counterparty is simply unregistered. Blocks, and the agent must not invent a match. | `vendor_known` |
