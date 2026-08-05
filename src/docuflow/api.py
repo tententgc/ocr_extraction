@@ -15,7 +15,13 @@ from typing import Any
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse
+from fastapi.responses import (
+    FileResponse,
+    HTMLResponse,
+    JSONResponse,
+    PlainTextResponse,
+    StreamingResponse,
+)
 from pydantic import BaseModel, Field
 
 from docuflow.archive import describe_archive, rebuild as rebuild_archive
@@ -41,6 +47,9 @@ from docuflow.rules.preview import preview_rule
 from docuflow.store.custom_rules import CustomRuleStore
 from docuflow.agents.briefing import write_briefing
 from docuflow.deletion import DeletionError, delete_document, wipe_documents
+from docuflow.export import ExportError
+from docuflow.export import export as export_ledger
+from docuflow.export import suggested_filename
 from docuflow.revalidate import DEFAULT_SCOPE, RevalidationError, reevaluate, reevaluate_many
 from docuflow.review import ReviewError, apply_review
 from docuflow.samples.catalog import SAMPLE_DOCUMENTS
@@ -169,19 +178,36 @@ def _serialize_result(result: PipelineResult) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
+# The UI ships as three unversioned files. Without Cache-Control a browser is
+# free to reuse them without asking, and it does: an edited stylesheet kept
+# rendering the old one until a manual hard reload, which reads as "the fix did
+# nothing" rather than "the file is stale".
+#
+# `no-cache` means "ask before reusing", not "do not store". These responses do
+# carry an ETag, but Starlette's FileResponse does not answer conditional
+# requests, so each load re-sends the file rather than a 304. That is ~50 KB of
+# localhost traffic for the whole UI, which is a good trade against showing
+# someone yesterday's stylesheet.
+STATIC_CACHE = {"Cache-Control": "no-cache"}
+
+
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
 def index() -> HTMLResponse:
-    return HTMLResponse((WEB_DIR / "index.html").read_text(encoding="utf-8"))
+    return HTMLResponse(
+        (WEB_DIR / "index.html").read_text(encoding="utf-8"), headers=STATIC_CACHE
+    )
 
 
 @app.get("/app.js", include_in_schema=False)
 def app_js() -> FileResponse:
-    return FileResponse(WEB_DIR / "app.js", media_type="application/javascript")
+    return FileResponse(
+        WEB_DIR / "app.js", media_type="application/javascript", headers=STATIC_CACHE
+    )
 
 
 @app.get("/styles.css", include_in_schema=False)
 def styles_css() -> FileResponse:
-    return FileResponse(WEB_DIR / "styles.css", media_type="text/css")
+    return FileResponse(WEB_DIR / "styles.css", media_type="text/css", headers=STATIC_CACHE)
 
 
 # ---------------------------------------------------------------------------
@@ -881,6 +907,47 @@ def delete_record(record_id: str, reviewer: str = Query(default="reviewer")) -> 
         return RecordStore(settings.db_path).delete(record_id, actor=reviewer)
     except RecordPostingError as exc:
         return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.get("/api/records/export", include_in_schema=True)
+def export_records(
+    format: str = Query(default="csv", pattern="^(csv|jsonl)$"),
+    doc_type: str | None = Query(default=None, description="invoice, receipt, contract, form"),
+    record_kind: str | None = Query(default=None, description="payable, expense, contract"),
+    since: str | None = Query(default=None, description="posted on or after, YYYY-MM-DD"),
+    until: str | None = Query(default=None, description="posted on or before, YYYY-MM-DD"),
+) -> StreamingResponse:
+    """The ledger as a file.
+
+    Streamed and deliberately not paginated: `per_page` exists so the browser
+    is not handed ten thousand rows at once, and an export that inherited that
+    cap would quietly stop at the first page - the failure nobody notices until
+    they reconcile against it.
+
+    `doc_type` picks the CSV columns as well as filtering the rows. The schemas
+    share almost nothing, so one header cannot describe an invoice and a
+    contract at the same time without being mostly empty for both.
+    """
+    settings = active_settings()
+    try:
+        chunks = export_ledger(
+            RecordStore(settings.db_path),
+            fmt=format,
+            record_kind=record_kind,
+            doc_type=doc_type,
+            since=since,
+            until=until,
+        )
+    except ExportError as exc:
+        return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+    media = "text/csv" if format == "csv" else "application/x-ndjson"
+    filename = suggested_filename(format, record_kind, doc_type)
+    return StreamingResponse(
+        chunks,
+        media_type=f"{media}; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @app.get("/api/records/summary")

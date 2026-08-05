@@ -1,0 +1,112 @@
+<mxfile host="app.diagrams.net" modified="2026-08-05T00:00:00.000Z" agent="DocuFlow" version="24.0.0">
+  <diagram id="docuflow-slide" name="DocuFlow — system overview (16:9)">
+    <mxGraphModel dx="1900" dy="1100" grid="0" gridSize="10" guides="1" tooltips="1" connect="1"
+                  arrows="1" fold="1" page="1" pageScale="1" pageWidth="1920" pageHeight="1080"
+                  math="0" shadow="0" background="#FFFFFF">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ══════════════════ TITLE ══════════════════ -->
+        <mxCell id="title" value="How DocuFlow works"
+          style="text;html=1;fontSize=44;fontStyle=1;align=left;verticalAlign=middle;fontColor=#14181F;fontFamily=Helvetica;"
+          vertex="1" parent="1"><mxGeometry x="60" y="52" width="900" height="52" as="geometry" /></mxCell>
+
+        <mxCell id="subtitle" value="Unstructured documents in, validated ledger records out"
+          style="text;html=1;fontSize=20;align=left;verticalAlign=middle;fontColor=#667085;fontFamily=Helvetica;"
+          vertex="1" parent="1"><mxGeometry x="60" y="106" width="900" height="28" as="geometry" /></mxCell>
+
+        <mxCell id="metric" value="&lt;font style=&quot;font-size:13px&quot; color=&quot;#667085&quot;&gt;THE METRIC THAT MATTERS&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:21px&quot; color=&quot;#14181F&quot;&gt;&lt;b&gt;Silent error rate&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:14px&quot; color=&quot;#667085&quot;&gt;documents that posted automatically&lt;br&gt;carrying a wrong critical value&lt;/font&gt;"
+          style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#F4F7FB;strokeColor=#1F3A5F;strokeWidth=2;align=left;spacingLeft=20;verticalAlign=middle;fontFamily=Helvetica;"
+          vertex="1" parent="1"><mxGeometry x="1420" y="46" width="440" height="100" as="geometry" /></mxCell>
+
+        <mxCell id="rule" value="" style="line;strokeWidth=2;html=1;strokeColor=#DCE3EC;"
+          vertex="1" parent="1"><mxGeometry x="60" y="168" width="1800" height="10" as="geometry" /></mxCell>
+
+        <!-- ══════════════════ STAGE CARDS ══════════════════ -->
+        <mxCell id="s1" value="&lt;font style=&quot;font-size:15px&quot; color=&quot;#1F3A5F&quot;&gt;&lt;b&gt;01&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:23px&quot; color=&quot;#14181F&quot;&gt;&lt;b&gt;Ingest&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;br&gt;&lt;font style=&quot;font-size:15px;line-height:170%&quot; color=&quot;#3D4757&quot;&gt;PDF, JPG, PNG, TIFF&lt;br&gt;Upload, URL or folder&lt;br&gt;Pages rendered to images&lt;/font&gt;&lt;br&gt;&lt;br&gt;&lt;font style=&quot;font-size:13px&quot; color=&quot;#9A6400&quot;&gt;A long PDF read short must say so —&lt;br&gt;nothing downstream can miss a page&lt;br&gt;it was never shown&lt;/font&gt;"
+          style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#C7D2E0;strokeWidth=2;align=left;spacingLeft=18;spacingTop=8;verticalAlign=top;fontFamily=Helvetica;"
+          vertex="1" parent="1"><mxGeometry x="60" y="234" width="286" height="316" as="geometry" /></mxCell>
+
+        <mxCell id="s2" value="&lt;font style=&quot;font-size:15px&quot; color=&quot;#1F3A5F&quot;&gt;&lt;b&gt;02&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:23px&quot; color=&quot;#14181F&quot;&gt;&lt;b&gt;Prepare&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;br&gt;&lt;font style=&quot;font-size:15px;line-height:170%&quot; color=&quot;#3D4757&quot;&gt;Measure the page first&lt;br&gt;Lighting, skew, contrast&lt;br&gt;Re-measure after each fix&lt;/font&gt;&lt;br&gt;&lt;br&gt;&lt;font style=&quot;font-size:13px&quot; color=&quot;#0F7B4F&quot;&gt;&lt;b&gt;Every correction must prove itself&lt;/b&gt;&lt;br&gt;If the metric did not improve, the&lt;br&gt;change is thrown away&lt;/font&gt;"
+          style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#C7D2E0;strokeWidth=2;align=left;spacingLeft=18;spacingTop=8;verticalAlign=top;fontFamily=Helvetica;"
+          vertex="1" parent="1"><mxGeometry x="374" y="234" width="286" height="316" as="geometry" /></mxCell>
+
+        <mxCell id="s3" value="&lt;font style=&quot;font-size:15px&quot; color=&quot;#1F3A5F&quot;&gt;&lt;b&gt;03&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:23px&quot; color=&quot;#14181F&quot;&gt;&lt;b&gt;Read&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;br&gt;&lt;font style=&quot;font-size:15px;line-height:170%&quot; color=&quot;#3D4757&quot;&gt;Typhoon OCR 1.5&lt;br&gt;Tables kept as structure&lt;br&gt;Document type classified&lt;/font&gt;&lt;br&gt;&lt;br&gt;&lt;font style=&quot;font-size:13px&quot; color=&quot;#B3261E&quot;&gt;Text that comes back confidently&lt;br&gt;wrong scores as well as text that&lt;br&gt;comes back right&lt;/font&gt;"
+          style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#C7D2E0;strokeWidth=2;align=left;spacingLeft=18;spacingTop=8;verticalAlign=top;fontFamily=Helvetica;"
+          vertex="1" parent="1"><mxGeometry x="688" y="234" width="286" height="316" as="geometry" /></mxCell>
+
+        <mxCell id="s4" value="&lt;font style=&quot;font-size:15px&quot; color=&quot;#1F3A5F&quot;&gt;&lt;b&gt;04&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:23px&quot; color=&quot;#14181F&quot;&gt;&lt;b&gt;Extract&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;br&gt;&lt;font style=&quot;font-size:15px;line-height:170%&quot; color=&quot;#3D4757&quot;&gt;&lt;b&gt;Two agents read the page&lt;/b&gt;&lt;br&gt;Each must cite its evidence&lt;br&gt;Normalise, then compare&lt;/font&gt;&lt;br&gt;&lt;br&gt;&lt;font style=&quot;font-size:13px&quot; color=&quot;#1F3A5F&quot;&gt;&lt;b&gt;Different backends, not two passes&lt;/b&gt;&lt;br&gt;One model read twice repeats its&lt;br&gt;own mistake — and agrees with it&lt;/font&gt;"
+          style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#F4F7FB;strokeColor=#1F3A5F;strokeWidth=2;align=left;spacingLeft=18;spacingTop=8;verticalAlign=top;fontFamily=Helvetica;"
+          vertex="1" parent="1"><mxGeometry x="1002" y="234" width="286" height="316" as="geometry" /></mxCell>
+
+        <mxCell id="s5" value="&lt;font style=&quot;font-size:15px&quot; color=&quot;#1F3A5F&quot;&gt;&lt;b&gt;05&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:23px&quot; color=&quot;#14181F&quot;&gt;&lt;b&gt;Verify&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;br&gt;&lt;font style=&quot;font-size:15px;line-height:170%&quot; color=&quot;#3D4757&quot;&gt;26 rules recompute totals&lt;br&gt;Checked against the register&lt;br&gt;Agent rules with 8 tools&lt;/font&gt;&lt;br&gt;&lt;br&gt;&lt;font style=&quot;font-size:13px&quot; color=&quot;#1F3A5F&quot;&gt;&lt;b&gt;Models read and fetch.&lt;br&gt;Rules decide.&lt;/b&gt;&lt;br&gt;A rule written as a sentence is still&lt;br&gt;enforced by the engine, not the model&lt;/font&gt;"
+          style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#F4F7FB;strokeColor=#1F3A5F;strokeWidth=2;align=left;spacingLeft=18;spacingTop=8;verticalAlign=top;fontFamily=Helvetica;"
+          vertex="1" parent="1"><mxGeometry x="1316" y="234" width="286" height="316" as="geometry" /></mxCell>
+
+        <!-- ══════════════════ DECISION + OUTCOMES ══════════════════ -->
+        <mxCell id="decide" value="&lt;font style=&quot;font-size:15px&quot; color=&quot;#1F3A5F&quot;&gt;&lt;b&gt;06&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:23px&quot; color=&quot;#14181F&quot;&gt;&lt;b&gt;Decide&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;br&gt;&lt;font style=&quot;font-size:14px;line-height:165%&quot; color=&quot;#3D4757&quot;&gt;No blocking failure&lt;br&gt;Critical values grounded&lt;br&gt;Confidence ≥ threshold&lt;/font&gt;"
+          style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#1F3A5F;strokeWidth=3;align=left;spacingLeft=18;spacingTop=8;verticalAlign=top;fontFamily=Helvetica;"
+          vertex="1" parent="1"><mxGeometry x="1630" y="234" width="230" height="180" as="geometry" /></mxCell>
+
+        <mxCell id="post" value="&lt;font style=&quot;font-size:20px&quot;&gt;&lt;b&gt;POST&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:13px&quot; color=&quot;#3D4757&quot;&gt;straight through, no review&lt;/font&gt;"
+          style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#E3F5EC;strokeColor=#0F7B4F;strokeWidth=2;fontColor=#0F7B4F;verticalAlign=middle;fontFamily=Helvetica;"
+          vertex="1" parent="1"><mxGeometry x="1630" y="434" width="230" height="54" as="geometry" /></mxCell>
+
+        <mxCell id="hold" value="&lt;font style=&quot;font-size:20px&quot;&gt;&lt;b&gt;HOLD&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:13px&quot; color=&quot;#3D4757&quot;&gt;queued, with the reason&lt;/font&gt;"
+          style="rounded=1;arcSize=14;whiteSpace=wrap;html=1;fillColor=#FDF3E0;strokeColor=#9A6400;strokeWidth=2;fontColor=#9A6400;verticalAlign=middle;fontFamily=Helvetica;"
+          vertex="1" parent="1"><mxGeometry x="1630" y="496" width="230" height="54" as="geometry" /></mxCell>
+
+        <!-- ══════════════════ ARROWS ══════════════════ -->
+        <mxCell id="a1" style="html=1;endArrow=blockThin;endFill=1;endSize=6;strokeColor=#8A97A8;strokeWidth=3;exitX=1;exitY=0.35;entryX=0;entryY=0.35;" edge="1" parent="1" source="s1" target="s2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="a2" style="html=1;endArrow=blockThin;endFill=1;endSize=6;strokeColor=#8A97A8;strokeWidth=3;exitX=1;exitY=0.35;entryX=0;entryY=0.35;" edge="1" parent="1" source="s2" target="s3"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="a3" style="html=1;endArrow=blockThin;endFill=1;endSize=6;strokeColor=#8A97A8;strokeWidth=3;exitX=1;exitY=0.35;entryX=0;entryY=0.35;" edge="1" parent="1" source="s3" target="s4"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="a4" style="html=1;endArrow=blockThin;endFill=1;endSize=6;strokeColor=#8A97A8;strokeWidth=3;exitX=1;exitY=0.35;entryX=0;entryY=0.35;" edge="1" parent="1" source="s4" target="s5"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="a5" style="html=1;endArrow=blockThin;endFill=1;endSize=6;strokeColor=#1F3A5F;strokeWidth=3;exitX=1;exitY=0.35;entryX=0;entryY=0.35;" edge="1" parent="1" source="s5" target="decide"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="a6" style="html=1;endArrow=blockThin;endFill=1;endSize=5;strokeColor=#0F7B4F;strokeWidth=2;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="decide" target="post"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- ══════════════════ HUMAN LOOP ══════════════════ -->
+        <mxCell id="human" value="&lt;font style=&quot;font-size:19px&quot; color=&quot;#14181F&quot;&gt;&lt;b&gt;Reviewer&lt;/b&gt;&lt;/font&gt;&lt;font style=&quot;font-size:15px&quot; color=&quot;#3D4757&quot;&gt;&amp;nbsp;&amp;nbsp;sees the page beside the values, the rule that fired and the evidence for each field. Every correction is recorded against the field and the vendor, so the system knows where it is weakest.&lt;/font&gt;"
+          style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FDF9F0;strokeColor=#9A6400;strokeWidth=2;dashed=1;align=left;spacingLeft=20;verticalAlign=middle;fontFamily=Helvetica;"
+          vertex="1" parent="1"><mxGeometry x="60" y="592" width="1542" height="72" as="geometry" /></mxCell>
+
+        <mxCell id="loop" style="html=1;endArrow=blockThin;endFill=1;endSize=5;strokeColor=#9A6400;strokeWidth=2;dashed=1;exitX=0.5;exitY=1;entryX=1;entryY=0.5;rounded=1;"
+          edge="1" parent="1" source="hold" target="human"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1745" y="628" /></Array></mxGeometry></mxCell>
+
+        <!-- ══════════════════ BOTTOM BAND — WHAT MAKES IT DIFFERENT ══════════════════ -->
+        <mxCell id="band" value="Four decisions that shape the whole system"
+          style="text;html=1;fontSize=22;fontStyle=1;align=left;verticalAlign=middle;fontColor=#14181F;fontFamily=Helvetica;"
+          vertex="1" parent="1"><mxGeometry x="60" y="706" width="700" height="32" as="geometry" /></mxCell>
+
+        <mxCell id="d1" value="&lt;font style=&quot;font-size:17px&quot; color=&quot;#14181F&quot;&gt;&lt;b&gt;Two channels, two backends&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;br&gt;&lt;font style=&quot;font-size:14px;line-height:160%&quot; color=&quot;#3D4757&quot;&gt;A second reading is only worth something if it can fail differently from the first.&lt;/font&gt;"
+          style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#DCE3EC;strokeWidth=2;align=left;spacingLeft=18;spacingTop=6;verticalAlign=top;fontFamily=Helvetica;"
+          vertex="1" parent="1"><mxGeometry x="60" y="750" width="432" height="128" as="geometry" /></mxCell>
+
+        <mxCell id="d2" value="&lt;font style=&quot;font-size:17px&quot; color=&quot;#14181F&quot;&gt;&lt;b&gt;Confidence ≠ permission&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;br&gt;&lt;font style=&quot;font-size:14px;line-height:160%&quot; color=&quot;#3D4757&quot;&gt;&lt;i&gt;Did we read it correctly&lt;/i&gt; and &lt;i&gt;may it post&lt;/i&gt; are different questions. Merged once, three advisory notes took a perfectly-read invoice from 95% to 72%.&lt;/font&gt;"
+          style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#DCE3EC;strokeWidth=2;align=left;spacingLeft=18;spacingTop=6;verticalAlign=top;fontFamily=Helvetica;"
+          vertex="1" parent="1"><mxGeometry x="516" y="750" width="432" height="128" as="geometry" /></mxCell>
+
+        <mxCell id="d3" value="&lt;font style=&quot;font-size:17px&quot; color=&quot;#14181F&quot;&gt;&lt;b&gt;Three severities, three behaviours&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;br&gt;&lt;font style=&quot;font-size:14px;line-height:160%&quot;&gt;&lt;font color=&quot;#B3261E&quot;&gt;&lt;b&gt;Blocking&lt;/b&gt; stops the document.&lt;/font&gt; &lt;font color=&quot;#9A6400&quot;&gt;&lt;b&gt;Warning&lt;/b&gt; is recorded and holds nothing.&lt;/font&gt; &lt;font color=&quot;#4A5568&quot;&gt;&lt;b&gt;Info&lt;/b&gt; is a note.&lt;/font&gt;&lt;/font&gt;"
+          style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#DCE3EC;strokeWidth=2;align=left;spacingLeft=18;spacingTop=6;verticalAlign=top;fontFamily=Helvetica;"
+          vertex="1" parent="1"><mxGeometry x="972" y="750" width="432" height="128" as="geometry" /></mxCell>
+
+        <mxCell id="d4" value="&lt;font style=&quot;font-size:17px&quot; color=&quot;#14181F&quot;&gt;&lt;b&gt;The two errors cost differently&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;br&gt;&lt;font style=&quot;font-size:14px;line-height:160%&quot; color=&quot;#3D4757&quot;&gt;A missed defect is a wrong payment. A false alarm is a wasted minute. They are never added into one number.&lt;/font&gt;"
+          style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#DCE3EC;strokeWidth=2;align=left;spacingLeft=18;spacingTop=6;verticalAlign=top;fontFamily=Helvetica;"
+          vertex="1" parent="1"><mxGeometry x="1428" y="750" width="432" height="128" as="geometry" /></mxCell>
+
+        <!-- ══════════════════ FOOTER ══════════════════ -->
+        <mxCell id="frule" value="" style="line;strokeWidth=2;html=1;strokeColor=#DCE3EC;"
+          vertex="1" parent="1"><mxGeometry x="60" y="912" width="1800" height="10" as="geometry" /></mxCell>
+
+        <mxCell id="foot1" value="&lt;font style=&quot;font-size:14px&quot; color=&quot;#667085&quot;&gt;&lt;b&gt;READ&lt;/b&gt;&amp;nbsp;&amp;nbsp;Typhoon OCR 1.5&amp;nbsp;&amp;nbsp;·&amp;nbsp;&amp;nbsp;&lt;b&gt;AGENTS&lt;/b&gt;&amp;nbsp;&amp;nbsp;Typhoon + Claude, pluggable&amp;nbsp;&amp;nbsp;·&amp;nbsp;&amp;nbsp;&lt;b&gt;STORE&lt;/b&gt;&amp;nbsp;&amp;nbsp;SQLite&amp;nbsp;&amp;nbsp;·&amp;nbsp;&amp;nbsp;&lt;b&gt;SERVE&lt;/b&gt;&amp;nbsp;&amp;nbsp;FastAPI + web review queue&lt;/font&gt;"
+          style="text;html=1;align=left;verticalAlign=middle;fontFamily=Helvetica;"
+          vertex="1" parent="1"><mxGeometry x="60" y="936" width="1300" height="24" as="geometry" /></mxCell>
+
+        <mxCell id="foot2" value="&lt;font style=&quot;font-size:14px&quot; color=&quot;#667085&quot;&gt;Thai and English documents · Buddhist-era dates · Thai numerals&lt;/font&gt;"
+          style="text;html=1;align=right;verticalAlign=middle;fontFamily=Helvetica;"
+          vertex="1" parent="1"><mxGeometry x="1360" y="936" width="500" height="24" as="geometry" /></mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

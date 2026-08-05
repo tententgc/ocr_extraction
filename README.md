@@ -13,7 +13,7 @@ OpenAI, Claude, MLX). Runs fully offline with no API key.
 
 ---
 
-> **เอกสารภาษาไทย:** [ตอบคำถาม 3 ข้อ](docs/APPROACH.th.md) · [สถาปัตยกรรมและ workflow แบบละเอียด](docs/ARCHITECTURE.th.md) · [กฎธุรกิจทั้ง 26 ข้อ](docs/RULES.th.md)
+> **เอกสารภาษาไทย:** [ตอบคำถาม 3 ข้อ](docs/APPROACH.th.md) · [สถาปัตยกรรมและ workflow แบบละเอียด](docs/ARCHITECTURE.th.md) · [กฎธุรกิจทั้ง 26 ข้อ](docs/RULES.th.md) · [หนี้ทางเทคนิค — สิ่งที่ต้องทำต่อ](docs/TECH-DEBT.th.md)
 
 ## The constraint that shaped this
 
@@ -64,6 +64,14 @@ a wrong number wearing a suggestion's confidence is worse than no suggestion.
   proven and improved before scaling.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — the mechanics: pipeline stages,
   confidence model, plugin system, data model.
+- [docs/system_overview_slide.drawio.xml](docs/system_overview_slide.drawio.xml)
+  — one landscape 16:9 page in English, sized and typeset to drop straight into
+  a deck: the six stages left to right, the human loop under them, and the four
+  decisions that shape the system. Export at 2× for a crisp slide.
+- [docs/workflow.xml](docs/workflow.xml) — the whole run as one flowchart, in
+  Thai: upload → preprocess → OCR → classify → two reading agents → rules and
+  tools → POST or HOLD, with the five decision points drawn as decisions and
+  the reason each one exists noted beside it.
 - [docs/architecture.drawio.xml](docs/architecture.drawio.xml) — three diagrams,
   openable at [diagrams.net](https://app.diagrams.net): where a model is called
   and what it is allowed to decide, the pipeline end to end with the human loop,

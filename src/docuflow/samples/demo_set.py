@@ -150,6 +150,22 @@ PURCHASE_ORDERS: tuple[dict[str, Any], ...] = (
     {"po_number": "PO-2026-9106", "vendor_id": "V-9004", "po_date": "2026-07-19",
      "currency": "THB", "amount": 35_000.00, "status": "open",
      "description": "Inbound freight, late July"},
+    # The pair the agent rule decides. These two orders exist to differ in one
+    # column - `status` - because that column is the whole demonstration: no
+    # built-in rule reads it, so a closed order is invisible to all 26 of them
+    # and only the rule a person wrote in a sentence catches it.
+    # Both amounts sit within `AMOUNT_TOLERANCE` of what their invoice bills,
+    # and that is not decoration. `po_amount_within_tolerance` tests
+    # `abs(difference)`, so it flags an *underrun* as loudly as an overrun -
+    # billing 48,000 against a 72,000 order is 33% under and blocks. Either of
+    # these arriving with a second, unintended defect would ruin the one thing
+    # the pair is for: being identical everywhere except the status column.
+    {"po_number": "PO-2026-9107", "vendor_id": "V-9001", "po_date": "2026-07-08",
+     "currency": "THB", "amount": 48_900.00, "status": "open",
+     "description": "Rack rails and cable management, phase 1"},
+    {"po_number": "PO-2026-9108", "vendor_id": "V-9006", "po_date": "2026-05-14",
+     "currency": "THB", "amount": 21_300.00, "status": "closed",
+     "description": "Printed manuals, spring run - closed 2026-06-30"},
 )
 
 CONTRACTS: tuple[dict[str, Any], ...] = ()
@@ -462,6 +478,83 @@ DEMO_DOCUMENTS: tuple[tuple[str, str, bool, SampleDoc], ...] = (
                  "unit_price": 16_000.00, "amount": 16_000.00},
             ),
             expected_findings=("invoice_totals_consistent",),
+        ),
+    ),
+    # ---------------------------------------------------------------------- #
+    # The pair the AI-written rule decides.                                    #
+    #                                                                          #
+    # These two are deliberately almost the same invoice. Both are arithmetically
+    # clean, both quote a real purchase order belonging to their own vendor, both
+    # sit inside the ordered amount, and both pay an account the register holds.
+    # Every one of the 26 built-in rules passes them identically.
+    #
+    # They differ in one column of one row of the register - `status` - and no
+    # built-in rule reads it. What separates them is a rule somebody wrote as a
+    # sentence, which a model turned into a plan and a tool list, and which the
+    # engine then enforces. Put side by side they answer the question the demo
+    # is actually for: what does the agent add that the fixed rules do not.
+    # ---------------------------------------------------------------------- #
+    (
+        "invoice_purchase_order_open", "pdf", True,
+        SampleDoc(
+            doc_id="demo_invoice_purchase_order_open",
+            doc_type="invoice", layout="classic",
+            title="Siam Tech invoice against a purchase order that is still open",
+            demonstrates=(
+                "The pass half of the agent-rule pair. PO-2026-9107 is open and was "
+                "raised for 48,900.00; this invoice bills 48,000.00 against it. The agent "
+                "looks the order up, reads the status, compares the amounts and answers "
+                "pass - on evidence it fetched, not on anything printed on the page."
+            ),
+            ground_truth={
+                "invoice_number": "STS-2026-0431", "invoice_date": "2026-07-28",
+                "due_date": "2026-08-27", "vendor_name": "Siam Tech Supply Co., Ltd.",
+                "vendor_tax_id": "0105543000129", "buyer_name": BUYER,
+                "purchase_order_ref": "PO-2026-9107", "currency": "THB",
+                "subtotal": 48_000.00, "tax_rate": 7.0, "tax_amount": 3_360.00,
+                "total_amount": 51_360.00, "payment_terms": "Net 30",
+                "bank_account": "1234567890",
+            },
+            line_items=(
+                {"description": "Rack rail set, 42U", "quantity": 24,
+                 "unit_price": 1_500.00, "amount": 36_000.00},
+                {"description": "Cable management arms", "quantity": 24,
+                 "unit_price": 500.00, "amount": 12_000.00},
+            ),
+        ),
+    ),
+    (
+        "invoice_purchase_order_closed", "pdf", False,
+        SampleDoc(
+            doc_id="demo_invoice_purchase_order_closed",
+            doc_type="invoice", layout="classic",
+            title="Chao Phraya Print invoice against a purchase order that was closed",
+            demonstrates=(
+                "The block half of the pair, and the only document in the set that no "
+                "built-in rule objects to. PO-2026-9108 was closed on 2026-06-30; this "
+                "invoice is dated a month later and bills 21,000.00 against it, which is "
+                "inside the 21,300.00 that was ordered. Arithmetic, vendor, bank "
+                "account and amount are all correct. The status is not printed on the "
+                "invoice and no fixed rule reads it - the agent rule is the only thing "
+                "in the system that stops this being paid."
+            ),
+            ground_truth={
+                "invoice_number": "CPP-2026-0815", "invoice_date": "2026-07-30",
+                "due_date": "2026-08-29",
+                "vendor_name": "Chao Phraya Print & Pack Co., Ltd.",
+                "vendor_tax_id": "0105559000188", "buyer_name": BUYER,
+                "purchase_order_ref": "PO-2026-9108", "currency": "THB",
+                "subtotal": 21_000.00, "tax_rate": 7.0, "tax_amount": 1_470.00,
+                "total_amount": 22_470.00, "payment_terms": "Net 30",
+                "bank_account": "6680033445",
+            },
+            line_items=(
+                {"description": "Operator manual, perfect bound", "quantity": 1_500,
+                 "unit_price": 12.00, "amount": 18_000.00},
+                {"description": "Setup and plate charge", "quantity": 1,
+                 "unit_price": 3_000.00, "amount": 3_000.00},
+            ),
+            expected_findings=("purchase_order_still_has_room",),
         ),
     ),
 )

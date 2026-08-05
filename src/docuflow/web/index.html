@@ -8,34 +8,41 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📄</text></svg>" />
 </head>
 <body>
-<header class="topbar">
-  <div class="brand">
-    <span class="logo">◈</span>
-    <div>
-      <h1>DocuFlow</h1>
-      <p>Unstructured documents in, validated records out</p>
+<!-- The bar and the tabs stick as one block. They used to stick separately,
+     with the tabs pinned at a hard-coded `top: 63px` that had to equal the
+     height of the bar above them - and did not: the bar renders 106px tall
+     once the model names wrap, so on scroll the tabs slid up underneath it.
+     Sticking the container instead means nothing has to know that height. -->
+<div class="appbar">
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">◈</span>
+      <div>
+        <h1>DocuFlow</h1>
+        <p>Unstructured documents in, validated records out</p>
+      </div>
     </div>
-  </div>
-  <div class="engines">
-    <label class="picker">
-      <span>OCR</span>
-      <select id="ocr-picker" title="Model used to read the page"></select>
-    </label>
-    <label class="picker">
-      <span>Agent</span>
-      <select id="llm-picker" title="Model used to classify, extract and reconcile"></select>
-    </label>
-    <span class="engine" id="threshold-chip"></span>
-  </div>
-</header>
+    <div class="engines">
+      <label class="picker">
+        <span>OCR</span>
+        <select id="ocr-picker" title="Model used to read the page"></select>
+      </label>
+      <label class="picker">
+        <span>Agent</span>
+        <select id="llm-picker" title="Model used to classify, extract and reconcile"></select>
+      </label>
+      <span class="engine" id="threshold-chip"></span>
+    </div>
+  </header>
 
-<nav class="tabs" id="tabs">
-  <button class="tab active" data-view="process">Process</button>
-  <button class="tab" data-view="queue">Review queue <span class="badge" id="queue-badge">0</span></button>
-  <button class="tab" data-view="records">Records <span class="badge" id="records-badge">0</span></button>
-  <button class="tab" data-view="insights">Insights</button>
-  <button class="tab" data-view="settings">Settings</button>
-</nav>
+  <nav class="tabs" id="tabs">
+    <button class="tab active" data-view="process">Process</button>
+    <button class="tab" data-view="queue">Review queue <span class="badge" id="queue-badge">0</span></button>
+    <button class="tab" data-view="records">Records <span class="badge" id="records-badge">0</span></button>
+    <button class="tab" data-view="insights">Insights</button>
+    <button class="tab" data-view="settings">Settings</button>
+  </nav>
+</div>
 
 <main>
   <!-- ================= PROCESS ================= -->
@@ -90,11 +97,14 @@
       <div class="card-head">
         <h3>Documents</h3>
         <div class="filters">
+          <!-- Needs human review leads and is selected: this is the queue, and
+               what it is for is the documents still waiting on a person. The
+               rest stay one click away rather than padding the list. -->
           <select id="queue-filter">
-            <option value="">All decisions</option>
-            <option value="needs_review">Needs review</option>
+            <option value="needs_review" selected>Needs human review</option>
             <option value="auto_post">Posted automatically</option>
             <option value="rejected">Rejected</option>
+            <option value="">All decisions</option>
           </select>
           <button class="btn" id="queue-recheck">Re-check under current policy</button>
           <button class="btn" id="queue-refresh">Refresh</button>
@@ -119,7 +129,22 @@
     <div class="card">
       <div class="card-head">
         <h3>Downstream records</h3>
-        <button class="btn" id="records-refresh">Refresh</button>
+        <div class="filters">
+          <!-- Not paginated: `per_page` keeps the browser sane, and an export
+               that inherited it would stop at the first page.
+               The type picker chooses the CSV columns as well as the rows -
+               an invoice and a contract share almost no fields. -->
+          <select id="export-doc-type"
+                  title="Each type has its own columns; all types gives only what they share">
+            <option value="">All types — shared columns only</option>
+          </select>
+          <select id="export-format" title="CSV opens in Excel; JSONL feeds another system">
+            <option value="csv">CSV — for Excel</option>
+            <option value="jsonl">JSONL — for another system</option>
+          </select>
+          <button class="btn" id="records-export">Export</button>
+          <button class="btn" id="records-refresh">Refresh</button>
+        </div>
       </div>
       <p class="muted">Every row here was written by the pipeline or by a reviewer approving a
         document. This stands in for the ERP or ledger the business actually uses.</p>

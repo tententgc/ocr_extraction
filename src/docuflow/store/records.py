@@ -13,8 +13,14 @@ from pathlib import Path
 from typing import Any
 
 from docuflow.db import connect, dump_json, rows_to_dicts, row_to_dict, transaction
-from docuflow.models import DocumentRun
+from docuflow.models import Decision, DocumentRun
 from docuflow.normalize.identifiers import reference_key
+
+# Where a document lands when the record it produced is deleted out from under
+# it. Not `auto_post`: that is a claim about a ledger entry which no longer
+# exists. Not `rejected` either - nobody rejected it, and rejection is a
+# person's verdict that a policy change is not allowed to overturn.
+RELEASED_DECISION: Decision = "needs_review"
 
 # Which extracted field is the natural key for each document type.
 REFERENCE_FIELDS = {
@@ -217,6 +223,51 @@ class RecordStore:
         ).fetchall()
         return rows_to_dicts(rows)
 
+    def list_with_source(
+        self,
+        record_kind: str | None = None,
+        doc_type: str | None = None,
+        limit: int = 200,
+        offset: int = 0,
+    ) -> list[dict[str, Any]]:
+        """The same rows, plus the document each one came from.
+
+        The record's own payload holds the extracted values, not the document
+        it was extracted from - `source` and `doc_type` live on the document.
+        For an export that a person reconciles against a folder of PDFs, the
+        filename is how they find the piece of paper again, and the type is
+        what tells an invoice row apart from a contract row in one sheet.
+
+        `doc_type` is also the filter people actually ask for. A record's
+        `record_kind` is what the ledger calls the entry - `payable` for an
+        invoice, `expense` for a receipt - and nobody asks to export their
+        payables when they mean their invoices.
+
+        LEFT JOIN rather than JOIN: the foreign key should make an orphaned
+        record impossible, and if one ever exists the export should still show
+        it rather than silently drop a posted amount. Filtering on `doc_type`
+        does exclude those rows, which is the right trade - a row with no
+        document has no type to match.
+        """
+        clauses, params = [], []
+        if record_kind:
+            clauses.append("r.record_kind = ?")
+            params.append(record_kind)
+        if doc_type:
+            clauses.append("d.doc_type = ?")
+            params.append(doc_type)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        rows = connect(self.db_path).execute(
+            f"""SELECT r.*, d.filename AS source_file, d.origin AS source_origin,
+                       d.doc_type AS doc_type
+                  FROM records r
+                  LEFT JOIN documents d ON d.document_id = r.document_id
+                {where}
+              ORDER BY r.posted_at DESC LIMIT ? OFFSET ?""",
+            (*params, limit, offset),
+        ).fetchall()
+        return rows_to_dicts(rows)
+
     def count(self, record_kind: str | None = None) -> int:
         where = "WHERE record_kind = ?" if record_kind else ""
         params = (record_kind,) if record_kind else ()
@@ -233,6 +284,12 @@ class RecordStore:
         able to clear a test run, and the audit log keeps what happened either
         way. The document is unlinked rather than removed: the page it came from
         is still the evidence for the entry that used to exist.
+
+        The document also stops claiming it posted. `auto_post` is a statement
+        about a ledger entry, and once that entry is gone the queue would render
+        "Posted automatically" beside an empty record column - two contradictory
+        claims in one row, where the believable one is the one saying nobody
+        needs to look. It returns as `needs_review`, which is what it now is.
         """
         record = self.get(record_id)
         if record is None:
@@ -240,15 +297,22 @@ class RecordStore:
 
         with transaction(self.db_path) as connection:
             connection.execute("DELETE FROM records WHERE record_id = ?", (record_id,))
-            # The stored run carries its own copy of record_id, and everything
-            # that refuses to touch a posted document reads *that* one. Clearing
-            # only the column would leave the document permanently frozen.
+            # The stored run carries its own copy of record_id and decision, and
+            # everything that refuses to touch a posted document reads *those*.
+            # Clearing only the columns would leave the document permanently
+            # frozen, and moving only the columns would leave the payload -
+            # which is what the document detail view reloads from - still posted.
             connection.execute(
                 """UPDATE documents
                       SET record_id = NULL,
-                          payload = json_set(payload, '$.record_id', json('null'))
+                          decision  = ?,
+                          payload   = json_set(
+                              payload,
+                              '$.record_id', json('null'),
+                              '$.decision', ?
+                          )
                     WHERE document_id = ?""",
-                (record["document_id"],),
+                (RELEASED_DECISION, RELEASED_DECISION, record["document_id"]),
             )
         self.log(
             "record_deleted",

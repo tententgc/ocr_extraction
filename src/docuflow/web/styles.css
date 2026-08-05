@@ -15,6 +15,11 @@
   --warn-soft: #fdf3e0;
   --danger: #b3261e;
   --danger-soft: #fdeceb;
+  /* The third severity. Deliberately a cool slate rather than a fourth alarm
+     colour: `info` holds nothing, and the palette should say so before the
+     label is read. */
+  --info: #4a5568;
+  --info-soft: #eef1f5;
   --radius: 12px;
   --shadow: 0 1px 2px rgba(16, 24, 40, .06), 0 4px 14px rgba(16, 24, 40, .05);
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
@@ -36,6 +41,8 @@
     --warn-soft: #2a2214;
     --danger: #f2867d;
     --danger-soft: #2d1917;
+    --info: #a9b4c4;
+    --info-soft: #1c222a;
     --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 4px 14px rgba(0, 0, 0, .25);
   }
 }
@@ -57,66 +64,92 @@ p { margin: 0; }
 .num { text-align: right; }
 
 /* ---------- top bar ---------- */
+/* One sticky block, so no rule has to hard-code the height of another. */
+.appbar { position: sticky; top: 0; z-index: 20; }
 .topbar {
-  display: flex; align-items: center; justify-content: space-between; gap: 24px;
-  padding: 14px 24px; background: var(--surface); border-bottom: 1px solid var(--border);
-  position: sticky; top: 0; z-index: 20;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px 24px;
+  flex-wrap: wrap;
+  padding: 12px 24px; background: var(--surface); border-bottom: 1px solid var(--border);
 }
-.brand { display: flex; align-items: center; gap: 12px; }
+.brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .logo {
   width: 34px; height: 34px; display: grid; place-items: center; font-size: 18px;
-  background: var(--accent); color: #fff; border-radius: 9px;
+  background: var(--accent); color: #fff; border-radius: 9px; flex-shrink: 0;
 }
 @media (prefers-color-scheme: dark) { .logo { color: #0f1216; } }
-.brand h1 { font-size: 16px; }
-.brand p { font-size: 12px; color: var(--muted); }
+.brand h1 { font-size: 16px; line-height: 1.25; }
+.brand p { font-size: 12px; color: var(--muted); line-height: 1.3; }
 
 .engines { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
-.picker {
-  display: flex; align-items: center; gap: 7px; padding: 4px 6px 4px 11px;
+/* The pickers and the threshold pill sit on one line and are one height.
+   They were 34.6px and 29.8px, with tops 2.4px apart - close enough to read
+   as a rendering fault rather than a choice. */
+.picker, .engine {
+  height: 34px; box-sizing: border-box;
+  display: flex; align-items: center;
   background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px;
 }
+.picker { gap: 7px; padding: 0 6px 0 12px; max-width: 100%; }
+.picker:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .picker > span {
   font-size: 11px; font-weight: 600; color: var(--muted);
-  text-transform: uppercase; letter-spacing: .04em;
+  text-transform: uppercase; letter-spacing: .04em; flex-shrink: 0;
 }
 .picker select {
   appearance: none; border: none; background: transparent; color: var(--text);
-  font: inherit; font-size: 12px; font-weight: 600; padding: 3px 20px 3px 4px; cursor: pointer;
-  max-width: 210px; text-overflow: ellipsis;
+  font: inherit; font-size: 12px; font-weight: 600; padding: 3px 22px 3px 4px; cursor: pointer;
+  min-width: 0; max-width: 210px; text-overflow: ellipsis;
   background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
                     linear-gradient(135deg, currentColor 50%, transparent 50%);
-  background-position: right 8px top 52%, right 3px top 52%;
+  background-position: right 9px top 52%, right 4px top 52%;
   background-size: 5px 5px, 5px 5px; background-repeat: no-repeat;
 }
-.picker select:focus { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+/* The ring lives on the wrapper, so it traces the pill instead of cutting a
+   second rounded rectangle inside it. */
+.picker select:focus { outline: none; }
+.picker select:focus-visible { outline: none; }
 .picker select option:disabled { color: var(--muted); }
 .picker.busy { opacity: .55; pointer-events: none; }
-.engine {
-  display: flex; align-items: center; gap: 6px; padding: 5px 10px; font-size: 11.5px;
-  background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px;
-}
-.engine .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
+.engine { gap: 6px; padding: 0 12px; font-size: 11.5px; white-space: nowrap; }
+.engine .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); flex-shrink: 0; }
 .engine.off .dot { background: var(--muted); }
 .engine b { font-weight: 600; }
+
+/* Narrow windows: let the controls take the full width rather than shrinking
+   the model names to nothing. */
+@media (max-width: 760px) {
+  .topbar { gap: 12px; }
+  .engines { width: 100%; }
+  .picker { flex: 1 1 240px; }
+  .picker select { max-width: none; flex: 1; }
+}
 
 /* ---------- tabs ---------- */
 .tabs {
   display: flex; gap: 4px; padding: 0 24px; background: var(--surface);
-  border-bottom: 1px solid var(--border); position: sticky; top: 63px; z-index: 19;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto; scrollbar-width: none;
 }
+.tabs::-webkit-scrollbar { display: none; }
 .tab {
   appearance: none; background: none; border: none; border-bottom: 2px solid transparent;
   padding: 11px 14px; font: inherit; font-size: 13.5px; font-weight: 550;
-  color: var(--muted); cursor: pointer;
+  color: var(--muted); cursor: pointer; white-space: nowrap; flex-shrink: 0;
+  transition: color .12s ease, border-color .12s ease;
 }
 .tab:hover { color: var(--text); }
 .tab.active { color: var(--text); border-bottom-color: var(--accent); }
+.tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; border-radius: 6px; }
 .badge {
   display: inline-block; min-width: 19px; padding: 1px 6px; margin-left: 5px;
   background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px;
   font-size: 11px; font-weight: 600; text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+/* Non-zero review queue: the same amber the held documents themselves carry. */
+.badge.attention {
+  background: var(--warn-soft); border-color: transparent; color: var(--warn);
 }
 
 main { max-width: 1240px; margin: 0 auto; padding: 22px 24px 80px; }
@@ -171,17 +204,29 @@ main { max-width: 1240px; margin: 0 auto; padding: 22px 24px 80px; }
 
 /* ---------- buttons ---------- */
 .btn {
-  appearance: none; padding: 8px 14px; border: 1px solid var(--border); border-radius: 8px;
+  appearance: none; height: 34px; padding: 0 14px;
+  border: 1px solid var(--border); border-radius: 8px;
   background: var(--surface); color: var(--text); font: inherit; font-size: 13px; font-weight: 550;
-  cursor: pointer;
+  cursor: pointer; white-space: nowrap;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  transition: border-color .12s ease, background .12s ease, color .12s ease;
 }
-.btn:hover { border-color: var(--accent); }
+.btn:hover { border-color: var(--accent); background: var(--surface-2); }
+.btn:active { transform: translateY(.5px); }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 @media (prefers-color-scheme: dark) { .btn.primary { color: #0f1216; } }
-.btn.primary:hover { filter: brightness(1.08); }
-.btn.danger { color: var(--danger); border-color: var(--danger); background: transparent; }
+.btn.primary:hover { filter: brightness(1.08); background: var(--accent); }
+/* Destructive actions stay quiet until the pointer is on them: an outline of
+   red on every row reads as a page full of errors. */
+.btn.danger { color: var(--danger); border-color: var(--border); background: transparent; }
+.btn.danger:hover { border-color: var(--danger); background: var(--danger-soft); }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
-.btn.small { padding: 5px 10px; font-size: 12px; }
+.btn:disabled:hover { border-color: var(--border); background: var(--surface); }
+.btn.small { height: 28px; padding: 0 10px; font-size: 12px; }
+/* `label.btn` wraps a hidden file input, so the height has to survive the
+   label's own line box. */
+label.btn { line-height: 1; }
 .row-actions { display: flex; gap: 6px; justify-content: flex-end; white-space: nowrap; }
 .pager {
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
@@ -262,6 +307,10 @@ tbody tr:hover { background: var(--surface-2); }
 .chip.warn { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
 .chip.bad { background: var(--danger-soft); color: var(--danger); border-color: transparent; }
 .chip.accent { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+/* `info` is a note and holds nothing, so it reads as ink on paper rather than
+   as a colour that means act on me. It had no rule at all and fell through to
+   the warning amber, which said the opposite. */
+.chip.info { background: var(--info-soft); color: var(--info); border-color: transparent; }
 
 .evidence {
   font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 4px;
@@ -273,8 +322,12 @@ tbody tr:hover { background: var(--surface-2); }
   display: flex; gap: 10px; padding: 10px 12px; border-radius: 8px; margin-bottom: 7px;
   border: 1px solid var(--border); background: var(--surface-2); font-size: 13px;
 }
-.finding.blocking { background: var(--danger-soft); border-color: transparent; }
-.finding.warning { background: var(--warn-soft); border-color: transparent; }
+/* A left rail carries the severity as well as the wash, so the three stay
+   distinguishable when the background is nearly white - and for anyone who
+   cannot separate the amber from the red. */
+.finding.blocking { background: var(--danger-soft); border-color: transparent; border-left: 3px solid var(--danger); }
+.finding.warning { background: var(--warn-soft); border-color: transparent; border-left: 3px solid var(--warn); }
+.finding.info { background: var(--info-soft); border-color: transparent; border-left: 3px solid var(--info); }
 .finding.passed { background: transparent; opacity: .72; }
 .finding .rid { font-family: var(--mono); font-size: 10.5px; color: var(--muted); display: block; margin-top: 3px; }
 
@@ -382,10 +435,28 @@ tbody tr:hover { background: var(--surface-2); }
 .rule-row .desc { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
 .rule-row .types { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 5px; }
 .rule-row .grow { flex: 1; min-width: 0; }
+/* The card headers mix buttons with bare `<select>`s. Without this the selects
+   kept the browser's native chrome - a different height, corner radius and
+   focus ring from the buttons beside them, which is what made the controls
+   look assembled from two different pages. */
+.filters { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.filters select {
+  appearance: none; height: 34px; padding: 0 30px 0 11px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  color: var(--text); font: inherit; font-size: 13px; font-weight: 550; cursor: pointer;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+                    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: right 15px top 55%, right 10px top 55%;
+  background-size: 5px 5px, 5px 5px; background-repeat: no-repeat;
+}
+.filters select:hover { border-color: var(--accent); }
+.filters select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .filters input[type=search] {
   background: var(--surface-2); border: 1px solid var(--border); color: var(--text);
-  border-radius: 8px; padding: 6px 10px; font-size: 13px; min-width: 160px;
+  border-radius: 8px; height: 34px; padding: 0 11px; font: inherit; font-size: 13px;
+  min-width: 160px;
 }
+.filters input[type=search]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .rule-form { margin-top: 14px; }
 .rule-form textarea {
   width: 100%; background: var(--surface-2); border: 1px solid var(--border);
