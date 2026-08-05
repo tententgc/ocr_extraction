@@ -121,36 +121,63 @@ explanation; that one is the reference.
 md(r"""
 ## Part 0 — Setup
 
-Four cells: get the code, get the keys, configure, load the master files. Then
-the walk begins.
+**A Colab runtime is a blank machine, and it is thrown away when it
+disconnects.** Not just idle — disconnected. Everything below is here because of
+that: the code, the package, the keys and the database all live on a VM that
+will not exist tomorrow, and quite possibly not in an hour.
 
-The repository is private, so pick whichever way of getting it suits you.
+So Part 0 is "turn a blank machine into one that can run this". Four steps:
+
+| | |
+|---|---|
+| **get the code** | Option A *or* B — **not both** |
+| **install it** | the package and its dependencies |
+| **keys** | put them in Colab's 🔑 panel once and this stops asking |
+| **configure** | thresholds, VAT rates, master data |
+
+If you come back to a disconnected runtime, run the **status cell** below — it
+tells you what survived and what to re-run, which is faster than finding out
+from an exception six cells later.
+
+### Get the code — pick **one** of the next two cells
+
+The repository is private, so either give Colab a token, or hand it a zip.
+Whichever you skip is harmless: both cells check whether the code is already
+there and do nothing if it is.
 """)
 
 code(r'''
 # --- Option A: clone with a GitHub token ----------------------------------
 # Read with getpass, so it is never printed into the notebook or saved with it.
 # Make one at https://github.com/settings/tokens with `repo` scope.
+#
+# Prefer not to make a token? Skip this cell entirely and run Option B.
 import getpass, os, subprocess, sys
 
 REPO = "tententgc/mirtphol_doc_extraction"
 
-if not os.path.exists("mirtphol_doc_extraction"):
+if os.path.exists("mirtphol_doc_extraction"):
+    print("the code is already here — nothing to do, and Option B is unnecessary too")
+else:
     token = getpass.getpass(f"GitHub token for {REPO} (blank to skip): ").strip()
     if token:
         subprocess.run(["git", "clone", "--depth", "1",
                         f"https://{token}@github.com/{REPO}.git"], check=True)
         del token
+        print("cloned — skip Option B, go straight to the install")
     else:
-        print("Skipped — use Option B below.")
+        print("skipped — use Option B below instead")
 ''')
 
 code(r'''
 # --- Option B: upload a zip instead ---------------------------------------
+# Only if you skipped Option A.
 #   on your machine:  git archive -o docuflow.zip HEAD
 import os
 
-if not os.path.exists("mirtphol_doc_extraction"):
+if os.path.exists("mirtphol_doc_extraction"):
+    print("the code is already here — Option A did its job, nothing to upload")
+else:
     import zipfile
     from google.colab import files          # noqa: F401 - Colab only
     uploaded = files.upload()
@@ -174,17 +201,90 @@ OCR and the first reading. `ANTHROPIC_API_KEY` runs the *second* reading, and
 without it the second channel falls back to a deterministic label matcher —
 which still works, but you lose the two-independent-models comparison that this
 notebook spends a whole stage on.
+
+**Put them in the 🔑 panel on the left, not in this cell.** Click the key icon,
+add `TYPHOON_API_KEY` and `ANTHROPIC_API_KEY`, and switch on *Notebook access*
+for each. They then live in your Google account rather than on the VM, so a
+disconnect costs you nothing and the cell below stops asking. Typing them in
+survives exactly one runtime.
+
+Nothing here writes a key into the notebook, either way.
 """)
 
 code(r'''
 import getpass, os
 
-os.environ["TYPHOON_API_KEY"] = getpass.getpass("TYPHOON_API_KEY: ").strip()
-os.environ["ANTHROPIC_API_KEY"] = getpass.getpass("ANTHROPIC_API_KEY (optional): ").strip()
+def read_key(name, required):
+    """From Colab's secret store if it is there, otherwise ask once.
 
-print("typhoon   :", "set" if os.environ["TYPHOON_API_KEY"] else "MISSING — nothing will run")
-print("anthropic :", "set" if os.environ["ANTHROPIC_API_KEY"]
-      else "not set — the second reading will be the deterministic matcher")
+    The 🔑 panel keeps a value in your Google account instead of on the VM,
+    which is the difference between setting a key once and retyping it after
+    every disconnect. Everything else here is a fallback for running outside
+    Colab, or before the secret has been added.
+    """
+    if os.environ.get(name):
+        return os.environ[name], "already in this session"
+    try:
+        from google.colab import userdata
+    except ImportError:
+        pass                                    # not Colab; ask below
+    else:
+        try:
+            value = (userdata.get(name) or "").strip()
+            if value:
+                return value, "from the 🔑 panel"
+        except Exception as exc:                # not added, or access not granted
+            print(f"   {name}: {type(exc).__name__} — add it in the 🔑 panel and "
+                  f"switch on Notebook access to stop being asked")
+    prompt = f"{name}: " if required else f"{name} (optional, press Enter to skip): "
+    return getpass.getpass(prompt).strip(), "typed in, and gone when this runtime is"
+
+for name, required in (("TYPHOON_API_KEY", True), ("ANTHROPIC_API_KEY", False)):
+    os.environ[name], where = read_key(name, required)
+    if os.environ[name]:
+        print(f"{name:18} {where}")
+    elif required:
+        print(f"{name:18} MISSING — nothing below will run")
+    else:
+        print(f"{name:18} not set — the second reading will be the deterministic matcher")
+''')
+
+md(r"""
+### Is this runtime still set up?
+
+Run this whenever you come back to the notebook. Colab discards a runtime on
+disconnect, and the failure that follows is a `ModuleNotFoundError` eight cells
+later that says nothing about which step went missing.
+""")
+
+code(r'''
+import importlib.util, os
+from pathlib import Path
+
+def ready():
+    have_code = Path("mirtphol_doc_extraction").exists() or Path("src/docuflow").exists()
+    checks = [
+        ("the code",     have_code,                                        "Option A or B"),
+        ("the package",  importlib.util.find_spec("docuflow") is not None, "the %pip cell"),
+        ("Typhoon key",  bool(os.environ.get("TYPHOON_API_KEY")),          "the keys cell"),
+    ]
+    optional = [("Claude key", bool(os.environ.get("ANTHROPIC_API_KEY")), "the keys cell")]
+
+    for label, ok, where in checks:
+        print(f"  {'ok  ' if ok else 'MISSING'}  {label:14} {'' if ok else f'← re-run {where}'}")
+    for label, ok, where in optional:
+        print(f"  {'ok  ' if ok else 'absent '}  {label:14} "
+              f"{'' if ok else '← optional; the second reading falls back without it'}")
+
+    missing = [where for _, ok, where in checks if not ok]
+    print()
+    if missing:
+        print(f"Not ready. Re-run: {', '.join(dict.fromkeys(missing))}.")
+    else:
+        print("Ready — everything below can run.")
+    return not missing
+
+ready()
 ''')
 
 md(r"""
