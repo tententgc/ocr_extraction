@@ -1,0 +1,193 @@
+<mxfile host="app.diagrams.net" modified="2026-08-05T00:00:00.000Z" agent="DocuFlow" version="24.0.0">
+  <diagram id="docuflow-workflow" name="DocuFlow workflow">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1"
+                  arrows="1" fold="1" page="1" pageScale="1" pageWidth="1550" pageHeight="2280"
+                  math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ═══════════ HEADER ═══════════ -->
+        <mxCell id="ttl" value="DocuFlow — workflow ตั้งแต่ผู้ใช้ส่งไฟล์ จนถึง POST / HOLD"
+          style="text;html=1;fontSize=24;fontStyle=1;align=left;verticalAlign=middle;fontColor=#14181F;"
+          vertex="1" parent="1"><mxGeometry x="40" y="24" width="900" height="30" as="geometry" /></mxCell>
+        <mxCell id="sub" value="กล่อง = ขั้นตอน · ข้าวหลามตัด = จุดตัดสินใจ · กล่องเส้นประด้านข้าง = รายละเอียดของขั้นนั้น"
+          style="text;html=1;fontSize=12;align=left;verticalAlign=middle;fontColor=#667085;"
+          vertex="1" parent="1"><mxGeometry x="40" y="54" width="900" height="20" as="geometry" /></mxCell>
+
+        <!-- ═══════════ SPINE ═══════════ -->
+        <mxCell id="start" value="&lt;b&gt;ผู้ใช้ส่งเอกสาร&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#667085&quot;&gt;PDF · JPG · PNG · TIFF&lt;/font&gt;"
+          style="ellipse;whiteSpace=wrap;html=1;fillColor=#E8EEF7;strokeColor=#1F3A5F;strokeWidth=2;fontSize=13;"
+          vertex="1" parent="1"><mxGeometry x="570" y="100" width="260" height="60" as="geometry" /></mxCell>
+
+        <mxCell id="render" value="&lt;b&gt;① render&lt;/b&gt;  แปลงหน้าเป็นภาพ&lt;br&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#667085&quot;&gt;PDFium · ล็อกไว้ 1 thread&lt;/font&gt;"
+          style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#8A97A8;fontSize=13;"
+          vertex="1" parent="1"><mxGeometry x="550" y="200" width="300" height="64" as="geometry" /></mxCell>
+
+        <mxCell id="measure" value="&lt;b&gt;② preprocess&lt;/b&gt;  วัดคุณภาพหน้าก่อน&lt;br&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#667085&quot;&gt;เอียง? แสงไม่เท่า? จาง? เบลอ?&lt;/font&gt;"
+          style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#8A97A8;fontSize=13;"
+          vertex="1" parent="1"><mxGeometry x="550" y="304" width="300" height="64" as="geometry" /></mxCell>
+
+        <mxCell id="fix" value="แก้ทีละอย่าง &lt;b&gt;ตามลำดับ&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#667085&quot;&gt;แสง → เอียง → contrast → ความคม&lt;/font&gt;"
+          style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#8A97A8;fontSize=13;"
+          vertex="1" parent="1"><mxGeometry x="550" y="408" width="300" height="60" as="geometry" /></mxCell>
+
+        <mxCell id="dprep" value="&lt;b&gt;วัดใหม่แล้ว ดีขึ้นจริงไหม?&lt;/b&gt;"
+          style="rhombus;whiteSpace=wrap;html=1;fillColor=#FDF3E0;strokeColor=#9A6400;fontSize=13;"
+          vertex="1" parent="1"><mxGeometry x="530" y="508" width="340" height="100" as="geometry" /></mxCell>
+
+        <mxCell id="ocr" value="&lt;b&gt;③ OCR&lt;/b&gt;  Typhoon OCR 1.5&lt;br&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#667085&quot;&gt;ตารางออกมาเป็น HTML โดยตั้งใจ&lt;/font&gt;"
+          style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#8A97A8;fontSize=13;"
+          vertex="1" parent="1"><mxGeometry x="550" y="648" width="300" height="64" as="geometry" /></mxCell>
+
+        <mxCell id="docr" value="&lt;b&gt;ข้อความที่ได้ อ่านรู้เรื่องไหม?&lt;/b&gt;"
+          style="rhombus;whiteSpace=wrap;html=1;fillColor=#FDF3E0;strokeColor=#9A6400;fontSize=13;"
+          vertex="1" parent="1"><mxGeometry x="530" y="752" width="340" height="100" as="geometry" /></mxCell>
+
+        <mxCell id="classify" value="&lt;b&gt;④ classify&lt;/b&gt;  นับ keyword ก่อน&lt;br&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#667085&quot;&gt;invoice · receipt · contract · form&lt;/font&gt;"
+          style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#8A97A8;fontSize=13;"
+          vertex="1" parent="1"><mxGeometry x="550" y="892" width="300" height="64" as="geometry" /></mxCell>
+
+        <mxCell id="dkw" value="&lt;b&gt;keyword ชนะขาดไหม?&lt;/b&gt;"
+          style="rhombus;whiteSpace=wrap;html=1;fillColor=#FDF3E0;strokeColor=#9A6400;fontSize=13;"
+          vertex="1" parent="1"><mxGeometry x="530" y="996" width="340" height="100" as="geometry" /></mxCell>
+
+        <mxCell id="a1" value="&lt;b&gt;⑤ agent 1 — extract&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#667085&quot;&gt;ไล่ตาม schema · ตอบ YYYY-MM-DD · อ้าง evidence&lt;/font&gt;"
+          style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E8EEF7;strokeColor=#1F3A5F;fontSize=13;"
+          vertex="1" parent="1"><mxGeometry x="550" y="1136" width="300" height="64" as="geometry" /></mxCell>
+
+        <mxCell id="a2" value="&lt;b&gt;⑥ agent 2 — verify&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#667085&quot;&gt;&lt;b&gt;คนละ backend&lt;/b&gt; · รายงานตามที่พิมพ์บนหน้า&lt;/font&gt;"
+          style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E8EEF7;strokeColor=#1F3A5F;fontSize=13;"
+          vertex="1" parent="1"><mxGeometry x="550" y="1240" width="300" height="64" as="geometry" /></mxCell>
+
+        <mxCell id="norm" value="&lt;b&gt;ทำให้เป็นมาตรฐานก่อน แล้วค่อยเทียบ&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#667085&quot;&gt;วันที่ · จำนวนเงิน · ตัดวรรคตอน&lt;/font&gt;"
+          style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FDF3E0;strokeColor=#9A6400;fontSize=13;"
+          vertex="1" parent="1"><mxGeometry x="550" y="1344" width="300" height="64" as="geometry" /></mxCell>
+
+        <mxCell id="dagree" value="&lt;b&gt;สอง agent ตอบตรงกันไหม?&lt;/b&gt;"
+          style="rhombus;whiteSpace=wrap;html=1;fillColor=#FDF3E0;strokeColor=#9A6400;fontSize=13;"
+          vertex="1" parent="1"><mxGeometry x="530" y="1448" width="340" height="100" as="geometry" /></mxCell>
+
+        <mxCell id="ground" value="&lt;b&gt;grounding&lt;/b&gt;  ค่านี้ชี้ที่มาบนหน้าได้ไหม&lt;br&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#667085&quot;&gt;หา evidence ที่ agent อ้าง ในข้อความ OCR&lt;/font&gt;"
+          style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#8A97A8;fontSize=13;"
+          vertex="1" parent="1"><mxGeometry x="550" y="1588" width="300" height="64" as="geometry" /></mxCell>
+
+        <mxCell id="rules" value="&lt;b&gt;⑦ กฎ 26 ข้อ&lt;/b&gt;  คำนวณใหม่ ไม่เชื่อที่พิมพ์&lt;br&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#667085&quot;&gt;+ เทียบทะเบียนกลาง (ผู้ขาย · ใบสั่งซื้อ)&lt;/font&gt;"
+          style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#8A97A8;fontSize=13;"
+          vertex="1" parent="1"><mxGeometry x="550" y="1692" width="300" height="64" as="geometry" /></mxCell>
+
+        <mxCell id="tools" value="&lt;b&gt;⑧ agent กฎ + tools&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#667085&quot;&gt;8 tool · ให้เท่าที่กฎข้อนั้นขอ&lt;/font&gt;"
+          style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E8EEF7;strokeColor=#1F3A5F;fontSize=13;"
+          vertex="1" parent="1"><mxGeometry x="550" y="1796" width="300" height="64" as="geometry" /></mxCell>
+
+        <mxCell id="conf" value="&lt;b&gt;⑨ confidence&lt;/b&gt;  อ่านถูกไหม&lt;br&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#667085&quot;&gt;เฉพาะ 7 กฎใน MISREAD_SIGNALS เท่านั้นที่หัก&lt;/font&gt;"
+          style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#8A97A8;fontSize=13;"
+          vertex="1" parent="1"><mxGeometry x="550" y="1900" width="300" height="64" as="geometry" /></mxCell>
+
+        <mxCell id="droute" value="&lt;b&gt;⑩ route — โพสต์ได้ไหม&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px&quot;&gt;1. ไม่มี blocking ตก&lt;br&gt;2. ค่าสำคัญที่&lt;i&gt;มีอยู่&lt;/i&gt; ชี้ที่มาได้ครบ&lt;br&gt;3. confidence ≥ เกณฑ์&lt;/font&gt;"
+          style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#1F3A5F;strokeWidth=2;fontSize=13;"
+          vertex="1" parent="1"><mxGeometry x="500" y="2004" width="400" height="150" as="geometry" /></mxCell>
+
+        <mxCell id="post" value="&lt;b&gt;POST&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#667085&quot;&gt;เขียนลงบัญชีเอง ไม่ต้องมีคนดู&lt;/font&gt;"
+          style="ellipse;whiteSpace=wrap;html=1;fillColor=#E3F5EC;strokeColor=#0F7B4F;strokeWidth=2;fontSize=14;"
+          vertex="1" parent="1"><mxGeometry x="180" y="2044" width="240" height="70" as="geometry" /></mxCell>
+
+        <mxCell id="hold" value="&lt;b&gt;HOLD&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#667085&quot;&gt;เข้าคิวคนตรวจ พร้อมเหตุผล&lt;/font&gt;"
+          style="ellipse;whiteSpace=wrap;html=1;fillColor=#FDF3E0;strokeColor=#9A6400;strokeWidth=2;fontSize=14;"
+          vertex="1" parent="1"><mxGeometry x="980" y="2044" width="240" height="70" as="geometry" /></mxCell>
+
+        <!-- ═══════════ RIGHT DETAIL NOTES ═══════════ -->
+        <mxCell id="n_prep" value="&lt;b&gt;วัด → แก้ → วัดซ้ำ → ไม่ดีขึ้นก็ย้อนคืน&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#667085&quot;&gt;ทุกการแก้ต้องพิสูจน์ตัวเองด้วยตัวเลข&lt;br&gt;หน้าที่สะอาดอยู่แล้ว = ไม่แตะเลย ไม่เขียนไฟล์ใหม่&lt;br&gt;ไฟล์ที่เตรียมแล้ววางไว้&lt;i&gt;ข้างๆ&lt;/i&gt; ไม่ทับของเดิม&lt;/font&gt;"
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#C7D2E0;dashed=1;fontSize=12;align=left;spacingLeft=10;"
+          vertex="1" parent="1"><mxGeometry x="940" y="380" width="480" height="90" as="geometry" /></mxCell>
+
+        <mxCell id="n_order" value="&lt;b&gt;ทำไมต้องแสงก่อนเอียง&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#667085&quot;&gt;มุมเอียงวัดจากคราบหมึกที่ตัดกับความสว่างเฉลี่ย&lt;br&gt;หน้าที่โดนแสงข้างเดียว คราบที่จับได้คือ&lt;i&gt;เงา&lt;/i&gt;&lt;br&gt;มุมที่ได้เลยอธิบายแสง ไม่ใช่บรรทัด&lt;/font&gt;"
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FDECEB;strokeColor=#B3261E;dashed=1;fontSize=12;align=left;spacingLeft=10;"
+          vertex="1" parent="1"><mxGeometry x="940" y="486" width="480" height="86" as="geometry" /></mxCell>
+
+        <mxCell id="n_ocr" value="&lt;b&gt;อ่านไม่ออก ≠ ต่อไม่ติด&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#667085&quot;&gt;ข้อความแย่ = คำตัดสินเรื่องหน้านั้น → ไปลองเครื่องมือถัดไป&lt;br&gt;timeout = ไม่ใช่คำตัดสิน → &lt;b&gt;retry&lt;/b&gt; ไม่ใช่ลดชั้นโมเดล&lt;br&gt;เคยสับสนสองอย่างนี้ ใบเดียวใช้เวลา 10 นาที&lt;/font&gt;"
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#C7D2E0;dashed=1;fontSize=12;align=left;spacingLeft=10;"
+          vertex="1" parent="1"><mxGeometry x="940" y="726" width="480" height="88" as="geometry" /></mxCell>
+
+        <mxCell id="n_kw" value="&lt;b&gt;วลีที่เจาะจงที่สุดเท่านั้นที่ได้โหวต&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#667085&quot;&gt;`ใบกำกับภาษีอย่างย่อ` = &lt;b&gt;ใบเสร็จ&lt;/b&gt; แต่มีคำว่า&lt;br&gt;`ใบกำกับภาษี` อยู่ข้างใน — จับแบบ substring เฉยๆ&lt;br&gt;ทำให้ใบเสร็จไทยทุกใบกลายเป็น invoice&lt;/font&gt;"
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#C7D2E0;dashed=1;fontSize=12;align=left;spacingLeft=10;"
+          vertex="1" parent="1"><mxGeometry x="940" y="970" width="480" height="88" as="geometry" /></mxCell>
+
+        <mxCell id="n_two" value="&lt;b&gt;ทำไมต้องคนละ backend&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#667085&quot;&gt;โมเดลเดียวอ่านสองรอบ จะผิดซ้ำที่เดิม&lt;br&gt;การเห็นตรงกันจึงแทบไม่มีความหมาย&lt;br&gt;&lt;br&gt;agent 2 ตอบน้อยช่องกว่า = &lt;b&gt;ระบบทำงานถูก&lt;/b&gt;&lt;br&gt;ช่องที่หายคือช่องที่ agent 1 &lt;i&gt;อนุมานเอา&lt;/i&gt; ไม่ได้อ่านจากป้าย&lt;/font&gt;"
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8EEF7;strokeColor=#1F3A5F;dashed=1;fontSize=12;align=left;spacingLeft=10;"
+          vertex="1" parent="1"><mxGeometry x="940" y="1180" width="480" height="112" as="geometry" /></mxCell>
+
+        <mxCell id="n_norm" value="&lt;b&gt;ต้องทำมาตรฐานก่อนเทียบ ไม่ใช่หลัง&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#667085&quot;&gt;`24 ก.ค. 2569` = `2026-07-24`&lt;br&gt;`35,000.00 THB` = `35000.0`&lt;br&gt;`#249872` = `249872`&lt;br&gt;เทียบสตริงดิบเมื่อไหร่ ทุกใบรายงานว่าขัดกัน&lt;/font&gt;"
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FDF3E0;strokeColor=#9A6400;dashed=1;fontSize=12;align=left;spacingLeft=10;"
+          vertex="1" parent="1"><mxGeometry x="940" y="1326" width="480" height="100" as="geometry" /></mxCell>
+
+        <mxCell id="n_ground" value="&lt;b&gt;grounding จับ OCR อ่านผิดไม่ได้&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#667085&quot;&gt;ข้อความนั้น&lt;i&gt;มีอยู่จริง&lt;/i&gt;ในผล OCR — และผล OCR คือสิ่งที่ผิด&lt;br&gt;สองช่องทางที่อ่านจากข้อความ OCR เดียวกันก็จับไม่ได้&lt;br&gt;ตัวที่จับได้คือ &lt;b&gt;กฎคำนวณ&lt;/b&gt; กับ &lt;b&gt;คะแนนความชัดของหน้า&lt;/b&gt;&lt;/font&gt;"
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FDECEB;strokeColor=#B3261E;dashed=1;fontSize=12;align=left;spacingLeft=10;"
+          vertex="1" parent="1"><mxGeometry x="940" y="1570" width="480" height="100" as="geometry" /></mxCell>
+
+        <mxCell id="n_tools" value="&lt;b&gt;โมเดลหาข้อมูล — กฎเป็นคนตัดสิน&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#667085&quot;&gt;tool อ่านทะเบียน · รวมยอดย้อนหลัง · เทียบใบสั่งซื้อ&lt;br&gt;ให้เท่าที่กฎข้อนั้นประกาศไว้ ไม่ยื่นทั้งกล่อง&lt;br&gt;ตอบไม่ชัด = `unsure` → ส่งคน ไม่ใช่เดา&lt;/font&gt;"
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8EEF7;strokeColor=#1F3A5F;dashed=1;fontSize=12;align=left;spacingLeft=10;"
+          vertex="1" parent="1"><mxGeometry x="940" y="1786" width="480" height="88" as="geometry" /></mxCell>
+
+        <mxCell id="n_conf" value="&lt;b&gt;confidence ตอบคนละคำถามกับ route&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#667085&quot;&gt;confidence = &lt;i&gt;อ่านถูกไหม&lt;/i&gt;  ·  route = &lt;i&gt;โพสต์ได้ไหม&lt;/i&gt;&lt;br&gt;blocking −20% · warning −5% · info 0 · ต่ำสุด 50%&lt;br&gt;ตอนรวมเป็นเลขเดียว คำเตือน 3 ข้อลากใบที่อ่านถูกสนิท&lt;br&gt;จาก 95% ลงไป 72% แล้วโดนหยุดใต้เกณฑ์ 84%&lt;/font&gt;"
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FDF3E0;strokeColor=#9A6400;dashed=1;fontSize=12;align=left;spacingLeft=10;"
+          vertex="1" parent="1"><mxGeometry x="940" y="1890" width="480" height="100" as="geometry" /></mxCell>
+
+        <!-- ═══════════ LEFT NOTES ═══════════ -->
+        <mxCell id="n_sev" value="&lt;b&gt;สามระดับ ต้องทำงานต่างกันจริง&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px&quot;&gt;&lt;font color=&quot;#B3261E&quot;&gt;&lt;b&gt;blocking&lt;/b&gt; หยุดเอกสาร ไม่มีอะไรผ่านไปได้&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#9A6400&quot;&gt;&lt;b&gt;warning&lt;/b&gt; บันทึกและแสดง แต่&lt;b&gt;ไม่หยุดอะไร&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#4A5568&quot;&gt;&lt;b&gt;info&lt;/b&gt; แค่หมายเหตุ&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#667085&quot;&gt;warning ที่หยุดเอกสาร คือ blocking ที่ไม่ยอมรับตัวเอง&lt;/font&gt;&lt;/font&gt;"
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#C7D2E0;dashed=1;fontSize=12;align=left;spacingLeft=10;"
+          vertex="1" parent="1"><mxGeometry x="60" y="1670" width="440" height="108" as="geometry" /></mxCell>
+
+        <mxCell id="n_tol" value="&lt;b&gt;สองค่าผ่อนผัน ห้ามรวมกัน&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#667085&quot;&gt;&lt;b&gt;AMOUNT 2%&lt;/b&gt; ต่างจาก&lt;i&gt;ใบสั่งซื้อ&lt;/i&gt; — ผ่อนผันทางการค้า&lt;br&gt;&lt;b&gt;ARITHMETIC 0.01%&lt;/b&gt; ต่างจาก&lt;i&gt;ตัวเอง&lt;/i&gt; — แค่ปัดเศษ&lt;br&gt;ใช้ตัวเดียวกันเมื่อไหร่ อ่านผิด 810 บาท ผ่านได้&lt;br&gt;ในฐานะ &quot;ยอดรวมถูกต้อง&quot; บนใบ 200,090 บาท&lt;/font&gt;"
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#C7D2E0;dashed=1;fontSize=12;align=left;spacingLeft=10;"
+          vertex="1" parent="1"><mxGeometry x="60" y="1794" width="440" height="100" as="geometry" /></mxCell>
+
+        <mxCell id="n_cost" value="&lt;b&gt;สองทางออกนี้ราคาไม่เท่ากัน&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#667085&quot;&gt;ปล่อยของเสียผ่าน = &lt;b&gt;จ่ายเงินผิด&lt;/b&gt; (silent error)&lt;br&gt;หยุดของดี = &lt;b&gt;เสียเวลาคนหนึ่งนาที&lt;/b&gt;&lt;br&gt;ห้ามเอาสองอัตรานี้มาบวกเป็นตัวเลขเดียว&lt;/font&gt;"
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#8A97A8;fontSize=12;align=left;spacingLeft=10;"
+          vertex="1" parent="1"><mxGeometry x="60" y="2140" width="440" height="80" as="geometry" /></mxCell>
+
+        <mxCell id="n_master" value="&lt;b&gt;ทะเบียนกลาง&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px&quot; color=&quot;#667085&quot;&gt;ผู้ขาย · ใบสั่งซื้อ · สัญญา&lt;br&gt;เรื่องที่อ่านเอกสารดีแค่ไหนก็ไม่มีทางเจอ&lt;/font&gt;"
+          style="shape=cylinder3;boundedLbl=1;backgroundOutline=1;size=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#8A97A8;fontSize=12;"
+          vertex="1" parent="1"><mxGeometry x="150" y="1470" width="260" height="90" as="geometry" /></mxCell>
+
+        <!-- ═══════════ EDGES: spine ═══════════ -->
+        <mxCell id="ed1" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=0;strokeColor=#5A6675;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="start" target="render"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ed2" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=0;strokeColor=#5A6675;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="render" target="measure"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ed3" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=0;strokeColor=#5A6675;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="measure" target="fix"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ed4" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=0;strokeColor=#5A6675;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="fix" target="dprep"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ed5" value="ใช่ — เก็บไว้" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=0;strokeColor=#0F7B4F;strokeWidth=2;endArrow=block;endFill=1;fontSize=11;fontColor=#0F7B4F;" edge="1" parent="1" source="dprep" target="ocr"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ed6" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=0;strokeColor=#5A6675;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="ocr" target="docr"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ed7" value="ใช่" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=0;strokeColor=#0F7B4F;strokeWidth=2;endArrow=block;endFill=1;fontSize=11;fontColor=#0F7B4F;" edge="1" parent="1" source="docr" target="classify"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ed8" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=0;strokeColor=#5A6675;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="classify" target="dkw"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ed9" value="ใช่ — ไม่ต้องเรียกโมเดล" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=0;strokeColor=#0F7B4F;strokeWidth=2;endArrow=block;endFill=1;fontSize=11;fontColor=#0F7B4F;" edge="1" parent="1" source="dkw" target="a1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ed10" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=0;strokeColor=#5A6675;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="a1" target="a2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ed11" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=0;strokeColor=#5A6675;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="a2" target="norm"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ed12" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=0;strokeColor=#5A6675;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="norm" target="dagree"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ed13" value="ตรง — มั่นใจสูง" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=0;strokeColor=#0F7B4F;strokeWidth=2;endArrow=block;endFill=1;fontSize=11;fontColor=#0F7B4F;" edge="1" parent="1" source="dagree" target="ground"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ed14" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=0;strokeColor=#5A6675;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="ground" target="rules"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ed15" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=0;strokeColor=#5A6675;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="rules" target="tools"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ed16" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=0;strokeColor=#5A6675;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="tools" target="conf"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ed17" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=0;strokeColor=#5A6675;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="conf" target="droute"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ed18" value="ผ่านครบ 3 ข้อ" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=0;strokeColor=#0F7B4F;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#0F7B4F;exitX=0;exitY=0.5;entryX=0.5;entryY=0;" edge="1" parent="1" source="droute" target="post"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ed19" value="ตกข้อใดข้อหนึ่ง" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=0;strokeColor=#9A6400;strokeWidth=2;endArrow=block;endFill=1;fontSize=12;fontColor=#9A6400;exitX=1;exitY=0.5;entryX=0.5;entryY=0;" edge="1" parent="1" source="droute" target="hold"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- ═══════════ EDGES: the "no" branches, looping back ═══════════ -->
+        <mxCell id="eb1" value="ไม่ — &lt;b&gt;ย้อนคืนภาพเดิม&lt;/b&gt;" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeColor=#B3261E;strokeWidth=2;endArrow=block;endFill=1;dashed=1;fontSize=11;fontColor=#B3261E;exitX=0;exitY=0.5;entryX=0;entryY=0.5;"
+          edge="1" parent="1" source="dprep" target="ocr"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="440" y="558" /><mxPoint x="440" y="680" /></Array></mxGeometry></mxCell>
+
+        <mxCell id="eb2" value="ไม่ — &lt;b&gt;degraded&lt;/b&gt; แต่ไปต่อ" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeColor=#B3261E;strokeWidth=2;endArrow=block;endFill=1;dashed=1;fontSize=11;fontColor=#B3261E;exitX=0;exitY=0.5;entryX=0;entryY=0.5;"
+          edge="1" parent="1" source="docr" target="classify"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="440" y="802" /><mxPoint x="440" y="924" /></Array></mxGeometry></mxCell>
+
+        <mxCell id="eb3" value="ไม่ชัด — ให้ LLM ยืนยัน" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeColor=#1F3A5F;strokeWidth=2;endArrow=block;endFill=1;dashed=1;fontSize=11;fontColor=#1F3A5F;exitX=0;exitY=0.5;entryX=0;entryY=0.5;"
+          edge="1" parent="1" source="dkw" target="a1"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="440" y="1046" /><mxPoint x="440" y="1168" /></Array></mxGeometry></mxCell>
+
+        <mxCell id="eb4" value="ขัดกัน — &lt;b&gt;ลดความมั่นใจ&lt;/b&gt; แต่ไม่หยุด" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeColor=#9A6400;strokeWidth=2;endArrow=block;endFill=1;dashed=1;fontSize=11;fontColor=#9A6400;exitX=0;exitY=0.5;entryX=0;entryY=0.5;"
+          edge="1" parent="1" source="dagree" target="ground"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="440" y="1498" /><mxPoint x="440" y="1620" /></Array></mxGeometry></mxCell>
+
+        <mxCell id="em" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeColor=#8A97A8;strokeWidth=2;endArrow=block;endFill=1;dashed=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;"
+          edge="1" parent="1" source="n_master" target="rules"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
