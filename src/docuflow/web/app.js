@@ -958,6 +958,22 @@ async function loadRecords(page = state.pages.records) {
 
 $('#records-refresh').addEventListener('click', () => loadRecords());
 
+/* The export is a file download, not JSON, so it goes through the browser's own
+   download machinery rather than `api()`. A plain anchor click keeps the
+   Content-Disposition filename the server chose; fetching it into memory first
+   would throw that away and copy the whole ledger through JS for nothing. */
+$('#records-export').addEventListener('click', () => {
+  const format = $('#export-format').value;
+  const kind = state.recordKind ? `&record_kind=${encodeURIComponent(state.recordKind)}` : '';
+  const link = document.createElement('a');
+  link.href = `/api/records/export?format=${encodeURIComponent(format)}${kind}`;
+  link.download = '';
+  document.body.append(link);
+  link.click();
+  link.remove();
+  toast(`Exporting the ledger as ${format.toUpperCase()}…`);
+});
+
 /* Each kind of record answers a different question, so the ledger is shown as
    one card per kind rather than one undifferentiated table. Clicking a card
    filters the table and the insight strip below it. */

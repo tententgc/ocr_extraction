@@ -223,6 +223,32 @@ class RecordStore:
         ).fetchall()
         return rows_to_dicts(rows)
 
+    def list_with_source(
+        self, record_kind: str | None = None, limit: int = 200, offset: int = 0
+    ) -> list[dict[str, Any]]:
+        """The same rows, plus the file each one came from.
+
+        The record's own payload holds the extracted values, not the document
+        it was extracted from - `source` lives on the document. For an export
+        that a person reconciles against a folder of PDFs, the filename is how
+        they find the piece of paper again, so it is worth the join.
+
+        LEFT JOIN rather than JOIN: the foreign key should make an orphaned
+        record impossible, and if one ever exists the export should still show
+        it rather than silently drop a posted amount.
+        """
+        where = "WHERE r.record_kind = ?" if record_kind else ""
+        params = (record_kind, limit, offset) if record_kind else (limit, offset)
+        rows = connect(self.db_path).execute(
+            f"""SELECT r.*, d.filename AS source_file, d.origin AS source_origin
+                  FROM records r
+                  LEFT JOIN documents d ON d.document_id = r.document_id
+                {where}
+              ORDER BY r.posted_at DESC LIMIT ? OFFSET ?""",
+            params,
+        ).fetchall()
+        return rows_to_dicts(rows)
+
     def count(self, record_kind: str | None = None) -> int:
         where = "WHERE record_kind = ?" if record_kind else ""
         params = (record_kind,) if record_kind else ()

@@ -15,7 +15,13 @@ from typing import Any
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse
+from fastapi.responses import (
+    FileResponse,
+    HTMLResponse,
+    JSONResponse,
+    PlainTextResponse,
+    StreamingResponse,
+)
 from pydantic import BaseModel, Field
 
 from docuflow.archive import describe_archive, rebuild as rebuild_archive
@@ -41,6 +47,9 @@ from docuflow.rules.preview import preview_rule
 from docuflow.store.custom_rules import CustomRuleStore
 from docuflow.agents.briefing import write_briefing
 from docuflow.deletion import DeletionError, delete_document, wipe_documents
+from docuflow.export import ExportError
+from docuflow.export import export as export_ledger
+from docuflow.export import suggested_filename
 from docuflow.revalidate import DEFAULT_SCOPE, RevalidationError, reevaluate, reevaluate_many
 from docuflow.review import ReviewError, apply_review
 from docuflow.samples.catalog import SAMPLE_DOCUMENTS
@@ -898,6 +907,41 @@ def delete_record(record_id: str, reviewer: str = Query(default="reviewer")) -> 
         return RecordStore(settings.db_path).delete(record_id, actor=reviewer)
     except RecordPostingError as exc:
         return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.get("/api/records/export", include_in_schema=True)
+def export_records(
+    format: str = Query(default="csv", pattern="^(csv|jsonl)$"),
+    record_kind: str | None = Query(default=None),
+    since: str | None = Query(default=None, description="posted on or after, YYYY-MM-DD"),
+    until: str | None = Query(default=None, description="posted on or before, YYYY-MM-DD"),
+) -> StreamingResponse:
+    """The ledger as a file.
+
+    Streamed and deliberately not paginated: `per_page` exists so the browser
+    is not handed ten thousand rows at once, and an export that inherited that
+    cap would quietly stop at the first page - the failure nobody notices until
+    they reconcile against it.
+    """
+    settings = active_settings()
+    try:
+        chunks = export_ledger(
+            RecordStore(settings.db_path),
+            fmt=format,
+            record_kind=record_kind,
+            since=since,
+            until=until,
+        )
+    except ExportError as exc:
+        return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+    media = "text/csv" if format == "csv" else "application/x-ndjson"
+    filename = suggested_filename(format, record_kind)
+    return StreamingResponse(
+        chunks,
+        media_type=f"{media}; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @app.get("/api/records/summary")

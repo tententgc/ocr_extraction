@@ -188,6 +188,43 @@ def cmd_demo(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_export(args: argparse.Namespace) -> int:
+    """Write the ledger to a file, or to stdout so it can be piped."""
+    from docuflow.export import ExportError, export, suggested_filename
+
+    settings = get_settings()
+    try:
+        chunks = export(
+            RecordStore(settings.db_path),
+            fmt=args.format,
+            record_kind=args.kind,
+            since=getattr(args, "from"),
+            until=args.to,
+        )
+    except ExportError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+
+    if args.out == "-":
+        for chunk in chunks:
+            sys.stdout.write(chunk)
+        return 0
+
+    path = Path(args.out or suggested_filename(args.format, args.kind))
+    written = 0
+    # newline="" so the csv module owns line endings; Excel wants CRLF and
+    # Python would otherwise translate them again on Windows.
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        for chunk in chunks:
+            handle.write(chunk)
+            written += 1
+    rows = max(written - 1, 0) if args.format == "csv" else written
+    print(f"Wrote {rows} record(s) to {path}")
+    if args.format == "csv":
+        print("  Opens in Excel as-is; the leading byte-order mark keeps Thai names readable.")
+    return 0
+
+
 def cmd_records(args: argparse.Namespace) -> int:
     settings = get_settings()
     records = RecordStore(settings.db_path).list()
@@ -602,6 +639,24 @@ def main(argv: list[str] | None = None) -> int:
 
     records_parser = subparsers.add_parser("records", help="list posted records")
     records_parser.set_defaults(func=cmd_records)
+
+    export_parser = subparsers.add_parser(
+        "export",
+        help="write the ledger out as CSV or JSONL",
+        description=(
+            "CSV opens in Excel with the nesting flattened into columns; JSONL keeps "
+            "each record whole for another system to read. Dates filter on when the "
+            "record was posted, not the date printed on the document."
+        ),
+    )
+    export_parser.add_argument("--format", choices=("csv", "jsonl"), default="csv")
+    export_parser.add_argument(
+        "--out", default=None, help="output file, or - for stdout (default: a dated name)"
+    )
+    export_parser.add_argument("--kind", default=None, help="only this record kind, e.g. invoice")
+    export_parser.add_argument("--from", default=None, metavar="YYYY-MM-DD", dest="from")
+    export_parser.add_argument("--to", default=None, metavar="YYYY-MM-DD")
+    export_parser.set_defaults(func=cmd_export)
 
     serve_parser = subparsers.add_parser("serve", help="start the web platform")
     serve_parser.add_argument("--host", default="127.0.0.1")
