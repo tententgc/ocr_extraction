@@ -464,6 +464,18 @@ def find_line_items(ocr_pages: list[tuple[int, str]]) -> list[dict[str, object]]
             description = cells[0]
             if not description or normalize_for_match(description) in {"description", "item", "รายการ"}:
                 continue
+            # A totals row has the shape of a line item - a label and two
+            # numbers - and adding it to the rows makes them sum to the total
+            # rather than the subtotal, so `line_items_sum_to_subtotal` reports
+            # every correct invoice as inconsistent.
+            #
+            # The plain-text reader has always dropped these. This path never
+            # did, and got away with it only because Typhoon leaves totals out
+            # of the table it returns. That is a property of one model, not of
+            # the format, and any engine that draws the whole invoice as one
+            # table brings the rows straight back.
+            if any(normalize_for_match(description).startswith(word) for word in _TOTALS_WORDS):
+                continue
             items.append(
                 {
                     "description": description,

@@ -154,6 +154,40 @@ class TestTheFastPathLosesNothing:
         assert sum(row["amount"] for row in plain) == sum(row["amount"] for row in html)
         assert sum(row["amount"] for row in plain) == pytest.approx(135_000.00)
 
+    def test_a_totals_row_inside_the_table_is_not_a_line_item(self) -> None:
+        """Both readers must drop them, and only one of them used to.
+
+        A totals row has the shape of a line item - a label and two numbers.
+        Counted as one, the rows sum to the invoice total instead of the
+        subtotal, and `line_items_sum_to_subtotal` then reports every correct
+        invoice as inconsistent.
+
+        The plain-text reader always dropped them. The HTML reader never did,
+        and got away with it only because Typhoon leaves totals out of the
+        table it returns - a property of one model, not of the format.
+        """
+        from docuflow.agents.rule_extractor import find_line_items
+
+        whole_invoice = (
+            "<table>"
+            "<tr><td>Description</td><td>Qty</td><td>Unit Price</td><td>Amount</td></tr>"
+            "<tr><td>UPS 3kVA rack mount</td><td>12</td><td>9,500.00</td><td>114,000.00</td></tr>"
+            "<tr><td>Installation and commissioning</td><td>1</td><td>21,000.00</td>"
+            "<td>21,000.00</td></tr>"
+            "<tr><td>Subtotal</td><td></td><td>7</td><td>135,000.00</td></tr>"
+            "<tr><td>VAT 7%</td><td></td><td>7</td><td>9,450.00</td></tr>"
+            "<tr><td>Amount Due</td><td></td><td>7</td><td>144,450.00</td></tr>"
+            "</table>"
+        )
+        rows = find_line_items([(1, whole_invoice)])
+        assert [row["description"] for row in rows] == [
+            "UPS 3kVA rack mount",
+            "Installation and commissioning",
+        ]
+        assert sum(row["amount"] for row in rows) == pytest.approx(135_000.00), (
+            "the rows must sum to the subtotal, not the total"
+        )
+
 
 class TestPoorTextStillEscalates:
     def test_text_that_fails_the_quality_gate_does_not_win(self) -> None:
