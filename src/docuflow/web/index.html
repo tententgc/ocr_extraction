@@ -131,12 +131,18 @@
         <h3>Downstream records</h3>
         <div class="filters">
           <!-- Not paginated: `per_page` keeps the browser sane, and an export
-               that inherited it would stop at the first page. -->
+               that inherited it would stop at the first page.
+               The type picker chooses the CSV columns as well as the rows -
+               an invoice and a contract share almost no fields. -->
+          <select id="export-doc-type"
+                  title="Each type has its own columns; all types gives only what they share">
+            <option value="">All types — shared columns only</option>
+          </select>
           <select id="export-format" title="CSV opens in Excel; JSONL feeds another system">
             <option value="csv">CSV — for Excel</option>
             <option value="jsonl">JSONL — for another system</option>
           </select>
-          <button class="btn" id="records-export">Export ledger</button>
+          <button class="btn" id="records-export">Export</button>
           <button class="btn" id="records-refresh">Refresh</button>
         </div>
       </div>

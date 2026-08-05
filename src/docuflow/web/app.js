@@ -232,6 +232,7 @@ async function loadSamples() {
   try {
     state.samples = await api('/api/samples');
     state.schemas = await api('/api/schemas');
+    fillExportTypes();
   } catch (error) {
     toast(`Could not load samples: ${error.message}`, 'error');
     return;
@@ -958,20 +959,42 @@ async function loadRecords(page = state.pages.records) {
 
 $('#records-refresh').addEventListener('click', () => loadRecords());
 
+/* Offered from the schema registry rather than hard-coded, so a new document
+   type is exportable the day it exists rather than the day somebody remembers
+   this list. `unknown` is filtered out - it is what the classifier says when it
+   could not tell, not something anyone means to export. */
+function fillExportTypes() {
+  const picker = $('#export-doc-type');
+  if (!picker || !state.schemas) return;
+  const keep = picker.value;
+  const types = Object.keys(state.schemas).filter((name) => name !== 'unknown').sort();
+  picker.innerHTML = '<option value="">All types — shared columns only</option>'
+    + types.map((name) => `<option value="${esc(name)}">${
+      esc(state.schemas[name].display_name || name)} — its own columns</option>`).join('');
+  picker.value = keep;
+}
+
 /* The export is a file download, not JSON, so it goes through the browser's own
    download machinery rather than `api()`. A plain anchor click keeps the
    Content-Disposition filename the server chose; fetching it into memory first
    would throw that away and copy the whole ledger through JS for nothing. */
 $('#records-export').addEventListener('click', () => {
   const format = $('#export-format').value;
-  const kind = state.recordKind ? `&record_kind=${encodeURIComponent(state.recordKind)}` : '';
+  const docType = $('#export-doc-type').value;
+  const params = new URLSearchParams({ format });
+  if (docType) params.set('doc_type', docType);
+  // Only scope by ledger kind when no document type was chosen - the two
+  // filters overlap (every invoice posts as a payable), and sending both
+  // narrows to their intersection for no reason the user asked for.
+  else if (state.recordKind) params.set('record_kind', state.recordKind);
+
   const link = document.createElement('a');
-  link.href = `/api/records/export?format=${encodeURIComponent(format)}${kind}`;
+  link.href = `/api/records/export?${params}`;
   link.download = '';
   document.body.append(link);
   link.click();
   link.remove();
-  toast(`Exporting the ledger as ${format.toUpperCase()}…`);
+  toast(`Exporting ${docType || 'every type'} as ${format.toUpperCase()}…`);
 });
 
 /* Each kind of record answers a different question, so the ledger is shown as

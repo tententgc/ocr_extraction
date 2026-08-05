@@ -912,7 +912,8 @@ def delete_record(record_id: str, reviewer: str = Query(default="reviewer")) -> 
 @app.get("/api/records/export", include_in_schema=True)
 def export_records(
     format: str = Query(default="csv", pattern="^(csv|jsonl)$"),
-    record_kind: str | None = Query(default=None),
+    doc_type: str | None = Query(default=None, description="invoice, receipt, contract, form"),
+    record_kind: str | None = Query(default=None, description="payable, expense, contract"),
     since: str | None = Query(default=None, description="posted on or after, YYYY-MM-DD"),
     until: str | None = Query(default=None, description="posted on or before, YYYY-MM-DD"),
 ) -> StreamingResponse:
@@ -922,6 +923,10 @@ def export_records(
     is not handed ten thousand rows at once, and an export that inherited that
     cap would quietly stop at the first page - the failure nobody notices until
     they reconcile against it.
+
+    `doc_type` picks the CSV columns as well as filtering the rows. The schemas
+    share almost nothing, so one header cannot describe an invoice and a
+    contract at the same time without being mostly empty for both.
     """
     settings = active_settings()
     try:
@@ -929,6 +934,7 @@ def export_records(
             RecordStore(settings.db_path),
             fmt=format,
             record_kind=record_kind,
+            doc_type=doc_type,
             since=since,
             until=until,
         )
@@ -936,7 +942,7 @@ def export_records(
         return JSONResponse(status_code=400, content={"detail": str(exc)})
 
     media = "text/csv" if format == "csv" else "application/x-ndjson"
-    filename = suggested_filename(format, record_kind)
+    filename = suggested_filename(format, record_kind, doc_type)
     return StreamingResponse(
         chunks,
         media_type=f"{media}; charset=utf-8",

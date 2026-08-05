@@ -30,6 +30,7 @@ from datetime import date
 from typing import Any, Iterable, Iterator
 
 from docuflow.db import load_json
+from docuflow.schemas.registry import DOCUMENT_SCHEMAS
 from docuflow.store.records import RecordStore
 
 # Excel on Windows assumes the system code page unless a file says otherwise,
@@ -40,12 +41,16 @@ BOM = "﻿"
 
 FORMATS = ("csv", "jsonl")
 
-# The columns a reconciliation actually uses, in the order it reads them.
+# What every record has, whatever kind of document produced it: who, how much,
+# when, and where it came from. These mean the same thing on an invoice, a
+# receipt and a contract, which is what makes them safe to put in one sheet.
+#
 # `payload` is deliberately absent - a JSON blob in a spreadsheet cell helps
-# nobody, and the fields worth having are pulled out below.
-CSV_COLUMNS: tuple[str, ...] = (
+# nobody, and the fields worth having are added per type below.
+LEDGER_COLUMNS: tuple[str, ...] = (
     "record_id",
     "posted_at",
+    "doc_type",
     "record_kind",
     "reference",
     "counterparty",
@@ -58,18 +63,40 @@ CSV_COLUMNS: tuple[str, ...] = (
     "posted_by",
     "document_id",
     "source_file",
-    "purchase_order_ref",
-    "subtotal",
-    "tax_amount",
-    "total_amount",
     "confidence",
     "decision",
     "posted_via",
     "line_item_count",
 )
 
-# Which extracted field carries the buyer's own reference, per document type.
-_PAYLOAD_FIELDS = ("purchase_order_ref", "subtotal", "tax_amount", "total_amount")
+
+def columns_for(doc_type: str | None) -> tuple[str, ...]:
+    """The header for this export.
+
+    The three document types share almost nothing. An invoice has
+    `purchase_order_ref`, `subtotal` and `tax_amount`; a contract has
+    `party_a`, `party_b`, `contract_value` and two dates that are not the same
+    two dates; a receipt has a merchant and an expense category. Across all
+    three, `currency` is the only extracted field in common.
+
+    So a single-type export gets that type's own fields appended, and a mixed
+    export gets the ledger columns alone. The alternative - a union of every
+    schema - produces a sheet that is mostly empty cells and asks the reader to
+    work out which columns apply to which row.
+    """
+    if doc_type is None:
+        return LEDGER_COLUMNS
+    schema = DOCUMENT_SCHEMAS.get(doc_type)
+    if schema is None:
+        return LEDGER_COLUMNS
+    # `currency` already carries the ledger's own value; a second column of the
+    # same name would silently win or lose depending on dict ordering.
+    extra = tuple(f.name for f in schema.fields if f.name not in LEDGER_COLUMNS)
+    return LEDGER_COLUMNS + extra
+
+
+# Kept for callers that want the plain ledger shape without asking for a type.
+CSV_COLUMNS = LEDGER_COLUMNS
 
 
 class ExportError(ValueError):
@@ -94,21 +121,30 @@ def _payload_of(row: dict[str, Any]) -> dict[str, Any]:
         return {}
 
 
-def flatten(row: dict[str, Any]) -> dict[str, Any]:
-    """One ledger row as flat, spreadsheet-shaped values."""
+def flatten(row: dict[str, Any], columns: tuple[str, ...] | None = None) -> dict[str, Any]:
+    """One ledger row as flat, spreadsheet-shaped values.
+
+    Anything in `columns` that is not a ledger column is looked up in the
+    document's extracted fields, so the same function serves an invoice export
+    and a contract export without knowing which is which.
+    """
+    columns = columns or LEDGER_COLUMNS
     payload = _payload_of(row)
     fields = payload.get("fields") or {}
-    flat: dict[str, Any] = {column: row.get(column) for column in CSV_COLUMNS}
+    flat: dict[str, Any] = {column: row.get(column) for column in columns}
 
     # Joined on from the document by `list_with_source` - the record's own
     # payload holds the extracted values, not the file they were read from.
     flat["source_file"] = row.get("source_file") or ""
-    for name in _PAYLOAD_FIELDS:
-        flat[name] = fields.get(name)
+    flat["doc_type"] = row.get("doc_type") or ""
     flat["confidence"] = payload.get("confidence")
     flat["decision"] = payload.get("decision") or ""
     flat["posted_via"] = payload.get("posted_via") or ""
     flat["line_item_count"] = len(payload.get("line_items") or ())
+
+    for column in columns:
+        if column not in LEDGER_COLUMNS:
+            flat[column] = fields.get(column)
     return flat
 
 
@@ -145,11 +181,40 @@ def validate_range(since: str | None, until: str | None) -> tuple[str | None, st
     return since, until
 
 
+# A document type is what the page is; a record kind is what the ledger calls
+# the entry it became. They are not the same word and never have been:
+_KIND_OF = {"invoice": "payable", "receipt": "expense", "contract": "contract"}
+
+
+def validate_doc_type(doc_type: str | None) -> str | None:
+    """Refuse a type nobody can produce, rather than exporting an empty file.
+
+    Asking for `--doc-type payable` is an easy mistake - it is the word the
+    ledger uses - and silently returning a header row and nothing else reads
+    as "there are no invoices", which is a far worse answer than an error.
+    """
+    if doc_type is None:
+        return None
+    known = sorted(DOCUMENT_SCHEMAS)
+    if doc_type in known:
+        return doc_type
+
+    produced_by = {kind: doc for doc, kind in _KIND_OF.items()}
+    if doc_type in produced_by:
+        raise ExportError(
+            f"{doc_type!r} is a record kind, not a document type. "
+            f"{produced_by[doc_type]} documents post as {doc_type} records - "
+            f"use doc_type={produced_by[doc_type]}, or record_kind={doc_type}."
+        )
+    raise ExportError(f"unknown document type {doc_type!r}; try one of: {', '.join(known)}")
+
+
 def iter_records(
     store: RecordStore,
     record_kind: str | None = None,
     since: str | None = None,
     until: str | None = None,
+    doc_type: str | None = None,
     batch: int = 500,
 ) -> Iterator[dict[str, Any]]:
     """Every matching record, read a page at a time.
@@ -163,10 +228,13 @@ def iter_records(
     nothing in its body runs until it is iterated.
     """
     since, until = validate_range(since, until)
+    doc_type = validate_doc_type(doc_type)
 
     offset = 0
     while True:
-        rows = store.list_with_source(record_kind=record_kind, limit=batch, offset=offset)
+        rows = store.list_with_source(
+            record_kind=record_kind, doc_type=doc_type, limit=batch, offset=offset
+        )
         if not rows:
             return
         for row in rows:
@@ -177,17 +245,23 @@ def iter_records(
         offset += batch
 
 
-def to_csv(rows: Iterable[dict[str, Any]]) -> Iterator[str]:
-    """Flat rows, header first, BOM before the header."""
+def to_csv(rows: Iterable[dict[str, Any]], doc_type: str | None = None) -> Iterator[str]:
+    """Flat rows, header first, BOM before the header.
+
+    The header depends on the type being exported: one type gets its own
+    schema's fields, a mixed export gets the columns that mean the same thing
+    on all of them.
+    """
+    columns = columns_for(doc_type)
     buffer = io.StringIO()
-    writer = csv.DictWriter(buffer, fieldnames=list(CSV_COLUMNS), extrasaction="ignore")
+    writer = csv.DictWriter(buffer, fieldnames=list(columns), extrasaction="ignore")
 
     writer.writeheader()
     yield BOM + buffer.getvalue()
     buffer.seek(0), buffer.truncate(0)
 
     for row in rows:
-        writer.writerow(flatten(row))
+        writer.writerow(flatten(row, columns))
         yield buffer.getvalue()
         buffer.seek(0), buffer.truncate(0)
 
@@ -211,6 +285,7 @@ def export(
     record_kind: str | None = None,
     since: str | None = None,
     until: str | None = None,
+    doc_type: str | None = None,
 ) -> Iterator[str]:
     """The ledger, streamed in the requested format.
 
@@ -225,10 +300,16 @@ def export(
     if fmt not in FORMATS:
         raise ExportError(f"format must be one of {', '.join(FORMATS)}, not {fmt!r}")
     since, until = validate_range(since, until)
-    rows = iter_records(store, record_kind=record_kind, since=since, until=until)
-    return to_csv(rows) if fmt == "csv" else to_jsonl(rows)
+    doc_type = validate_doc_type(doc_type)
+    rows = iter_records(
+        store, record_kind=record_kind, since=since, until=until, doc_type=doc_type
+    )
+    return to_csv(rows, doc_type) if fmt == "csv" else to_jsonl(rows)
 
 
-def suggested_filename(fmt: str, record_kind: str | None = None) -> str:
-    stem = f"docuflow-{record_kind or 'ledger'}-{date.today().isoformat()}"
-    return f"{stem}.{fmt}"
+def suggested_filename(
+    fmt: str, record_kind: str | None = None, doc_type: str | None = None
+) -> str:
+    """Named for what is in it, so three exports in a folder stay apart."""
+    what = doc_type or record_kind or "ledger"
+    return f"docuflow-{what}-{date.today().isoformat()}.{fmt}"

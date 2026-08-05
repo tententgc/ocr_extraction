@@ -16,8 +16,9 @@ import pytest
 
 from docuflow.export import (
     BOM,
-    CSV_COLUMNS,
+    LEDGER_COLUMNS,
     ExportError,
+    columns_for,
     export,
     flatten,
     iter_records,
@@ -94,20 +95,25 @@ class TestCsvIsForAPerson:
 
     def test_the_payload_is_flattened_not_pasted_in(self, records, posted) -> None:
         """A JSON blob in a spreadsheet cell helps nobody."""
-        rows = _read_csv("".join(export(records, "csv")))
+        rows = _read_csv("".join(export(records, "csv", doc_type="invoice")))
         assert "payload" not in rows[0]
         assert rows[0]["purchase_order_ref"] == "PO-2026-0412"
         assert rows[0]["source_file"], "the file it came from is how a person finds it again"
 
     def test_amounts_stay_numeric(self, records, posted) -> None:
         """So the column can be summed without cleaning it first."""
-        rows = _read_csv("".join(export(records, "csv")))
+        rows = _read_csv("".join(export(records, "csv", doc_type="invoice")))
         assert float(rows[0]["amount"]) == pytest.approx(200090.0)
         assert float(rows[0]["subtotal"]) == pytest.approx(187000.0)
 
     def test_the_header_is_the_declared_column_order(self, records, posted) -> None:
         rows = _read_csv("".join(export(records, "csv")))
-        assert tuple(rows[0].keys()) == CSV_COLUMNS
+        assert tuple(rows[0].keys()) == LEDGER_COLUMNS
+
+    def test_a_mixed_export_says_which_type_each_row_is(self, records, posted) -> None:
+        """Without it, one sheet of invoices and contracts is unreadable."""
+        rows = _read_csv("".join(export(records, "csv")))
+        assert all(row["doc_type"] for row in rows)
 
 
 class TestJsonlIsForASystem:
@@ -202,18 +208,97 @@ class TestOddRows:
                 ("{not json", posted[0]["record_id"]),
             )
 
-        rows = _read_csv("".join(export(records, "csv")))
+        rows = _read_csv("".join(export(records, "csv", doc_type="invoice")))
         assert len(rows) == len(posted)
         damaged = next(r for r in rows if r["record_id"] == posted[0]["record_id"])
         assert damaged["amount"], "the ledger columns survive a bad payload"
         assert damaged["purchase_order_ref"] == "", "the flattened ones come back empty"
 
     def test_flatten_covers_every_declared_column(self, records, posted) -> None:
-        row = records.list(limit=1)[0]
-        assert set(flatten(row)) == set(CSV_COLUMNS)
+        row = records.list_with_source(limit=1)[0]
+        assert set(flatten(row)) == set(LEDGER_COLUMNS)
+        invoice_columns = columns_for("invoice")
+        assert set(flatten(row, invoice_columns)) == set(invoice_columns)
+
+
+class TestEachDocumentTypeHasItsOwnShape:
+    """The three schemas share almost nothing.
+
+    An invoice has `purchase_order_ref` and `subtotal`; a contract has
+    `party_a`, `party_b` and `contract_value`; a receipt has a merchant and an
+    expense category. Exporting all of them under one invoice-shaped header
+    gives contracts a row of empty cells and drops the fields that matter.
+    """
+
+    def test_an_invoice_export_carries_invoice_fields(self) -> None:
+        columns = columns_for("invoice")
+        assert {"purchase_order_ref", "subtotal", "tax_amount", "bank_account"} <= set(columns)
+        assert "party_a" not in columns
+
+    def test_a_contract_export_carries_contract_fields(self) -> None:
+        columns = columns_for("contract")
+        assert {"party_a", "party_b", "contract_value", "expiry_date"} <= set(columns)
+        assert "purchase_order_ref" not in columns
+
+    def test_a_receipt_export_carries_receipt_fields(self) -> None:
+        columns = columns_for("receipt")
+        assert {"merchant_name", "expense_category", "payment_method"} <= set(columns)
+        assert "party_a" not in columns
+
+    def test_a_mixed_export_falls_back_to_what_they_share(self) -> None:
+        """Not a union of every schema - that is a sheet of mostly empty cells."""
+        assert columns_for(None) == LEDGER_COLUMNS
+        for name in ("purchase_order_ref", "party_a", "merchant_name"):
+            assert name not in LEDGER_COLUMNS
+
+    def test_the_ledger_columns_are_never_duplicated_by_a_schema_field(self) -> None:
+        """`currency` is on every schema and already a ledger column."""
+        for doc_type in ("invoice", "receipt", "contract"):
+            columns = columns_for(doc_type)
+            assert len(columns) == len(set(columns)), f"{doc_type} repeats a column"
+
+    def test_every_type_keeps_the_shared_columns_first(self) -> None:
+        for doc_type in ("invoice", "receipt", "contract"):
+            assert columns_for(doc_type)[: len(LEDGER_COLUMNS)] == LEDGER_COLUMNS
+
+
+class TestChoosingTheType:
+    def test_only_that_type_is_exported(self, records, posted) -> None:
+        rows = _read_csv("".join(export(records, "csv", doc_type="invoice")))
+        assert rows and all(row["doc_type"] == "invoice" for row in rows)
+
+    def test_a_type_with_nothing_posted_yields_a_header_and_no_rows(
+        self, records, posted
+    ) -> None:
+        """Empty is a real answer here - the type exists, nothing of it posted."""
+        text = "".join(export(records, "csv", doc_type="contract"))
+        assert _read_csv(text) == []
+        assert "party_a" in text, "the header still describes what a contract would hold"
+
+    def test_a_record_kind_passed_as_a_doc_type_is_caught(self, records) -> None:
+        """`payable` is the ledger's word for an invoice, and an easy mistake.
+
+        Exporting nothing would read as "we have no invoices", which is worse
+        than being told the argument was wrong.
+        """
+        with pytest.raises(ExportError, match="record kind, not a document type"):
+            export(records, "csv", doc_type="payable")
+
+    def test_an_unknown_type_lists_the_real_ones(self, records) -> None:
+        with pytest.raises(ExportError, match="unknown document type"):
+            export(records, "csv", doc_type="quotation")
+
+    def test_jsonl_needs_no_header_so_the_type_only_filters(self, records, posted) -> None:
+        lines = "".join(export(records, "jsonl", doc_type="invoice")).strip().splitlines()
+        assert lines
+        for line in lines:
+            assert json.loads(line)["doc_type"] == "invoice"
 
 
 def test_the_filename_says_what_and_when() -> None:
     assert suggested_filename("csv").startswith("docuflow-ledger-")
     assert suggested_filename("jsonl", "invoice").endswith(".jsonl")
-    assert "invoice" in suggested_filename("csv", "invoice")
+    assert "contract" in suggested_filename("csv", doc_type="contract")
+    assert "invoice" in suggested_filename("csv", doc_type="invoice", record_kind="payable"), (
+        "the document type is what was asked for, so it names the file"
+    )

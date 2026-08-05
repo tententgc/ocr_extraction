@@ -190,7 +190,14 @@ def cmd_demo(args: argparse.Namespace) -> int:
 
 def cmd_export(args: argparse.Namespace) -> int:
     """Write the ledger to a file, or to stdout so it can be piped."""
-    from docuflow.export import ExportError, export, suggested_filename
+    from docuflow.export import (
+        LEDGER_COLUMNS,
+        ExportError,
+        columns_for,
+        export,
+        suggested_filename,
+    )
+    from docuflow.schemas.registry import DOCUMENT_SCHEMAS
 
     settings = get_settings()
     try:
@@ -198,6 +205,7 @@ def cmd_export(args: argparse.Namespace) -> int:
             RecordStore(settings.db_path),
             fmt=args.format,
             record_kind=args.kind,
+            doc_type=args.doc_type,
             since=getattr(args, "from"),
             until=args.to,
         )
@@ -210,7 +218,7 @@ def cmd_export(args: argparse.Namespace) -> int:
             sys.stdout.write(chunk)
         return 0
 
-    path = Path(args.out or suggested_filename(args.format, args.kind))
+    path = Path(args.out or suggested_filename(args.format, args.kind, args.doc_type))
     written = 0
     # newline="" so the csv module owns line endings; Excel wants CRLF and
     # Python would otherwise translate them again on Windows.
@@ -221,6 +229,18 @@ def cmd_export(args: argparse.Namespace) -> int:
     rows = max(written - 1, 0) if args.format == "csv" else written
     print(f"Wrote {rows} record(s) to {path}")
     if args.format == "csv":
+        # Which columns came out is the thing a reader needs to know, because
+        # it changes with the type: an invoice export carries subtotal and tax,
+        # a contract export carries the two parties and the value.
+        if args.doc_type:
+            extra = [c for c in columns_for(args.doc_type) if c not in LEDGER_COLUMNS]
+            print(f"  {args.doc_type} columns: {', '.join(extra)}")
+        else:
+            # `unknown` is what the classifier says when it could not tell, not
+            # something anyone means to ask for.
+            offered = sorted(name for name in DOCUMENT_SCHEMAS if name != "unknown")
+            print("  Mixed types, so only the columns they share. Pass --doc-type "
+                  f"({', '.join(offered)}) for that type's own fields.")
         print("  Opens in Excel as-is; the leading byte-order mark keeps Thai names readable.")
     return 0
 
@@ -646,14 +666,26 @@ def main(argv: list[str] | None = None) -> int:
         description=(
             "CSV opens in Excel with the nesting flattened into columns; JSONL keeps "
             "each record whole for another system to read. Dates filter on when the "
-            "record was posted, not the date printed on the document."
+            "record was posted, not the date printed on the document. "
+            "--doc-type also decides the CSV columns: the three schemas share almost "
+            "nothing, so an invoice export carries subtotal and tax while a contract "
+            "export carries the two parties and the value. Without it you get only "
+            "the columns that mean the same thing on every type."
         ),
     )
     export_parser.add_argument("--format", choices=("csv", "jsonl"), default="csv")
     export_parser.add_argument(
         "--out", default=None, help="output file, or - for stdout (default: a dated name)"
     )
-    export_parser.add_argument("--kind", default=None, help="only this record kind, e.g. invoice")
+    export_parser.add_argument(
+        "--doc-type",
+        dest="doc_type",
+        default=None,
+        help="only this kind of document: invoice, receipt, contract, form",
+    )
+    export_parser.add_argument(
+        "--kind", default=None, help="only this ledger kind: payable, expense, contract"
+    )
     export_parser.add_argument("--from", default=None, metavar="YYYY-MM-DD", dest="from")
     export_parser.add_argument("--to", default=None, metavar="YYYY-MM-DD")
     export_parser.set_defaults(func=cmd_export)
