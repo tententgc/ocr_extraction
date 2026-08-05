@@ -9,9 +9,16 @@ Full docs: [README.md](README.md) · [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md
 
 **Before starting anything substantial, read
 [docs/TECH-DEBT.th.md](docs/TECH-DEBT.th.md).** It is the standing work list,
-ordered by how soon each item bites rather than by size. The entry that matters
-to anyone touching this code: `web/app.js` is 2,053 lines with no tests at all
-and is where every UI bug found so far has come from.
+ordered by how soon each item bites rather than by size.
+
+`tests/test_web_ui.py` covers `web/app.js` in a real browser — every bug in
+this file is one that shipped, put back in front of chromium. It is marked
+`ui` and skipped by default because it starts a server and drives a browser;
+run it with `-m ui`, and install one with `python -m playwright install
+chromium`. **A UI test that passes at rest is worth nothing**: the first
+version of the sticky-header test scrolled a page that could not scroll, so
+`scrollY` stayed 0 and it passed with the bug put back. Any test that depends
+on scrolling must assert the page actually moved.
 
 ---
 
@@ -81,7 +88,8 @@ docuflow rules load real_samples/rules.json  # 5 expression + 2 agent rules
 docuflow real-samples --out real_samples     # regenerate the corpus
 docuflow evaluate --out report.json          # accuracy, coverage, time saved
 docuflow serve                               # the web UI on :8000
-.venv/bin/python -m pytest -q                # ~753 tests, no API key needed
+.venv/bin/python -m pytest -q                # ~790 tests, no API key needed
+.venv/bin/python -m pytest -m ui -q          # + the browser tests, opt-in
 ```
 
 Regenerating the corpus: edit `src/docuflow/samples/real_world.py`, never the
