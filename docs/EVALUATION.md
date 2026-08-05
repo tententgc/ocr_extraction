@@ -1,551 +1,438 @@
 # Evaluation
 
-What the system does on twenty-four documents that arrive the way documents
-actually arrive, and — more usefully — what it got wrong and why.
+What the system does on thirty documents that arrive the way documents actually
+arrive — and, more usefully, what it got wrong and why.
 
-The raw output behind every number here is
-[`eval/real-samples.json`](eval/real-samples.json) — per document, per field.
+**Thai version: [EVALUATION.th.md](EVALUATION.th.md).**
 
-Run it yourself:
+| | |
+|---|---|
+| Raw report | [`eval/real-samples.json`](eval/real-samples.json) — per document, per field |
+| Console output | [`eval/real-samples.txt`](eval/real-samples.txt) — exactly what the run printed |
+| Run date | 2026-08-06 |
+
+Reproduce it:
 
 ```bash
-docuflow reset --confirm
-docuflow master load real_samples/master
-docuflow rules load real_samples/rules.json
-docuflow evaluate --out report.json
+docuflow evaluate --corpus real_samples --out report.json
 ```
 
----
-
-## What is being measured, and why these three
-
-The brief asks for accuracy, coverage and time saved. Two of those are
-measurements and one is a model, and it matters which is which.
-
-**Accuracy** is field-by-field against ground truth the corpus carries. It is
-the number everyone asks for and the least interesting one here, because a
-system can be 99% accurate and still be unusable.
-
-**Silent error rate** is the number that matters, and it is not in the brief.
-It counts documents that **posted automatically while carrying a wrong critical
-value** — a wrong total, a wrong invoice number, a wrong bank account. A
-pipeline that is right 95% of the time and silently wrong 5% of the time is
-worse than useless in accounts payable, because the 5% becomes wrong payments
-and nobody knows which ones. Field accuracy in the low nineties with a zero
-silent error rate is deployable. Ninety-nine per cent with silent errors is not.
-
-**Coverage** is the straight-through rate: how many documents needed nobody. A
-high number here is only worth having alongside a zero above it; a system that
-posts everything scores 100% coverage and is a liability.
-
-**Defect recall** is what stops the corpus flattering the reader. Twelve of the
-twenty-four documents have a specific defect planted in them and declare which
-rule should catch it. A corpus that only measured reading would score well on a
-system that validates nothing.
-
-**False alarms** are the number the others cannot see. Twelve documents are
-correct and must post; six of those are deliberately laid out unlike anything
-the system was tuned on. A pipeline that holds valid documents costs nothing
-measurable per document and everything in aggregate, because a queue full of
-false alarms is a queue nobody reads — at which point the missed defects stop
-being caught either.
-
-**Time saved** is modelled, not measured, and the assumptions print with the
-number every time. See [the assumptions](#the-time-saved-model) below — they are
-deliberately conservative and the arithmetic is allowed to conclude that the
-system made things worse.
+That command loads the corpus's own master data and rules, runs every document,
+and prints the report below. It did not exist until this run: the command the
+previous version of this document told you to use scored a **different corpus**,
+and the script behind the published numbers was never committed. A figure nobody
+can reproduce is a figure nobody should believe.
 
 ---
 
-## The setup
+## 1. The headline
+
+| Question | Answer |
+|---|---|
+| **Did anything wrong reach the ledger?** | **Yes — 2 of 30 (6.7%).** Both Thai, both the same one-stroke character confusion in a vendor name. |
+| Did the gate open correctly? | **93.3%** — 28 of 30 went the way the corpus said |
+| Were defects caught? | **15 of 15 planted defects (100%)** |
+| Were values read correctly? | **90.0%** exact, precision 95%, recall 90% |
+| Was the page read? | **86.8%** characters on the 15 pages an engine had to recognise |
+| Is the record usable downstream? | **80%** complete, valid and self-consistent |
+| What did it cost? | **39.4s** per document mean, 70.4s p90 |
+
+**The silent error rate is the number that matters and it is not zero.** Two
+documents posted automatically while carrying a wrong critical value. Section 6
+is about them, because a system that is 90% accurate and silently wrong 6.7% of
+the time is a system whose output nobody can trust without checking — which is
+the work it was supposed to remove.
+
+---
+
+## 2. How the evaluation works
+
+### 2.1 The corpus states its answer before the system is asked
 
 | | |
 |---|---|
-| Corpus | [`real_samples/`](../real_samples/) — 24 documents, 12 that should post and 12 that should not. Six Thai documents were added afterwards and are measured separately in [section 5](#5-does-it-work-on-thai-documents); every number in sections 1–4 is from the 24-document run, unchanged. |
-| Arrival | 14 digital PDFs, 5 scans, 3 phone photographs, 2 faded photocopies |
-| OCR | Typhoon OCR 1.5 (3B) on-device via Ollama |
+| Corpus | [`real_samples/`](../real_samples/) — 30 documents |
+| Should post (`_True`) | 16 |
+| Should be held (`_False`) | 14 |
+| Arrival | 16 digital PDFs, 8 scans, 4 phone photographs, 2 faded photocopies |
+| Language | 22 English, 8 Thai |
+| Types | 23 invoices, 3 receipts, 3 contracts, 1 form |
+| Master data | 13 vendors, 12 purchase orders, 6 contracts, loaded from CSV |
+| Rules | 26 built-in + 7 written for this corpus (5 expression, 2 agent) |
+| OCR | Typhoon OCR 1.5 (3B) on-device via Ollama, after a PDF text-layer fast path |
 | Reading 1 | Typhoon `typhoon-v2.5-30b-a3b-instruct`, field-first |
 | Reading 2 | Claude `claude-opus-5`, label-first — a different backend on purpose |
-| Rules | 26 built-in + 7 written for this corpus (5 expression, 2 agent) |
-| Master data | 13 vendors, 10 purchase orders, 5 contracts, loaded from CSV |
 | Auto-post threshold | 84% confidence |
 
-The two readings are deliberately on different backends. Two passes of the same
-model over the same page repeat the same mistake, so their agreement would mean
-much less than it appears to.
+The expected outcome is in the filename. `_True` means nothing is wrong and
+holding it is a false alarm; `_False` means something is wrong and posting it is
+a silent error. **The two are not symmetric and are never summed:** a missed
+defect is a wrong payment, a false alarm is a wasted minute.
 
-Documents run in numeric order because document 15 is a duplicate of document 1
-and can only be detected once document 1 has posted.
+The two readings are on **different backends** deliberately. Two passes of one
+model over one page repeat the same mistake, so their agreement would mean much
+less than it appears to.
 
-The filename carries the expected outcome — `_True` should post, `_False` should
-be held — so the evaluation compares two decisions rather than grading the
-system against itself.
+Documents run in numeric order, because document 15 is a duplicate of document 1
+and cannot be detected until document 1 has posted.
+
+### 2.2 What is measured, and why each is needed
+
+| Measurement | Question it answers | Why the others cannot |
+|---|---|---|
+| **Precision / recall** | Of what was answered, how much was right; of what was there, how much was found | Accuracy alone cannot see a rare class never recognised, nor a value invented for a field the document does not have |
+| **OCR accuracy** | Was the page read at all | A field wrong because the characters never arrived is not an extraction problem, and fixing extraction will not help |
+| **Data quality** | Is the record fit to hand to another system | The only one that still works in production, where there is no answer sheet |
+| **Gatekeeping** | Did the document go the right way, and did each rule fire for the reason it exists | Decision counts cannot tell a working rule from a silent one that another rule happened to cover |
+| **Silent error rate** | Did a wrong critical value post with nobody in the way | Everything above can look healthy while this is non-zero |
+| **Latency & cost** | What it took | An optimisation is only worth having if the numbers above it did not move |
+
+### 2.3 Three things the harness refuses to do quietly
+
+Each of these moves a headline number in the flattering direction, and each was
+found by building this harness rather than by reasoning about it.
+
+**It will not grade against rules that were never asked.** `Settings` fills
+anything it was not given from a `.env`. This checkout has seven rules disabled,
+and two of them — `bank_account_matches_vendor`, `po_amount_within_tolerance` —
+belong to documents whose whole purpose is to be held. Left alone the run reports
+**two missed defects**, the metric that means wrong payments, for a reason that
+lives in an untracked file. The run switches them back on and says so in the
+report.
+
+**It will not score a transcript that was copied rather than read.** The
+text-layer fast path returns the PDF's own text, and `reference_text` is that
+same text from that same place, so character error rate is zero *by
+construction*. Fifteen of thirty documents took that path.
+
+| | Character accuracy | Value recall |
+|---|---|---|
+| Pages an engine recognised (15) | **86.8%** | **86.2%** |
+| Pooled with the text layer (30) | 93.7% | 91.6% |
+
+The recognised figure is the one quoted as OCR accuracy. The pooled one is
+printed labelled, not hidden.
+
+**It will not grade against values the page never prints.** Eleven of 298
+gradeable values (3.7%) are claimed by ground truth and absent from the text the
+renderer was handed:
+
+| Field | N | Documents | Why |
+|---|---|---|---|
+| `purchase_order_ref` | 3 | 4, 16, 19 | the `dense` and `two_column` layouts draw no purchase-order line |
+| `vendor_tax_id` | 2 | 6, 10 | `minimal` labels nothing — that is its stated purpose |
+| `payment_terms` | 2 | 6, 10 | same layout |
+| `payment_method` | 2 | 11, 24 | receipts do not print one |
+| `due_date` | 2 | 7, 19 | derivable from the payment terms, never written down |
+
+These report as missing on **every engine anyone tries**, so field recall below
+is understated by roughly this much. They are listed and **not dropped** — a
+harness that silently discards the ground truth it cannot verify prints a better
+number every time the corpus gets worse.
+
+Two more corpus notes, reported for the same reason:
+
+- `18_invoice_unlabelled_amounts_True.jpg` has a 196-character text layer, so
+  nothing can be proved about its ground truth either way.
+- `3_invoice_photo_on_a_desk_False.jpg` must be held and names no rule. Its
+  defect is real — it quotes `PO-2026-0545`, the only closed purchase order in
+  the register — but because it is unstated, whichever rule catches it is scored
+  as having fired unexpectedly and defect recall never counts it.
 
 ---
 
-## The four questions
+## 3. Accuracy, precision and recall
 
-| | Result |
-|---|---|
-| **Did anything wrong reach the ledger?** | **No.** 0 missed defects out of 12 documents that should have been held. |
-| **Was the page read?** | 92.8% character accuracy; **90.3% recall** on the values that become a payment. |
-| **Did the gate open correctly?** | 87.5% — 21 of 24 documents went the way the corpus said they should. |
-| **Did each rule earn its place?** | 12 rules exercised, **all 12 at full recall**. 18 untested by this corpus. |
+### 3.1 Document type — 100%
 
-24 documents, 789 seconds (33s each). Field accuracy 252/289 (87.2%). Time saved,
-modelled: 158 of 180 manual minutes (88%).
+| Type | N | Predicted | Precision | Recall | F1 |
+|---|---|---|---|---|---|
+| invoice | 23 | 23 | 100% | 100% | 100% |
+| receipt | 3 | 3 | 100% | 100% | 100% |
+| contract | 3 | 3 | 100% | 100% | 100% |
+| form | 1 | 1 | 100% | 100% | 100% |
+| **Macro** | | | **100%** | **100%** | **100%** |
+
+Macro averaging matters here even at 100%. Twenty-three of thirty documents are
+invoices, so answering "invoice" every time scores **77% accuracy** while never
+having recognised a receipt — and that happened on this project once, because a
+Thai till prints `ใบกำกับภาษีอย่างย่อ`, an *abbreviated* tax invoice, which is a
+receipt and contains the invoice keyword whole. Macro recall for `receipt` would
+have been 0. Accuracy would have said 77%.
+
+### 3.2 Extracted values
+
+| | Count | |
+|---|---|---|
+| **Precision** | **95%** | of 341 values answered, 325 were right |
+| **Recall** | **90%** | of 361 values present, 325 were found |
+| **F1** | **93%** | |
+| Wrong | 16 | answered, and not right |
+| Missing | 20 | there, and not found — the safe way to be wrong |
+| **Spurious** | **0** | not there, and answered anyway |
+
+**Zero spurious values is the most reassuring number in this section**, and it is
+invisible to accuracy computed over ground-truth fields — a value invented for a
+field the document does not have is never compared against anything. The system
+never made one up.
+
+Weakest fields:
+
+| Field | Precision | Recall | F1 | Wrong | Missing |
+|---|---|---|---|---|---|
+| `contract_value` | 67% | 67% | 67% | 1 | 0 |
+| `party_a` | 67% | 67% | 67% | 1 | 0 |
+| `contract_number` | 100% | 67% | 80% | 0 | 1 |
+| `buyer_name` | 83% | 83% | 83% | 4 | 0 |
+| `purchase_order_ref` | 100% | 75% | 86% | 0 | 3 |
+| `vendor_tax_id` | 94% | 79% | 86% | 1 | 3 |
+
+Contracts are the weak type — three documents, so one mistake is 33% — and
+`purchase_order_ref` and `vendor_tax_id` are dominated by the undrawn values in
+§2.3 rather than by reading failures.
 
 ---
 
-## 1. Was the page read correctly?
+## 4. Was the page read?
 
-Every other number is downstream of this one. Two measurements, because they
-answer different questions and they disagree.
+| | Recognised pages (15) | Pooled with text layer (30) |
+|---|---|---|
+| Character accuracy | **86.8%** | 93.7% |
+| Character error rate | 13.20% | 6.3% |
+| Value recall | **86.2%** (119/138) | 91.6% |
+
+Worst-read documents:
+
+| Document | Characters | Values | Lost |
+|---|---|---|---|
+| `11_receipt_photographed_True.jpg` | 55.3% | 86% | `payment_method` |
+| `24_receipt_clean_thermal_True.pdf` | 55.4% | 86% | `payment_method` |
+| `16_invoice_line_items_do_not_sum_False.jpg` | 64.0% | 40% | invoice number, both dates |
+| `27_receipt_thai_fuel_station_True.jpg` | 69.4% | **100%** | — |
+
+**The two receipts at ~55% are a caution about the metric, not the engine.** An
+80mm receipt is a few hundred characters, so the denominator is tiny and the
+OCR's tidier line breaking dominates the edit distance. Both still recovered 86%
+of the values that matter and every amount on them is correct. The Thai fuel
+receipt makes the point exactly: 69.4% characters, **100% of the values**.
+
+That divergence is the reason both numbers are reported. CER describes the
+transcript; value recall describes the digits that become a payment.
+
+---
+
+## 5. Data quality — usable without an answer sheet
+
+The only section that keeps working in production.
+
+| | | |
+|---|---|---|
+| Completeness | **88.8%** | 357 of 402 schema fields filled |
+| Critical fields | **89.3%** | 176 of 197 |
+| **Validity** | **100%** | 0 values in a shape their type does not promise |
+| Grounded in the page | **98.9%** | 4 values with no span behind them |
+| Self-consistent | **26/30** | documents whose arithmetic closes |
+| **Usable as-is** | **80%** | 24 of 30 complete, valid and self-consistent |
+
+**Validity at 100% is worth stating plainly.** Every date is ISO, every amount is
+a number, every currency is a three-letter code, every percentage is in range.
+Nothing reached the ledger in a shape another system has to guess about — which
+is where the quiet failures live: a tax rate stored as `"7%"` reaches
+`tax_rate_consistent`, which *skips* rather than fails, and the check stops
+existing without a word.
+
+An absent field is counted, not condemned. An invoice with no purchase-order
+reference is a legitimate invoice; whether one is *required* is business policy
+and configurable.
+
+---
+
+## 6. The gate, and the two silent errors
 
 | | |
 |---|---|
-| Character accuracy | **92.78%** (CER 7.22%, over 13,587 reference characters) |
-| Value recall | **90.3%** — 215 of 238 values that matter survived into the transcript |
+| Decision accuracy | **93.3%** — 28 of 30 |
+| **Missed defects** | **0 of 14 (0%)** — nothing that should have been held posted |
+| False alarms | 2 of 16 (12.5%) |
+| Planted defects caught | **15 of 15 (100%)** |
+| Rules exercised | 12 tested, 22 **untested** |
+| Auto-posted | 14 of 30 (47%) |
 
-The reference is exact rather than estimated: the corpus is drawn here, so the
-PDF text layer is the string the renderer was given, captured before the page
-was ever photographed.
+False alarms: `18_invoice_unlabelled_amounts_True.jpg` and
+`21_invoice_minimal_unlabelled_True.pdf` — both the `minimal` layout, which
+labels nothing on purpose. Held for review, nothing wrong with either. Cheap
+once; the number to watch if the layout becomes common.
 
-**Where the characters went.** Two documents drag the corpus figure down hard,
-and both are thermal receipts at ~55%. An 80mm receipt is a few hundred
-characters, so the denominator is tiny and any reformatting dominates — the OCR
-returns a tidier transcript than the raw text layer, and on a page that short
-that reads as a third of the characters being wrong. Both receipts nonetheless
-score 86% value recall and every amount on them is correct. It is a caution
-about the metric on short pages, not about the engine.
+Twenty-two rules are reported **untested**, not passing. Untested is the honest
+word, and the list is the specification for the next batch of corpus documents.
 
-Excluding those two, character accuracy across the other 20 documents is above
-89% everywhere and above 93% on all but three.
+### 6.1 The two documents that posted while wrong
 
-**Where the values went.** The 23 lost values cluster, and the clustering is the
-useful part:
+Both are Thai, and both are **the same failure**:
 
-| Document | Lost | Why |
-|---|---|---|
-| `16_line_items_do_not_sum` (photocopy) | 6 of 10 | the worst page in the corpus, 72% characters |
-| `13_contract_already_expired` (photocopy) | 3 of 6 | faded prose, 89.8% characters |
-| `19_two_column_layout` | 3 of 12 | `buyer_name` misread as "Mirthphol", an inserted h |
-| `6`, `10` | `vendor_tax_id`, `payment_terms` | the layout prints neither |
-
-The two faded photocopies account for nine of the twenty-three on their own.
-Both were held.
-
----
-
-## 2. Did each rule fire for the reason it exists?
-
-Every document declares which rules its defect should trip, so each rule gets a
-confusion matrix rather than a share of a corpus-wide score.
-
-**Twelve rules exercised, twelve at full recall.** Nothing that should have
-fired stayed silent:
-
-| Rule | Recall | Precision | Fired |
-|---|---|---|---|
-| `invoice_totals_consistent` | 100% | 100% | 1 |
-| `tax_rate_consistent` | 100% | 50% | 2 |
-| `line_items_sum_to_subtotal` | 100% | 100% | 1 |
-| `vendor_known` | 100% | 50% | 2 |
-| `vendor_active` | 100% | 100% | 2 |
-| `bank_account_matches_vendor` | 100% | 50% | 2 |
-| `purchase_order_required` | 100% | 33% | 3 |
-| `po_amount_within_tolerance` | 100% | 100% | 1 |
-| `po_currency_matches` | 100% | 100% | 1 |
-| `duplicate_document` | 100% | 100% | 1 |
-| `contract_expiring_soon` | 100% | 100% | 1 |
-| `contract_expired` | 100% | 100% | 1 |
-
-**Read the precision column carefully — it is not a fault count.** A rule "fires
-unexpectedly" whenever it trips on a document that did not declare it, and most
-of those are correct. `purchase_order_required` shows 33% because it fired on
-three documents where only one declared it: the other two genuinely quote no
-purchase order and are genuinely above the threshold. The corpus declares the
-*defect a document was built around*, not every true statement about it. A
-precision figure here measures how completely the corpus was annotated, and it
-is the honest way round — inflating it would mean annotating after seeing the
-output.
-
-**Eighteen rules were never exercised** and are reported as untested rather than
-as passing: `tax_id_checksum`, `dates_not_in_future`, `due_date_after_issue`,
-`contract_dates_ordered`, `contract_parties_distinct`, `vat_rate_expected` and
-the form rules among them. Untested is the honest word, and the list is the
-shopping list for the next batch of corpus documents.
-
----
-
-## 3. Did the document go the right way?
-
-The expectation is in every filename before the system is asked.
-
-| | Documents | Correct | Wrong |
-|---|---|---|---|
-| Should be **held** (`_False`) | 12 | 12 | **0 missed defects** |
-| Should **post** (`_True`) | 12 | 9 | 3 false alarms |
-
-**Zero missed defects.** Nothing that should have been stopped reached the
-ledger, and every one of the three posted documents was read perfectly.
-
-**Three false alarms, and all three are the same failure**: a document the
-system could not read confidently, held on the confidence threshold with the
-rules behaving correctly.
-
-| Document | Confidence | Rules firing |
-|---|---|---|
-| `9_invoice_thai_buddhist_dates` | 63% | **none** |
-| `18_invoice_unlabelled_amounts` | 60% | 1 |
-| `21_invoice_minimal_unlabelled` | 72% | 2 |
-
-That is the right shape for the failures to have. None was a rule misfiring on a
-valid document; all three are the system declining to post a page it read badly,
-which is what the conservatism is for. Two of the three are the invoices with no
-field labels at all, which is the hardest case in the corpus by construction.
-
-The structural-variation set is the other half of this number: six correct
-invoices in unfamiliar layouts — two-column, dense, minimal, Thai, scanned,
-thermal — of which **five posted**. Layout alone does not hold a document.
-
----
-
-### Which value is wrong
-
-Five documents got a diagnosis. Two are worth reading closely.
-
-**Document 2** — the lines and the VAT both say 44,940 and the total reads
-49,440:
-
-> **total_amount** 49,440.00 → **44,940.00** (92%)
-> *the total is the only value that explains it — the tax matches the stated rate
-> and the line items add up to the subtotal, so those are right. the subtotal plus
-> the tax gives 44,940.00. Looking at the page: two adjacent digits are
-> transposed: '94' was read where '49' balances*
-
-**Document 4** is the more interesting one, because it disagreed with the corpus
-author. The document was written to have a wrong *tax amount* — 4,590 where 7% of
-76,500 is 5,355. The system blamed the **rate** instead:
-
-> **tax_rate** 7.0 → **6.0** (92%)
-> *the tax rate is the only value that explains it — the subtotal and tax make the
-> total, so those are right. the tax as a share of the subtotal gives 6.00*
-
-It is right and the author was wrong. The printed total is consistent with the
-tax that was charged, so the value that disagrees with everything else is the
-stated rate, not the amount. Both readings fix the document; only one of them is
-what the relations actually say.
-
-The other three: a currency taken from the purchase order (70%), and two changed
-bank accounts offered at 35% with *"confirm the change with the vendor by a
-channel you already had before accepting this"*.
-
-### Preprocessing
-
-Five documents needed work. The three clean scans and ten PDFs passed through
-untouched and had no second file written.
-
-| Document | Applied | Skew | Ink-to-paper | Lighting drift |
+| Document | Field | Expected | Read as | Confidence |
 |---|---|---|---|---|
-| `3_invoice_photo_on_a_desk` | relit, deskewed −2.7° | −2.80° → 0.00° | 0.257 → 0.318 | 0.390 → 0.008 |
-| `11_receipt_photographed` | relit, deskewed +3.3° | +3.20° → 0.00° | 0.370 → 0.315 | 0.422 → 0.000 |
-| `13_contract_already_expired` | deskewed −1.4°, contrast | −1.40° → 0.00° | 0.064 → 0.268 | — |
-| `16_invoice_line_items_do_not_sum` | deskewed −1.8°, contrast | −1.80° → 0.00° | 0.057 → 0.248 | — |
-| `18_invoice_unlabelled_amounts` | relit, deskewed −2.8° | −2.90° → 0.00° | 0.334 → 0.355 | 0.406 → 0.004 |
+| `25_invoice_thai_arabic_digits_True.png` | `vendor_name` | บริษัท สยาม**ซ**ัพพลาย จำกัด | บริษัท สยาม**ช**ัพพลาย จำกัด | 0.843 |
+| `30_invoice_thai_no_tax_id_True.png` | `vendor_name` | บริษัท **ซ**ันไรส์ **อิ**เล็คทริคอล จำกัด | บริษัท **ช**ันไรส์ **อี**เล็คทริคอล จำกัด | 0.840 |
 
-### What was read wrong
+**ซ** (U+0E0B) and **ช** (U+0E0A) differ by a single loop. **อิ** and **อี**
+differ by one vowel sign. These are the classic Thai OCR confusion pairs.
 
-Twenty-three of 216 fields. Fourteen were **not found** rather than found wrong —
-a `tax_rate` on a zero-VAT invoice, a `payment_terms` the page does not state — 
-which is the right failure: an absent field is visible, an invented one is not.
+Three things made this post rather than stop:
 
-The nine genuinely wrong values cluster where you would expect. Document 16, the
-faded photocopy, accounts for five of them on its own, including the invoice
-number and both dates. That document also produced this evaluation's most useful
-finding.
+1. **No rule fired at all.** Not one of the 33.
+2. **Confidence landed on the threshold** — 0.843 and 0.840 against a bar of
+   0.840. A margin of 0.003 and 0.000.
+3. **`vendor_known` passed.** Vendor resolution is fuzzy on purpose, because
+   string equality would block every one-stroke Thai misread. It matched the
+   right vendor — so the money would go to the registered bank account, not to
+   the misread name.
 
-### The silent error this corpus produced, and how it was closed
+So the *payment* is right and the *ledger record* is wrong. That is a data-quality
+defect rather than a wrong payment, and the metric does not distinguish them —
+correctly, because `vendor_name` is declared critical.
 
-An earlier run of exactly this corpus posted document 16 automatically at 85%
-confidence with its invoice number and its date both wrong: `PRF-SG-20416` read
-as `PRF.SG20496`, and `2026-07-17` as `2028-07-17`.
+**This is a known limitation being measured for the first time.** Grounding
+cannot catch an OCR misread: the span exists in the OCR output, and the OCR
+output is what was wrong. Nor can two channels reading the same OCR text — both
+agents saw `ชัพพลาย`. The documented defences are the arithmetic rules and the
+legibility signal, and neither can see a misspelt name on a legible page.
 
-Grounding did not help, and this is the clearest available demonstration of what
-grounding is and is not for. It proves a value came from a span of text that
-exists on the page — and both wrong values did. The span existed in the OCR
-output, and the OCR output was what was wrong. Grounding catches a model
-inventing a value. It cannot catch an engine misreading one, and neither can two
-channels reading the same OCR text.
+**There is an unused signal sitting right there.** `vendor_known` resolved the
+vendor by fuzzy match and recorded the score. The register holds the correct
+legal name. A vendor resolved fuzzily whose extracted name is *not* the
+register's name is direct evidence of a misread on a critical field — and today
+that score is recorded and nothing acts on it. That is the first thing to fix,
+and it is a finding this evaluation produced rather than confirmed.
 
-Two things should have stopped it and neither did:
+### 6.2 Thai reads better and fails worse
 
-- **`dates_not_in_future` fired, as a warning.** It is now graded. Days ahead
-  stays a warning — that is a clock, or a supplier billing early. Past four
-  months it blocks, because a date two years out is not a document issued early,
-  it is a digit misread by the same engine that read the rest of the page. The
-  date is not the problem; it is the evidence.
-- **Nothing downstream knew the page had been barely legible.** The OCR quality
-  score is computed on the text that came back, and text that comes back
-  confidently wrong scores as well as text that comes back right — this page
-  scored 95%. The one signal available was that preprocessing had to rescue its
-  ink from its paper before anything could read it. A page arriving below the
-  contrast or sharpness floor now marks the read as degraded.
+| | Documents | Field accuracy | Silent errors |
+|---|---|---|---|
+| English | 22 | 88.2% | **0** |
+| Thai | 8 | **94.9%** | **2** |
 
-Document 16 now holds at 62% — the low score is the point, because that page
-really was hard to read. Document 1 still posts at 95%.
-
-### The warning tier that was a blocking tier
-
-Running this corpus also exposed something the accuracy numbers could not:
-fifteen of eighteen documents were being held, and several of them had nothing
-wrong.
-
-Confidence was answering two questions at once. It scored how well the values
-were read *and* absorbed every rule failure — a warning cut it by 8% each, so
-three advisory findings took a perfectly-read document from 95% to 72%, under an
-84% threshold, and sent it to someone with nothing to correct. A warning that
-holds documents is a blocking rule that has not admitted it, and it is how a
-human-in-the-loop system ends up with a human in every loop.
-
-Confidence now answers one question — did we read this correctly — and routing
-answers the other. A blocked vendor, a duplicate, an expired purchase order and
-an unusual VAT rate no longer move the score: they were all read perfectly. Only
-a failure saying a *character* was misread does, weighted by the rule's own
-severity — a fifth for a blocking one, a twentieth for a warning.
-
-The effect on this corpus:
-
-| | Before | After |
-|---|---|---|
-| Silent errors | 0 | **0** |
-| Defects caught | 12/13 | **13/13** |
-| Auto-posted | 3/18 | 3/18 |
-| Documents held at ≥91% confidence | 0 | **5** |
-
-The last row is the one that matters. Five documents now sit at 91–93% and are
-still held, which is the honest description of what they are: read correctly,
-stopped by a fact about the world. Before, the same documents reported 38–45%,
-telling the reviewer the reading was doubtful when it was not — and a reviewer
-who opens a 40% document expecting to fix a misread number, and finds a
-perfectly-read invoice from a blocked vendor, learns to distrust the number.
+Thai field accuracy is *six points higher* than English, and Thai carries both
+silent errors. There is no contradiction: the Thai failure mode is a
+single-character confusion inside a name, which fuzzy vendor matching absorbs
+and every other check ignores. Average accuracy and worst-case safety are
+different questions, and this is what it looks like when they disagree.
 
 ---
 
-## The time-saved model
-
-Time saved is the one figure here that is not a measurement, and a modelled
-number presented like a measured one is how a project reports a saving nobody
-can find afterwards. So the model is stated rather than buried:
-
-| Assumption | Minutes |
-|---|---|
-| Keying one document by hand | 4.0 |
-| Cross-checking it against the vendor file, the PO and prior postings | 3.5 |
-| Reviewing one the system held, with the values and failing checks on screen | 1.5 |
-| Cleaning up one silently posted error | 45.0 |
-
-On this corpus: 135 minutes by hand, 22.5 minutes through here, **112.5 saved
-(83%)**. Scaled up, that is 16.7 working days per thousand documents by hand
-against 2.8. The ten minutes of machine time sit beside those numbers rather than
-inside them.
-
-Three properties keep it honest.
-
-**A held document is not free.** Counting a review as zero is the single
-assumption that inflates these figures most, and it is why automation projects
-report savings that never appear in a headcount. The reviewer still opens it,
-still reads the values, still decides. What the system saved them is the keying
-and the cross-checking.
-
-**A posted error is charged against the saving.** Forty-five minutes each:
-somebody finds the wrong record at reconciliation, traces it, raises a
-correction. With enough of them the arithmetic concludes the system made things
-worse, which it has to be able to conclude or it is not a measurement of
-anything.
-
-**Machine time is reported beside the saving, never subtracted from it.** A
-model reading a page is not a person waiting for it, and in a batch it is not on
-anyone's critical path.
-
----
-
-## 5. Does it work on Thai documents?
-
-Asked because the answer was assumed. Thai had been in the corpus from the start
-— two invoices on the `thai_tax` layout — and both posted, so the language looked
-covered. It was not, and the shape of the gap is worth stating before the
-results.
-
-**Thai numerals and Thai labels are different problems, and only one of them is
-loud.** ๙ either survives OCR or it does not, and either way you find out. Arabic
-digits under Thai labels come back perfectly and the only question left is
-whether anything understood that `จำนวนเงินทั้งสิ้น` is the total — a question
-an English-trained extractor can get wrong in silence. The corpus tested only the
-first, and the second is what every real Thai business invoice looks like.
-
-So six documents were written to hold the language fixed and vary what is asked
-of it: Arabic digits with Buddhist-era dates, the same with the VAT
-miscalculated, a receipt, a contract in Thai prose, a supplier who is genuinely
-not in the register, and a registered vendor with no tax ID printed — so the
-match has to be carried by the Thai name alone.
-
-### What was already fine
-
-Worth reporting, because it is where the search started and it is where the
-problem was not:
+## 7. Latency and cost
 
 | | |
 |---|---|
-| Buddhist-era dates | `24 กรกฎาคม 2569` → 2026-07-24, in either numeral system, slashed or spelled out |
-| Amounts | `๑๓๕,๐๐๐.๐๐` and `135,000.00` both parse |
-| Thai vendor names | 12 of 12 probes resolve correctly, including spaces lost, legal form dropped, and `ซ` misread as `ช` |
-| Unknown Thai suppliers | `หจก. สมชายการช่าง` correctly matches nothing — the register's Thai names are short once `บริษัท` and `จำกัด` are stripped, and a false match here would pay the wrong company |
+| Mean per document | **39.4s** |
+| Median | 29.6s |
+| p90 | 70.4s |
+| Slowest | 83.0s |
+| Wall clock, 30 documents | 1,186s (19.8 min) |
 
-The vendor matcher already knew about `บริษัท`, `จำกัด` and `มหาชน`, and the
-master file already carried Thai aliases. Document 30 — a registered vendor named
-only in Thai, no tax ID printed, so there is no exact identifier to fall back on
-— read 12 of 12 fields correctly and posted.
+By stage:
 
-### Three faults, none of them where they were expected
+| Stage | Total | Mean | Share |
+|---|---|---|---|
+| OCR | 532.4s | 35.5s | **45%** |
+| Extract | 476.9s | 15.9s | **40%** |
+| Reconcile | 108.3s | 7.7s | 9% |
+| Validate | 50.5s | 1.9s | 4% |
+| Classify | 6.8s | 0.4s | 1% |
+| Preprocess | 6.8s | 0.2s | 1% |
+| Render | 1.5s | 0.1s | 0% |
 
-**A Thai receipt is classified as an invoice.** The heading a Thai till prints is
-`ใบเสร็จรับเงิน / ใบกำกับภาษีอย่างย่อ` — *abbreviated tax invoice*, which is the
-Revenue Department's name for the slip you get at a counter. Matched as a bare
-substring it also satisfies the invoice keyword `ใบกำกับภาษี`, so every Thai
-receipt in the country scores as an invoice on the strength of its own receipt
-heading. The same nesting sits one level down between `เลขที่` and
-`เลขที่ใบเสร็จ`.
+By how the document arrived — this is where the text-layer fast path shows:
 
-The fix is general and contains no Thai: **when two matched phrases are nested,
-only the more specific one votes.** English has the same nesting — `No.` inside
-`Receipt No` — and it was doing the same damage there. Keyword-only
-classification errors across the corpus went from 3 of 30 to 0 of 30, and two of
-the three corrected documents are English receipts. A Thai document found a bug
-that was never about Thai.
+| Arrival | N | Mean total | Mean OCR |
+|---|---|---|---|
+| **Digital PDF** | 16 | **24.3s** | **1.6s** |
+| Phone photograph | 4 | 44.2s | 26.7s |
+| Scan (PNG) | 8 | 57.1s | 36.9s |
+| Faded photocopy | 2 | 82.0s | 52.9s |
 
-**A contract auto-posted with both parties misread.** Document 28 posted at 92%
-with `party_a` read as `Mitrphol` and `party_b` carrying `แฟชิลิตี้` for
-`แฟซิลิตี้` — one stroke apart, the commonest Thai OCR slip there is. Both are
-critical fields for a contract. Both were **grounded**, because the misread text
-is genuinely in the OCR output and grounding can only prove a value came from the
-page, never that the page was read right.
+A digital PDF costs **1.6s of OCR against 36.9s for a scan** — a 23× difference,
+and the reason OCR is only 45% of total time rather than the overwhelming
+majority. Everything above the fast path is unchanged: the same documents, the
+same verdicts.
 
-An invoice naming the wrong company is caught downstream by `vendor_known`
-resolving the name against the master file. A contract had no equivalent:
-`contract_matches_master` compared the dates and the value, and never the
-parties, although the contract number is an exact key into a register that stores
-both. A page could have named a different counterparty entirely and posted.
+Agent activity:
 
-The comparison now happens, and how it is made is the load-bearing part. Names
-are compared as **organisations** — legal form stripped, fuzzy — so one misread
-character is still the same company, and then resolved through the **vendor
-register**, because nothing about the two strings
-`บริษัท เจ้าพระยา แฟซิลิตี้ จำกัด` and `Chao Phraya Facility Services Co., Ltd.`
-says they are one counterparty. The alias column does. String equality here would
-have turned a check meant for a substituted company into a false-alarm machine.
+| | |
+|---|---|
+| Agent rules run | 9 (5 pass, 3 fail, 1 unsure) |
+| Could not decide | 11% — held for a person, never passed |
+| Agent rule tool calls | 56 |
+| Reconciler ran on | 14 of 30 documents, 166 tool calls |
+| Repeated calls | 11 — asked something already answered |
 
-**A document took ten minutes instead of thirty seconds.** Both Thai-numeral
-documents drew a `408 Request timed out` from Typhoon Cloud, and the engine
-treated a timeout the way it treats bad text: escalate to the next provider. The
-next provider was the local 3B model, at roughly 600 seconds a page against 3
-seconds for the hosted call.
-
-Nothing was wrong with the *result* — the local model read both pages at 96%
-quality, undegraded, and both posted correctly. The chain did exactly what it was
-built to do. What it did not do was say so: the trace reported `ok` and named a
-provider, and the only other evidence was a clock.
-
-Two changes. **Bad text is a verdict on the page and warrants escalation; a
-timeout is not and warrants a retry** — `OcrTransientError` now separates the
-two, and a 408, 429 or 5xx asks the same engine again before the page moves down
-the chain. And when the configured engine is not the one that read the document,
-the result says so, separately from `degraded`, because falling back to a slower
-engine is not a quality problem and must not be reported as one.
-
-### After the fixes
-
-Six Thai documents, 140 seconds, all three fixes in:
-
-| Document | Type | Decision | Expected | Conf | Fields | OCR |
-|---|---|---|---|---|---|---|
-| 25 Thai labels, Arabic digits | invoice | post | post | 84% | 13/14 | 95.3% |
-| 26 VAT stated 7%, charged 6% | invoice | **hold** | hold | 68% | 14/14 | 98.0% |
-| 27 ใบเสร็จรับเงิน, photographed | **receipt** | post | post | 92% | 8/8 | 70.4% |
-| 28 สัญญาจ้างบริการ | contract | post | post | 92% | 9/11 | 94.6% |
-| 29 หจก. not in the register | invoice | **hold** | hold | 68% | 12/13 | 96.6% |
-| 30 Thai name, no tax ID | invoice | post | post | 84% | 12/12 | 95.6% |
-
-**6 of 6 decisions correct. Field accuracy 68 of 72 (94.4%). No document over 31
-seconds.** Document 26 is held by `tax_rate_consistent` and document 29 by
-`vendor_known` — each the rule it was written to exercise.
-
-Document 27 is now typed `receipt`. Document 28's parties are still misread the
-same way, and `contract_matches_master` **passes** — which is the check working,
-not the check missing: it compared them, resolved `แฟชิลิตี้` to the same
-organisation, and did not raise a false alarm. A substituted company would not
-get that treatment.
-
-The four remaining field misses are honest reading errors, not defects:
-
-| Document | Field | What happened |
-|---|---|---|
-| 25 | `vendor_name` | OCR returned `บริษัท สยามเทคโนโลยี จำกัด` for `บริษัท สยามเทค ซัพพลาย จำกัด` — a plausible invented company name. It posted anyway because the tax ID was read correctly and resolves the vendor exactly, which is why tax ID is tried first. |
-| 28 | `party_a`, `party_b` | `Mitrphol`, `แฟชิลิตี้` — one character each |
-| 29 | `vendor_tax_id` | misread, which correctly trips `tax_id_checksum` on top of `vendor_known` |
-
-Two further mismatches turned out to be the corpus, and both were the trap this
-document already warns about: document 27 declared `tax_rate`, which the receipt
-schema has no field for, and `payment_method` as the printed Thai, when the field
-is an **enum** — a classification, not a transcription. The system answered
-`credit_card` and was marked wrong for being right. Both were removed from the
-ground truth rather than from the system.
-
-### What this section does not settle
-
-The retry rides out a *flaky* timeout. On these two pages the timeout is **not
-flaky** — it recurred on every attempt across two runs, so the page still falls
-back to the local engine and still takes ten minutes. Retrying does not fix that
-and was never going to.
-
-Measuring it did change the retry, though. Three attempts made the worst case
-three minutes *worse*: each one waits out a full server-side timeout before
-failing, and a page that provokes a timeout provokes it every time. One retry
-buys what retrying is for — a single unlucky call — and caps the cost of being
-wrong at one wasted timeout. `TRANSIENT_ATTEMPTS` is 2 because that was measured,
-not chosen.
-
-Whether Typhoon Cloud can process a Thai-numeral page at all is a question about
-the hosted model, and two documents cannot answer it. What can be said is
-narrower and still useful: **Thai is not the problem, Thai numerals are.** Every
-Thai document printed with Arabic digits ran in 11–31 seconds, the same as the
-English corpus.
+The 11% undecided rate is a number to watch, not a fault: an agent that cannot
+decide holds the document, which is the safe direction. The 11 repeated calls are
+waste — each is a turn of a bounded budget spent learning nothing.
 
 ---
 
-## What this evaluation cannot tell you
+## 8. Time saved — modelled, not measured
 
-- **Twenty-four documents is a demonstration, not a statistic.** One document
-  moving between posted and held shifts a rate by four points. The per-document
-  tables are the useful part; the percentages are context.
-- **The corpus is synthetic, and it has been wrong more often than the pipeline
-  has.** Every authoring error found so far looked like a system fault until it
-  was read closely: a VAT that was correct when it was meant to be wrong; two
-  contracts rendered with no body text; four documents declaring ground truth
-  their own layout never draws; two real defects labelled as clean cases; and a
-  value-recall metric searching for `2026-07-14` on pages that print
-  "14 July 2026". Six of those were caught by this evaluation on its first run,
-  which is the strongest thing that can be said for it and the weakest thing
-  that can be said for the corpus.
-- **Precision on a rule is a statement about annotation, not about the rule.**
-  The corpus declares the defect each document was built around, not every true
-  statement about it, so a rule that fires correctly on an undeclared document
-  scores as imprecise. Annotating after seeing the output would fix the number
-  and ruin the measurement.
-- **Eighteen of the thirty rules were never exercised.** They are reported as
-  untested, not as passing.
-- **Ground truth is what the document says, not what is true.** A supplier who
-  invoices the wrong amount is extracted correctly and caught by a rule, not by
-  accuracy.
-- **One run.** Timings in particular move with machine load; the accuracy
-  numbers are stable across runs, the per-document seconds are not.
+The assumptions print with the number every time, because a modelled figure
+presented like a measured one is how a report ends up claiming a saving nobody
+can find afterwards.
+
+| | Minutes | Per 1,000 documents |
+|---|---|---|
+| By hand | 225 | 16.7 days |
+| Through here | 114 | 8.4 days |
+| — of which rework | **90** | cleaning up the 2 posted errors |
+| **Saved** | **111 (49%)** | |
+| Machine time | 19.8 | nobody waits for it in a batch |
+
+Assumptions, per document: 4.0 min keying · 3.5 min cross-checking · 1.5 min
+reviewing a held document · **45 min cleaning up one silent error**.
+
+**The two silent errors cost 90 modelled minutes — 80% of the saving.** The
+arithmetic is deliberately allowed to conclude that the system made things worse,
+and this is how close it gets: two documents out of thirty take the saving from
+88% down to 49%. That is the whole argument for the silent error rate being the
+headline metric rather than field accuracy.
+
+---
+
+## 9. What to do next, in order
+
+1. **Use the vendor-match score.** A vendor resolved by fuzzy match whose
+   extracted name differs from the register's is evidence of a misread on a
+   critical field. The signal exists and nothing reads it. This is the fix for
+   both silent errors.
+2. **Fix the eleven undrawn ground-truth values** in `samples/real_world.py`, so
+   field recall stops being understated by 3.7% forever.
+3. **Declare document 3's rule** so the closed purchase order it quotes is scored
+   as the caught defect it is.
+4. **Write corpus documents for the 22 untested rules.** Untested is not passing.
+5. **Look at the 0.003 confidence margin.** Both silent errors sat on the
+   threshold. That is not a coincidence worth ignoring.
+
+---
+
+## Appendix — reproducing this
+
+```bash
+docuflow evaluate --corpus real_samples --out report.json
+```
+
+The harness switches back on any rule the corpus declares that the local `.env`
+has disabled, and records which. To measure this installation exactly as
+configured instead:
+
+```bash
+docuflow evaluate --corpus real_samples --respect-disabled
+```
+
+Tests covering the harness itself, none of which call a model:
+
+| File | What it holds |
+|---|---|
+| `tests/test_corpus_evaluation.py` | the disabled-rule guard, the text-layer split, report shape |
+| `tests/test_corpus_integrity.py` | ground truth against the text the renderer drew |
+| `tests/test_classification_scores.py` | precision/recall, and the ignored-class failure |
+| `tests/test_data_quality.py` | completeness, validity, consistency |
+| `tests/test_thai_pipeline.py` | every Thai path, end to end |

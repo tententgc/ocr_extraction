@@ -1,22 +1,157 @@
 {
+  "setup": {
+    "corpus": "real_samples",
+    "master_loaded": {
+      "vendors": 13,
+      "purchase_orders": 12,
+      "contracts": 6
+    },
+    "rules_loaded": [
+      "every_line_item_described",
+      "no_single_line_over_400k",
+      "payment_terms_stated",
+      "currency_is_one_we_trade_in",
+      "large_invoice_names_a_buyer",
+      "purchase_order_still_has_room",
+      "tax_id_belongs_to_this_vendor"
+    ],
+    "auto_post_threshold": 0.84,
+    "disabled_rules": [
+      "currency_matches_vendor_default",
+      "payment_terms_stated",
+      "tax_id_belongs_to_this_vendor",
+      "tax_id_checksum",
+      "vat_rate_expected"
+    ],
+    "rules_re_enabled": [
+      "bank_account_matches_vendor",
+      "po_amount_within_tolerance"
+    ],
+    "ocr_provider": "ollama",
+    "llm_provider": "typhoon",
+    "llm_verify_provider": "claude"
+  },
+  "corpus_integrity": {
+    "documents": 30,
+    "gradeable_values": 298,
+    "undrawn_values": 11,
+    "undrawn_share": 0.0369,
+    "undrawn_documents": [
+      "10_invoice_no_po_above_threshold_False.pdf",
+      "11_receipt_photographed_True.jpg",
+      "16_invoice_line_items_do_not_sum_False.jpg",
+      "19_invoice_two_column_layout_True.pdf",
+      "24_receipt_clean_thermal_True.pdf",
+      "4_invoice_vat_miscalculated_False.pdf",
+      "6_invoice_unknown_vendor_False.png",
+      "7_invoice_from_a_blocked_vendor_False.pdf"
+    ],
+    "undrawn_by_field": {
+      "purchase_order_ref": 3,
+      "vendor_tax_id": 2,
+      "payment_terms": 2,
+      "due_date": 2,
+      "payment_method": 2
+    },
+    "undrawn": [
+      {
+        "document": "4_invoice_vat_miscalculated_False.pdf",
+        "field": "purchase_order_ref",
+        "value": "PO-2026-0556"
+      },
+      {
+        "document": "6_invoice_unknown_vendor_False.png",
+        "field": "vendor_tax_id",
+        "value": "0105568000661"
+      },
+      {
+        "document": "6_invoice_unknown_vendor_False.png",
+        "field": "payment_terms",
+        "value": "Net 30"
+      },
+      {
+        "document": "7_invoice_from_a_blocked_vendor_False.pdf",
+        "field": "due_date",
+        "value": "2026-08-22"
+      },
+      {
+        "document": "10_invoice_no_po_above_threshold_False.pdf",
+        "field": "vendor_tax_id",
+        "value": "0105571000448"
+      },
+      {
+        "document": "10_invoice_no_po_above_threshold_False.pdf",
+        "field": "payment_terms",
+        "value": "Net 45"
+      },
+      {
+        "document": "11_receipt_photographed_True.jpg",
+        "field": "payment_method",
+        "value": "Corporate card"
+      },
+      {
+        "document": "16_invoice_line_items_do_not_sum_False.jpg",
+        "field": "purchase_order_ref",
+        "value": "PO-2026-0512"
+      },
+      {
+        "document": "19_invoice_two_column_layout_True.pdf",
+        "field": "due_date",
+        "value": "2026-08-13"
+      },
+      {
+        "document": "19_invoice_two_column_layout_True.pdf",
+        "field": "purchase_order_ref",
+        "value": "PO-2026-0523"
+      },
+      {
+        "document": "24_receipt_clean_thermal_True.pdf",
+        "field": "payment_method",
+        "value": "Corporate card"
+      }
+    ],
+    "thin_reference": [
+      "18_invoice_unlabelled_amounts_True.jpg"
+    ],
+    "documents_without_ground_truth": [],
+    "held_without_a_declared_rule": [
+      "3_invoice_photo_on_a_desk_False.jpg"
+    ],
+    "clean": false
+  },
   "summary": {
-    "documents": 24,
-    "field_accuracy": 0.872,
-    "fields_correct": 252,
-    "fields_total": 289,
-    "auto_posted": 9,
-    "silent_errors": 0,
-    "wall_clock_seconds": 788.7
+    "documents": 30,
+    "wall_clock_seconds": 1186.5,
+    "type_accuracy": 1.0,
+    "field_accuracy": 0.9,
+    "field_accuracy_with_near": 0.922,
+    "fields_total": 361,
+    "fields_correct": 325,
+    "fields_near": 8,
+    "fields_missing": 20,
+    "auto_posted": 14,
+    "auto_post_rate": 0.467,
+    "silent_errors": 2,
+    "silent_error_rate": 0.067,
+    "silent_error_documents": [
+      "25_invoice_thai_arabic_digits_True.png",
+      "30_invoice_thai_no_tax_id_True.png"
+    ],
+    "auto_post_precision": 0.857,
+    "planted_defects": 15,
+    "planted_defects_caught": 15,
+    "defect_recall": 1.0,
+    "average_confidence": 0.843
   },
   "ocr": {
-    "documents": 24,
-    "character_accuracy": 0.9278,
-    "character_error_rate": 0.0722,
-    "reference_chars": 13587,
-    "edit_distance": 981,
-    "value_recall": 0.9034,
-    "values_expected": 238,
-    "values_found": 215,
+    "documents": 30,
+    "character_accuracy": 0.9373,
+    "character_error_rate": 0.0627,
+    "reference_chars": 17890,
+    "edit_distance": 1122,
+    "value_recall": 0.9161,
+    "values_expected": 298,
+    "values_found": 273,
     "worst_documents": [
       {
         "document": "11_receipt_photographed_True.jpg",
@@ -46,10 +181,10 @@
       },
       {
         "document": "16_invoice_line_items_do_not_sum_False.jpg",
-        "character_accuracy": 0.7198,
-        "character_error_rate": 0.2802,
+        "character_accuracy": 0.6401,
+        "character_error_rate": 0.3599,
         "reference_chars": 439,
-        "edit_distance": 123,
+        "edit_distance": 158,
         "value_recall": 0.4,
         "values_expected": 10,
         "values_found": 4,
@@ -63,41 +198,37 @@
         ]
       },
       {
-        "document": "13_contract_already_expired_False.jpg",
-        "character_accuracy": 0.8985,
-        "character_error_rate": 0.1015,
-        "reference_chars": 1764,
-        "edit_distance": 179,
-        "value_recall": 0.5,
+        "document": "27_receipt_thai_fuel_station_True.jpg",
+        "character_accuracy": 0.6943,
+        "character_error_rate": 0.3057,
+        "reference_chars": 458,
+        "edit_distance": 140,
+        "value_recall": 1.0,
         "values_expected": 6,
-        "values_found": 3,
-        "values_missing": [
-          "contract_number",
-          "party_a",
-          "contract_value"
-        ]
+        "values_found": 6,
+        "values_missing": []
       },
       {
-        "document": "21_invoice_minimal_unlabelled_True.pdf",
-        "character_accuracy": 0.8991,
-        "character_error_rate": 0.1009,
-        "reference_chars": 228,
-        "edit_distance": 23,
-        "value_recall": 0.8889,
-        "values_expected": 9,
-        "values_found": 8,
+        "document": "29_invoice_thai_unknown_vendor_False.png",
+        "character_accuracy": 0.8515,
+        "character_error_rate": 0.1485,
+        "reference_chars": 559,
+        "edit_distance": 83,
+        "value_recall": 0.9091,
+        "values_expected": 11,
+        "values_found": 10,
         "values_missing": [
-          "tax_amount"
+          "vendor_tax_id"
         ]
       }
     ],
     "per_document": [
       {
         "document": "1_invoice_clean_matches_po_True.pdf",
-        "character_accuracy": 0.9928,
-        "character_error_rate": 0.0072,
+        "character_accuracy": 1.0,
+        "character_error_rate": 0.0,
         "reference_chars": 556,
-        "edit_distance": 4,
+        "edit_distance": 0,
         "value_recall": 1.0,
         "values_expected": 12,
         "values_found": 12,
@@ -105,10 +236,10 @@
       },
       {
         "document": "2_invoice_total_transposed_False.pdf",
-        "character_accuracy": 0.9718,
-        "character_error_rate": 0.0282,
+        "character_accuracy": 1.0,
+        "character_error_rate": 0.0,
         "reference_chars": 496,
-        "edit_distance": 14,
+        "edit_distance": 0,
         "value_recall": 1.0,
         "values_expected": 12,
         "values_found": 12,
@@ -127,10 +258,10 @@
       },
       {
         "document": "4_invoice_vat_miscalculated_False.pdf",
-        "character_accuracy": 0.9567,
-        "character_error_rate": 0.0433,
+        "character_accuracy": 1.0,
+        "character_error_rate": 0.0,
         "reference_chars": 462,
-        "edit_distance": 20,
+        "edit_distance": 0,
         "value_recall": 0.9167,
         "values_expected": 12,
         "values_found": 11,
@@ -140,10 +271,10 @@
       },
       {
         "document": "5_invoice_bank_account_changed_False.pdf",
-        "character_accuracy": 0.9847,
-        "character_error_rate": 0.0153,
+        "character_accuracy": 1.0,
+        "character_error_rate": 0.0,
         "reference_chars": 457,
-        "edit_distance": 7,
+        "edit_distance": 0,
         "value_recall": 1.0,
         "values_expected": 11,
         "values_found": 11,
@@ -165,24 +296,23 @@
       },
       {
         "document": "7_invoice_from_a_blocked_vendor_False.pdf",
-        "character_accuracy": 0.9733,
-        "character_error_rate": 0.0267,
+        "character_accuracy": 1.0,
+        "character_error_rate": 0.0,
         "reference_chars": 487,
-        "edit_distance": 13,
-        "value_recall": 0.8182,
+        "edit_distance": 0,
+        "value_recall": 0.9091,
         "values_expected": 11,
-        "values_found": 9,
+        "values_found": 10,
         "values_missing": [
-          "due_date",
-          "buyer_name"
+          "due_date"
         ]
       },
       {
         "document": "8_invoice_over_the_purchase_order_False.pdf",
-        "character_accuracy": 0.9874,
-        "character_error_rate": 0.0126,
+        "character_accuracy": 1.0,
+        "character_error_rate": 0.0,
         "reference_chars": 554,
-        "edit_distance": 7,
+        "edit_distance": 0,
         "value_recall": 1.0,
         "values_expected": 11,
         "values_found": 11,
@@ -190,21 +320,23 @@
       },
       {
         "document": "9_invoice_thai_buddhist_dates_True.png",
-        "character_accuracy": 0.9443,
-        "character_error_rate": 0.0557,
+        "character_accuracy": 0.9426,
+        "character_error_rate": 0.0574,
         "reference_chars": 575,
-        "edit_distance": 32,
-        "value_recall": 1.0,
+        "edit_distance": 33,
+        "value_recall": 0.9091,
         "values_expected": 11,
-        "values_found": 11,
-        "values_missing": []
+        "values_found": 10,
+        "values_missing": [
+          "invoice_date"
+        ]
       },
       {
         "document": "10_invoice_no_po_above_threshold_False.pdf",
-        "character_accuracy": 0.9669,
-        "character_error_rate": 0.0331,
+        "character_accuracy": 1.0,
+        "character_error_rate": 0.0,
         "reference_chars": 242,
-        "edit_distance": 8,
+        "edit_distance": 0,
         "value_recall": 0.8182,
         "values_expected": 11,
         "values_found": 9,
@@ -228,10 +360,10 @@
       },
       {
         "document": "12_contract_expiring_soon_True.pdf",
-        "character_accuracy": 0.9713,
-        "character_error_rate": 0.0287,
+        "character_accuracy": 1.0,
+        "character_error_rate": 0.0,
         "reference_chars": 1880,
-        "edit_distance": 54,
+        "edit_distance": 0,
         "value_recall": 1.0,
         "values_expected": 6,
         "values_found": 6,
@@ -265,10 +397,10 @@
       },
       {
         "document": "15_invoice_duplicate_submission_False.pdf",
-        "character_accuracy": 0.9928,
-        "character_error_rate": 0.0072,
+        "character_accuracy": 1.0,
+        "character_error_rate": 0.0,
         "reference_chars": 556,
-        "edit_distance": 4,
+        "edit_distance": 0,
         "value_recall": 1.0,
         "values_expected": 12,
         "values_found": 12,
@@ -276,10 +408,10 @@
       },
       {
         "document": "16_invoice_line_items_do_not_sum_False.jpg",
-        "character_accuracy": 0.7198,
-        "character_error_rate": 0.2802,
+        "character_accuracy": 0.6401,
+        "character_error_rate": 0.3599,
         "reference_chars": 439,
-        "edit_distance": 123,
+        "edit_distance": 158,
         "value_recall": 0.4,
         "values_expected": 10,
         "values_found": 4,
@@ -294,10 +426,10 @@
       },
       {
         "document": "17_invoice_currency_disagrees_with_po_False.pdf",
-        "character_accuracy": 0.9709,
-        "character_error_rate": 0.0291,
+        "character_accuracy": 1.0,
+        "character_error_rate": 0.0,
         "reference_chars": 481,
-        "edit_distance": 14,
+        "edit_distance": 0,
         "value_recall": 1.0,
         "values_expected": 10,
         "values_found": 10,
@@ -318,25 +450,24 @@
       },
       {
         "document": "19_invoice_two_column_layout_True.pdf",
-        "character_accuracy": 0.9885,
-        "character_error_rate": 0.0115,
+        "character_accuracy": 1.0,
+        "character_error_rate": 0.0,
         "reference_chars": 521,
-        "edit_distance": 6,
-        "value_recall": 0.75,
+        "edit_distance": 0,
+        "value_recall": 0.8333,
         "values_expected": 12,
-        "values_found": 9,
+        "values_found": 10,
         "values_missing": [
           "due_date",
-          "buyer_name",
           "purchase_order_ref"
         ]
       },
       {
         "document": "20_invoice_dense_no_whitespace_True.pdf",
-        "character_accuracy": 0.9897,
-        "character_error_rate": 0.0103,
+        "character_accuracy": 1.0,
+        "character_error_rate": 0.0,
         "reference_chars": 390,
-        "edit_distance": 4,
+        "edit_distance": 0,
         "value_recall": 1.0,
         "values_expected": 10,
         "values_found": 10,
@@ -344,27 +475,27 @@
       },
       {
         "document": "21_invoice_minimal_unlabelled_True.pdf",
-        "character_accuracy": 0.8991,
-        "character_error_rate": 0.1009,
+        "character_accuracy": 1.0,
+        "character_error_rate": 0.0,
         "reference_chars": 228,
-        "edit_distance": 23,
-        "value_recall": 0.8889,
+        "edit_distance": 0,
+        "value_recall": 1.0,
         "values_expected": 9,
-        "values_found": 8,
-        "values_missing": [
-          "tax_amount"
-        ]
+        "values_found": 9,
+        "values_missing": []
       },
       {
         "document": "22_invoice_thai_layout_correct_True.png",
-        "character_accuracy": 0.9443,
-        "character_error_rate": 0.0557,
+        "character_accuracy": 0.9426,
+        "character_error_rate": 0.0574,
         "reference_chars": 575,
-        "edit_distance": 32,
-        "value_recall": 1.0,
+        "edit_distance": 33,
+        "value_recall": 0.9091,
         "values_expected": 11,
-        "values_found": 11,
-        "values_missing": []
+        "values_found": 10,
+        "values_missing": [
+          "buyer_name"
+        ]
       },
       {
         "document": "23_invoice_modern_scanned_True.png",
@@ -389,26 +520,1372 @@
         "values_missing": [
           "payment_method"
         ]
+      },
+      {
+        "document": "25_invoice_thai_arabic_digits_True.png",
+        "character_accuracy": 0.9514,
+        "character_error_rate": 0.0486,
+        "reference_chars": 638,
+        "edit_distance": 31,
+        "value_recall": 0.9167,
+        "values_expected": 12,
+        "values_found": 11,
+        "values_missing": [
+          "vendor_name"
+        ]
+      },
+      {
+        "document": "26_invoice_thai_vat_miscalculated_False.pdf",
+        "character_accuracy": 1.0,
+        "character_error_rate": 0.0,
+        "reference_chars": 644,
+        "edit_distance": 0,
+        "value_recall": 1.0,
+        "values_expected": 12,
+        "values_found": 12,
+        "values_missing": []
+      },
+      {
+        "document": "27_receipt_thai_fuel_station_True.jpg",
+        "character_accuracy": 0.6943,
+        "character_error_rate": 0.3057,
+        "reference_chars": 458,
+        "edit_distance": 140,
+        "value_recall": 1.0,
+        "values_expected": 6,
+        "values_found": 6,
+        "values_missing": []
+      },
+      {
+        "document": "28_contract_thai_service_True.pdf",
+        "character_accuracy": 1.0,
+        "character_error_rate": 0.0,
+        "reference_chars": 1434,
+        "edit_distance": 0,
+        "value_recall": 1.0,
+        "values_expected": 9,
+        "values_found": 9,
+        "values_missing": []
+      },
+      {
+        "document": "29_invoice_thai_unknown_vendor_False.png",
+        "character_accuracy": 0.8515,
+        "character_error_rate": 0.1485,
+        "reference_chars": 559,
+        "edit_distance": 83,
+        "value_recall": 0.9091,
+        "values_expected": 11,
+        "values_found": 10,
+        "values_missing": [
+          "vendor_tax_id"
+        ]
+      },
+      {
+        "document": "30_invoice_thai_no_tax_id_True.png",
+        "character_accuracy": 0.9509,
+        "character_error_rate": 0.0491,
+        "reference_chars": 570,
+        "edit_distance": 28,
+        "value_recall": 0.9,
+        "values_expected": 10,
+        "values_found": 9,
+        "values_missing": [
+          "vendor_name"
+        ]
+      }
+    ]
+  },
+  "ocr_recognised": {
+    "documents": 15,
+    "character_accuracy": 0.868,
+    "character_error_rate": 0.132,
+    "reference_chars": 8502,
+    "edit_distance": 1122,
+    "value_recall": 0.8623,
+    "values_expected": 138,
+    "values_found": 119,
+    "worst_documents": [
+      {
+        "document": "11_receipt_photographed_True.jpg",
+        "character_accuracy": 0.5529,
+        "character_error_rate": 0.4471,
+        "reference_chars": 378,
+        "edit_distance": 169,
+        "value_recall": 0.8571,
+        "values_expected": 7,
+        "values_found": 6,
+        "values_missing": [
+          "payment_method"
+        ]
+      },
+      {
+        "document": "24_receipt_clean_thermal_True.pdf",
+        "character_accuracy": 0.5535,
+        "character_error_rate": 0.4465,
+        "reference_chars": 374,
+        "edit_distance": 167,
+        "value_recall": 0.8571,
+        "values_expected": 7,
+        "values_found": 6,
+        "values_missing": [
+          "payment_method"
+        ]
+      },
+      {
+        "document": "16_invoice_line_items_do_not_sum_False.jpg",
+        "character_accuracy": 0.6401,
+        "character_error_rate": 0.3599,
+        "reference_chars": 439,
+        "edit_distance": 158,
+        "value_recall": 0.4,
+        "values_expected": 10,
+        "values_found": 4,
+        "values_missing": [
+          "invoice_number",
+          "invoice_date",
+          "due_date",
+          "buyer_name",
+          "purchase_order_ref",
+          "bank_account"
+        ]
+      },
+      {
+        "document": "27_receipt_thai_fuel_station_True.jpg",
+        "character_accuracy": 0.6943,
+        "character_error_rate": 0.3057,
+        "reference_chars": 458,
+        "edit_distance": 140,
+        "value_recall": 1.0,
+        "values_expected": 6,
+        "values_found": 6,
+        "values_missing": []
+      },
+      {
+        "document": "29_invoice_thai_unknown_vendor_False.png",
+        "character_accuracy": 0.8515,
+        "character_error_rate": 0.1485,
+        "reference_chars": 559,
+        "edit_distance": 83,
+        "value_recall": 0.9091,
+        "values_expected": 11,
+        "values_found": 10,
+        "values_missing": [
+          "vendor_tax_id"
+        ]
+      }
+    ],
+    "per_document": [
+      {
+        "document": "3_invoice_photo_on_a_desk_False.jpg",
+        "character_accuracy": 0.9869,
+        "character_error_rate": 0.0131,
+        "reference_chars": 536,
+        "edit_distance": 7,
+        "value_recall": 1.0,
+        "values_expected": 12,
+        "values_found": 12,
+        "values_missing": []
+      },
+      {
+        "document": "6_invoice_unknown_vendor_False.png",
+        "character_accuracy": 0.9383,
+        "character_error_rate": 0.0617,
+        "reference_chars": 227,
+        "edit_distance": 14,
+        "value_recall": 0.8,
+        "values_expected": 10,
+        "values_found": 8,
+        "values_missing": [
+          "vendor_tax_id",
+          "payment_terms"
+        ]
+      },
+      {
+        "document": "9_invoice_thai_buddhist_dates_True.png",
+        "character_accuracy": 0.9426,
+        "character_error_rate": 0.0574,
+        "reference_chars": 575,
+        "edit_distance": 33,
+        "value_recall": 0.9091,
+        "values_expected": 11,
+        "values_found": 10,
+        "values_missing": [
+          "invoice_date"
+        ]
+      },
+      {
+        "document": "11_receipt_photographed_True.jpg",
+        "character_accuracy": 0.5529,
+        "character_error_rate": 0.4471,
+        "reference_chars": 378,
+        "edit_distance": 169,
+        "value_recall": 0.8571,
+        "values_expected": 7,
+        "values_found": 6,
+        "values_missing": [
+          "payment_method"
+        ]
+      },
+      {
+        "document": "13_contract_already_expired_False.jpg",
+        "character_accuracy": 0.8985,
+        "character_error_rate": 0.1015,
+        "reference_chars": 1764,
+        "edit_distance": 179,
+        "value_recall": 0.5,
+        "values_expected": 6,
+        "values_found": 3,
+        "values_missing": [
+          "contract_number",
+          "party_a",
+          "contract_value"
+        ]
+      },
+      {
+        "document": "14_form_vendor_onboarding_True.png",
+        "character_accuracy": 0.9126,
+        "character_error_rate": 0.0874,
+        "reference_chars": 698,
+        "edit_distance": 61,
+        "value_recall": 1.0,
+        "values_expected": 7,
+        "values_found": 7,
+        "values_missing": []
+      },
+      {
+        "document": "16_invoice_line_items_do_not_sum_False.jpg",
+        "character_accuracy": 0.6401,
+        "character_error_rate": 0.3599,
+        "reference_chars": 439,
+        "edit_distance": 158,
+        "value_recall": 0.4,
+        "values_expected": 10,
+        "values_found": 4,
+        "values_missing": [
+          "invoice_number",
+          "invoice_date",
+          "due_date",
+          "buyer_name",
+          "purchase_order_ref",
+          "bank_account"
+        ]
+      },
+      {
+        "document": "18_invoice_unlabelled_amounts_True.jpg",
+        "character_accuracy": 0.9309,
+        "character_error_rate": 0.0691,
+        "reference_chars": 188,
+        "edit_distance": 13,
+        "value_recall": 0.8571,
+        "values_expected": 7,
+        "values_found": 6,
+        "values_missing": [
+          "vendor_tax_id"
+        ]
+      },
+      {
+        "document": "22_invoice_thai_layout_correct_True.png",
+        "character_accuracy": 0.9426,
+        "character_error_rate": 0.0574,
+        "reference_chars": 575,
+        "edit_distance": 33,
+        "value_recall": 0.9091,
+        "values_expected": 11,
+        "values_found": 10,
+        "values_missing": [
+          "buyer_name"
+        ]
+      },
+      {
+        "document": "23_invoice_modern_scanned_True.png",
+        "character_accuracy": 0.9885,
+        "character_error_rate": 0.0115,
+        "reference_chars": 523,
+        "edit_distance": 6,
+        "value_recall": 1.0,
+        "values_expected": 11,
+        "values_found": 11,
+        "values_missing": []
+      },
+      {
+        "document": "24_receipt_clean_thermal_True.pdf",
+        "character_accuracy": 0.5535,
+        "character_error_rate": 0.4465,
+        "reference_chars": 374,
+        "edit_distance": 167,
+        "value_recall": 0.8571,
+        "values_expected": 7,
+        "values_found": 6,
+        "values_missing": [
+          "payment_method"
+        ]
+      },
+      {
+        "document": "25_invoice_thai_arabic_digits_True.png",
+        "character_accuracy": 0.9514,
+        "character_error_rate": 0.0486,
+        "reference_chars": 638,
+        "edit_distance": 31,
+        "value_recall": 0.9167,
+        "values_expected": 12,
+        "values_found": 11,
+        "values_missing": [
+          "vendor_name"
+        ]
+      },
+      {
+        "document": "27_receipt_thai_fuel_station_True.jpg",
+        "character_accuracy": 0.6943,
+        "character_error_rate": 0.3057,
+        "reference_chars": 458,
+        "edit_distance": 140,
+        "value_recall": 1.0,
+        "values_expected": 6,
+        "values_found": 6,
+        "values_missing": []
+      },
+      {
+        "document": "29_invoice_thai_unknown_vendor_False.png",
+        "character_accuracy": 0.8515,
+        "character_error_rate": 0.1485,
+        "reference_chars": 559,
+        "edit_distance": 83,
+        "value_recall": 0.9091,
+        "values_expected": 11,
+        "values_found": 10,
+        "values_missing": [
+          "vendor_tax_id"
+        ]
+      },
+      {
+        "document": "30_invoice_thai_no_tax_id_True.png",
+        "character_accuracy": 0.9509,
+        "character_error_rate": 0.0491,
+        "reference_chars": 570,
+        "edit_distance": 28,
+        "value_recall": 0.9,
+        "values_expected": 10,
+        "values_found": 9,
+        "values_missing": [
+          "vendor_name"
+        ]
+      }
+    ]
+  },
+  "ocr_from_text_layer": 15,
+  "classification": {
+    "documents": 30,
+    "accuracy": 1.0,
+    "macro_precision": 1.0,
+    "macro_recall": 1.0,
+    "macro_f1": 1.0,
+    "classes": [
+      {
+        "label": "contract",
+        "support": 3,
+        "predicted": 3,
+        "true_positive": 3,
+        "false_positive": 0,
+        "false_negative": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      {
+        "label": "form",
+        "support": 1,
+        "predicted": 1,
+        "true_positive": 1,
+        "false_positive": 0,
+        "false_negative": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      {
+        "label": "invoice",
+        "support": 23,
+        "predicted": 23,
+        "true_positive": 23,
+        "false_positive": 0,
+        "false_negative": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      {
+        "label": "receipt",
+        "support": 3,
+        "predicted": 3,
+        "true_positive": 3,
+        "false_positive": 0,
+        "false_negative": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    ],
+    "confusion": {
+      "invoice": {
+        "invoice": 23
+      },
+      "receipt": {
+        "receipt": 3
+      },
+      "contract": {
+        "contract": 3
+      },
+      "form": {
+        "form": 1
+      }
+    }
+  },
+  "extraction": {
+    "values": 361,
+    "answered": 341,
+    "present": 361,
+    "correct": 325,
+    "wrong": 16,
+    "missing": 20,
+    "spurious": 0,
+    "precision": 0.953,
+    "recall": 0.9,
+    "f1": 0.926,
+    "per_field": [
+      {
+        "field": "contract_value",
+        "total": 3,
+        "correct": 2,
+        "wrong": 1,
+        "missing": 0,
+        "spurious": 0,
+        "precision": 0.667,
+        "recall": 0.667,
+        "f1": 0.667
+      },
+      {
+        "field": "party_a",
+        "total": 3,
+        "correct": 2,
+        "wrong": 1,
+        "missing": 0,
+        "spurious": 0,
+        "precision": 0.667,
+        "recall": 0.667,
+        "f1": 0.667
+      },
+      {
+        "field": "contract_number",
+        "total": 3,
+        "correct": 2,
+        "wrong": 0,
+        "missing": 1,
+        "spurious": 0,
+        "precision": 1.0,
+        "recall": 0.667,
+        "f1": 0.8
+      },
+      {
+        "field": "buyer_name",
+        "total": 23,
+        "correct": 19,
+        "wrong": 4,
+        "missing": 0,
+        "spurious": 0,
+        "precision": 0.826,
+        "recall": 0.826,
+        "f1": 0.826
+      },
+      {
+        "field": "purchase_order_ref",
+        "total": 12,
+        "correct": 9,
+        "wrong": 0,
+        "missing": 3,
+        "spurious": 0,
+        "precision": 1.0,
+        "recall": 0.75,
+        "f1": 0.857
+      },
+      {
+        "field": "vendor_tax_id",
+        "total": 19,
+        "correct": 15,
+        "wrong": 1,
+        "missing": 3,
+        "spurious": 0,
+        "precision": 0.938,
+        "recall": 0.789,
+        "f1": 0.857
+      },
+      {
+        "field": "invoice_date",
+        "total": 23,
+        "correct": 20,
+        "wrong": 2,
+        "missing": 1,
+        "spurious": 0,
+        "precision": 0.909,
+        "recall": 0.87,
+        "f1": 0.889
+      },
+      {
+        "field": "due_date",
+        "total": 22,
+        "correct": 19,
+        "wrong": 1,
+        "missing": 2,
+        "spurious": 0,
+        "precision": 0.95,
+        "recall": 0.864,
+        "f1": 0.905
+      },
+      {
+        "field": "invoice_number",
+        "total": 23,
+        "correct": 20,
+        "wrong": 1,
+        "missing": 2,
+        "spurious": 0,
+        "precision": 0.952,
+        "recall": 0.87,
+        "f1": 0.909
+      },
+      {
+        "field": "vendor_name",
+        "total": 23,
+        "correct": 21,
+        "wrong": 2,
+        "missing": 0,
+        "spurious": 0,
+        "precision": 0.913,
+        "recall": 0.913,
+        "f1": 0.913
+      },
+      {
+        "field": "tax_rate",
+        "total": 23,
+        "correct": 20,
+        "wrong": 0,
+        "missing": 3,
+        "spurious": 0,
+        "precision": 1.0,
+        "recall": 0.87,
+        "f1": 0.93
+      },
+      {
+        "field": "payment_terms",
+        "total": 21,
+        "correct": 19,
+        "wrong": 0,
+        "missing": 2,
+        "spurious": 0,
+        "precision": 1.0,
+        "recall": 0.905,
+        "f1": 0.95
+      },
+      {
+        "field": "bank_account",
+        "total": 22,
+        "correct": 21,
+        "wrong": 1,
+        "missing": 0,
+        "spurious": 0,
+        "precision": 0.955,
+        "recall": 0.955,
+        "f1": 0.955
+      },
+      {
+        "field": "subtotal",
+        "total": 26,
+        "correct": 25,
+        "wrong": 0,
+        "missing": 1,
+        "spurious": 0,
+        "precision": 1.0,
+        "recall": 0.962,
+        "f1": 0.98
+      },
+      {
+        "field": "applicant_name",
+        "total": 1,
+        "correct": 1,
+        "wrong": 0,
+        "missing": 0,
+        "spurious": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      {
+        "field": "auto_renew",
+        "total": 3,
+        "correct": 3,
+        "wrong": 0,
+        "missing": 0,
+        "spurious": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      {
+        "field": "contact_email",
+        "total": 1,
+        "correct": 1,
+        "wrong": 0,
+        "missing": 0,
+        "spurious": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      {
+        "field": "contact_phone",
+        "total": 1,
+        "correct": 1,
+        "wrong": 0,
+        "missing": 0,
+        "spurious": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      {
+        "field": "contract_title",
+        "total": 1,
+        "correct": 1,
+        "wrong": 0,
+        "missing": 0,
+        "spurious": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      {
+        "field": "currency",
+        "total": 29,
+        "correct": 29,
+        "wrong": 0,
+        "missing": 0,
+        "spurious": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      {
+        "field": "effective_date",
+        "total": 3,
+        "correct": 3,
+        "wrong": 0,
+        "missing": 0,
+        "spurious": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      {
+        "field": "expiry_date",
+        "total": 3,
+        "correct": 3,
+        "wrong": 0,
+        "missing": 0,
+        "spurious": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      {
+        "field": "form_type",
+        "total": 1,
+        "correct": 1,
+        "wrong": 0,
+        "missing": 0,
+        "spurious": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      {
+        "field": "governing_law",
+        "total": 1,
+        "correct": 1,
+        "wrong": 0,
+        "missing": 0,
+        "spurious": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      {
+        "field": "merchant_name",
+        "total": 3,
+        "correct": 3,
+        "wrong": 0,
+        "missing": 0,
+        "spurious": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      {
+        "field": "merchant_tax_id",
+        "total": 1,
+        "correct": 1,
+        "wrong": 0,
+        "missing": 0,
+        "spurious": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      {
+        "field": "party_b",
+        "total": 3,
+        "correct": 3,
+        "wrong": 0,
+        "missing": 0,
+        "spurious": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      {
+        "field": "receipt_date",
+        "total": 3,
+        "correct": 3,
+        "wrong": 0,
+        "missing": 0,
+        "spurious": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      {
+        "field": "receipt_number",
+        "total": 3,
+        "correct": 3,
+        "wrong": 0,
+        "missing": 0,
+        "spurious": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      {
+        "field": "submitted_date",
+        "total": 1,
+        "correct": 1,
+        "wrong": 0,
+        "missing": 0,
+        "spurious": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      {
+        "field": "tax_amount",
+        "total": 26,
+        "correct": 26,
+        "wrong": 0,
+        "missing": 0,
+        "spurious": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      {
+        "field": "tax_id",
+        "total": 1,
+        "correct": 1,
+        "wrong": 0,
+        "missing": 0,
+        "spurious": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      {
+        "field": "total_amount",
+        "total": 26,
+        "correct": 26,
+        "wrong": 0,
+        "missing": 0,
+        "spurious": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      {
+        "field": "",
+        "total": 2,
+        "correct": 0,
+        "wrong": 0,
+        "missing": 2,
+        "spurious": 0,
+        "precision": null,
+        "recall": 0.0,
+        "f1": null
+      },
+      {
+        "field": "payment_method",
+        "total": 2,
+        "correct": 0,
+        "wrong": 2,
+        "missing": 0,
+        "spurious": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": null
+      }
+    ]
+  },
+  "data_quality": {
+    "documents": 30,
+    "completeness": 0.888,
+    "fields_defined": 402,
+    "fields_filled": 357,
+    "critical_completeness": 0.893,
+    "critical_defined": 197,
+    "critical_filled": 176,
+    "documents_missing_a_required_field": 2,
+    "required_missing_documents": [
+      "6_invoice_unknown_vendor_False.png",
+      "18_invoice_unlabelled_amounts_True.jpg"
+    ],
+    "validity": 1.0,
+    "invalid_values": 0,
+    "invalid_by_kind": {},
+    "grounded_share": 0.9888,
+    "ungrounded_values": 4,
+    "documents_failing_arithmetic": 4,
+    "arithmetic_documents": [
+      "2_invoice_total_transposed_False.pdf",
+      "4_invoice_vat_miscalculated_False.pdf",
+      "16_invoice_line_items_do_not_sum_False.jpg",
+      "26_invoice_thai_vat_miscalculated_False.pdf"
+    ],
+    "clean_documents": 24,
+    "clean_share": 0.8,
+    "per_document": [
+      {
+        "document": "1_invoice_clean_matches_po_True.pdf",
+        "doc_type": "invoice",
+        "fields_defined": 14,
+        "fields_filled": 14,
+        "completeness": 1.0,
+        "critical_defined": 7,
+        "critical_filled": 7,
+        "critical_completeness": 1.0,
+        "required_missing": [],
+        "invalid": [],
+        "ungrounded": [],
+        "grounded_share": 1.0,
+        "broken_arithmetic": [],
+        "clean": true
+      },
+      {
+        "document": "2_invoice_total_transposed_False.pdf",
+        "doc_type": "invoice",
+        "fields_defined": 14,
+        "fields_filled": 14,
+        "completeness": 1.0,
+        "critical_defined": 7,
+        "critical_filled": 7,
+        "critical_completeness": 1.0,
+        "required_missing": [],
+        "invalid": [],
+        "ungrounded": [],
+        "grounded_share": 1.0,
+        "broken_arithmetic": [
+          "invoice_totals_consistent"
+        ],
+        "clean": false
+      },
+      {
+        "document": "3_invoice_photo_on_a_desk_False.jpg",
+        "doc_type": "invoice",
+        "fields_defined": 14,
+        "fields_filled": 14,
+        "completeness": 1.0,
+        "critical_defined": 7,
+        "critical_filled": 7,
+        "critical_completeness": 1.0,
+        "required_missing": [],
+        "invalid": [],
+        "ungrounded": [],
+        "grounded_share": 1.0,
+        "broken_arithmetic": [],
+        "clean": true
+      },
+      {
+        "document": "4_invoice_vat_miscalculated_False.pdf",
+        "doc_type": "invoice",
+        "fields_defined": 14,
+        "fields_filled": 13,
+        "completeness": 0.929,
+        "critical_defined": 7,
+        "critical_filled": 6,
+        "critical_completeness": 0.857,
+        "required_missing": [],
+        "invalid": [],
+        "ungrounded": [],
+        "grounded_share": 1.0,
+        "broken_arithmetic": [
+          "tax_rate_consistent"
+        ],
+        "clean": false
+      },
+      {
+        "document": "5_invoice_bank_account_changed_False.pdf",
+        "doc_type": "invoice",
+        "fields_defined": 14,
+        "fields_filled": 13,
+        "completeness": 0.929,
+        "critical_defined": 7,
+        "critical_filled": 6,
+        "critical_completeness": 0.857,
+        "required_missing": [],
+        "invalid": [],
+        "ungrounded": [],
+        "grounded_share": 1.0,
+        "broken_arithmetic": [],
+        "clean": true
+      },
+      {
+        "document": "6_invoice_unknown_vendor_False.png",
+        "doc_type": "invoice",
+        "fields_defined": 14,
+        "fields_filled": 7,
+        "completeness": 0.5,
+        "critical_defined": 7,
+        "critical_filled": 3,
+        "critical_completeness": 0.429,
+        "required_missing": [
+          "invoice_date",
+          "invoice_number"
+        ],
+        "invalid": [],
+        "ungrounded": [],
+        "grounded_share": 1.0,
+        "broken_arithmetic": [],
+        "clean": false
+      },
+      {
+        "document": "7_invoice_from_a_blocked_vendor_False.pdf",
+        "doc_type": "invoice",
+        "fields_defined": 14,
+        "fields_filled": 12,
+        "completeness": 0.857,
+        "critical_defined": 7,
+        "critical_filled": 6,
+        "critical_completeness": 0.857,
+        "required_missing": [],
+        "invalid": [],
+        "ungrounded": [],
+        "grounded_share": 1.0,
+        "broken_arithmetic": [],
+        "clean": true
+      },
+      {
+        "document": "8_invoice_over_the_purchase_order_False.pdf",
+        "doc_type": "invoice",
+        "fields_defined": 14,
+        "fields_filled": 13,
+        "completeness": 0.929,
+        "critical_defined": 7,
+        "critical_filled": 7,
+        "critical_completeness": 1.0,
+        "required_missing": [],
+        "invalid": [],
+        "ungrounded": [],
+        "grounded_share": 1.0,
+        "broken_arithmetic": [],
+        "clean": true
+      },
+      {
+        "document": "9_invoice_thai_buddhist_dates_True.png",
+        "doc_type": "invoice",
+        "fields_defined": 14,
+        "fields_filled": 13,
+        "completeness": 0.929,
+        "critical_defined": 7,
+        "critical_filled": 6,
+        "critical_completeness": 0.857,
+        "required_missing": [],
+        "invalid": [],
+        "ungrounded": [
+          "currency"
+        ],
+        "grounded_share": 0.923,
+        "broken_arithmetic": [],
+        "clean": true
+      },
+      {
+        "document": "10_invoice_no_po_above_threshold_False.pdf",
+        "doc_type": "invoice",
+        "fields_defined": 14,
+        "fields_filled": 11,
+        "completeness": 0.786,
+        "critical_defined": 7,
+        "critical_filled": 6,
+        "critical_completeness": 0.857,
+        "required_missing": [],
+        "invalid": [],
+        "ungrounded": [],
+        "grounded_share": 1.0,
+        "broken_arithmetic": [],
+        "clean": true
+      },
+      {
+        "document": "11_receipt_photographed_True.jpg",
+        "doc_type": "receipt",
+        "fields_defined": 10,
+        "fields_filled": 9,
+        "completeness": 0.9,
+        "critical_defined": 5,
+        "critical_filled": 5,
+        "critical_completeness": 1.0,
+        "required_missing": [],
+        "invalid": [],
+        "ungrounded": [],
+        "grounded_share": 1.0,
+        "broken_arithmetic": [],
+        "clean": true
+      },
+      {
+        "document": "12_contract_expiring_soon_True.pdf",
+        "doc_type": "contract",
+        "fields_defined": 13,
+        "fields_filled": 13,
+        "completeness": 1.0,
+        "critical_defined": 6,
+        "critical_filled": 6,
+        "critical_completeness": 1.0,
+        "required_missing": [],
+        "invalid": [],
+        "ungrounded": [],
+        "grounded_share": 1.0,
+        "broken_arithmetic": [],
+        "clean": true
+      },
+      {
+        "document": "13_contract_already_expired_False.jpg",
+        "doc_type": "contract",
+        "fields_defined": 13,
+        "fields_filled": 11,
+        "completeness": 0.846,
+        "critical_defined": 6,
+        "critical_filled": 5,
+        "critical_completeness": 0.833,
+        "required_missing": [],
+        "invalid": [],
+        "ungrounded": [],
+        "grounded_share": 1.0,
+        "broken_arithmetic": [],
+        "clean": true
+      },
+      {
+        "document": "14_form_vendor_onboarding_True.png",
+        "doc_type": "form",
+        "fields_defined": 11,
+        "fields_filled": 7,
+        "completeness": 0.636,
+        "critical_defined": 3,
+        "critical_filled": 2,
+        "critical_completeness": 0.667,
+        "required_missing": [],
+        "invalid": [],
+        "ungrounded": [],
+        "grounded_share": 1.0,
+        "broken_arithmetic": [],
+        "clean": true
+      },
+      {
+        "document": "15_invoice_duplicate_submission_False.pdf",
+        "doc_type": "invoice",
+        "fields_defined": 14,
+        "fields_filled": 14,
+        "completeness": 1.0,
+        "critical_defined": 7,
+        "critical_filled": 7,
+        "critical_completeness": 1.0,
+        "required_missing": [],
+        "invalid": [],
+        "ungrounded": [],
+        "grounded_share": 1.0,
+        "broken_arithmetic": [],
+        "clean": true
+      },
+      {
+        "document": "16_invoice_line_items_do_not_sum_False.jpg",
+        "doc_type": "invoice",
+        "fields_defined": 14,
+        "fields_filled": 13,
+        "completeness": 0.929,
+        "critical_defined": 7,
+        "critical_filled": 6,
+        "critical_completeness": 0.857,
+        "required_missing": [],
+        "invalid": [],
+        "ungrounded": [],
+        "grounded_share": 1.0,
+        "broken_arithmetic": [
+          "line_items_sum_to_subtotal"
+        ],
+        "clean": false
+      },
+      {
+        "document": "17_invoice_currency_disagrees_with_po_False.pdf",
+        "doc_type": "invoice",
+        "fields_defined": 14,
+        "fields_filled": 12,
+        "completeness": 0.857,
+        "critical_defined": 7,
+        "critical_filled": 7,
+        "critical_completeness": 1.0,
+        "required_missing": [],
+        "invalid": [],
+        "ungrounded": [],
+        "grounded_share": 1.0,
+        "broken_arithmetic": [],
+        "clean": true
+      },
+      {
+        "document": "18_invoice_unlabelled_amounts_True.jpg",
+        "doc_type": "invoice",
+        "fields_defined": 14,
+        "fields_filled": 8,
+        "completeness": 0.571,
+        "critical_defined": 7,
+        "critical_filled": 4,
+        "critical_completeness": 0.571,
+        "required_missing": [
+          "invoice_number"
+        ],
+        "invalid": [],
+        "ungrounded": [],
+        "grounded_share": 1.0,
+        "broken_arithmetic": [],
+        "clean": false
+      },
+      {
+        "document": "19_invoice_two_column_layout_True.pdf",
+        "doc_type": "invoice",
+        "fields_defined": 14,
+        "fields_filled": 12,
+        "completeness": 0.857,
+        "critical_defined": 7,
+        "critical_filled": 6,
+        "critical_completeness": 0.857,
+        "required_missing": [],
+        "invalid": [],
+        "ungrounded": [],
+        "grounded_share": 1.0,
+        "broken_arithmetic": [],
+        "clean": true
+      },
+      {
+        "document": "20_invoice_dense_no_whitespace_True.pdf",
+        "doc_type": "invoice",
+        "fields_defined": 14,
+        "fields_filled": 13,
+        "completeness": 0.929,
+        "critical_defined": 7,
+        "critical_filled": 6,
+        "critical_completeness": 0.857,
+        "required_missing": [],
+        "invalid": [],
+        "ungrounded": [],
+        "grounded_share": 1.0,
+        "broken_arithmetic": [],
+        "clean": true
+      },
+      {
+        "document": "21_invoice_minimal_unlabelled_True.pdf",
+        "doc_type": "invoice",
+        "fields_defined": 14,
+        "fields_filled": 11,
+        "completeness": 0.786,
+        "critical_defined": 7,
+        "critical_filled": 6,
+        "critical_completeness": 0.857,
+        "required_missing": [],
+        "invalid": [],
+        "ungrounded": [
+          "tax_rate"
+        ],
+        "grounded_share": 0.909,
+        "broken_arithmetic": [],
+        "clean": true
+      },
+      {
+        "document": "22_invoice_thai_layout_correct_True.png",
+        "doc_type": "invoice",
+        "fields_defined": 14,
+        "fields_filled": 13,
+        "completeness": 0.929,
+        "critical_defined": 7,
+        "critical_filled": 6,
+        "critical_completeness": 0.857,
+        "required_missing": [],
+        "invalid": [],
+        "ungrounded": [
+          "currency"
+        ],
+        "grounded_share": 0.923,
+        "broken_arithmetic": [],
+        "clean": true
+      },
+      {
+        "document": "23_invoice_modern_scanned_True.png",
+        "doc_type": "invoice",
+        "fields_defined": 14,
+        "fields_filled": 13,
+        "completeness": 0.929,
+        "critical_defined": 7,
+        "critical_filled": 7,
+        "critical_completeness": 1.0,
+        "required_missing": [],
+        "invalid": [],
+        "ungrounded": [],
+        "grounded_share": 1.0,
+        "broken_arithmetic": [],
+        "clean": true
+      },
+      {
+        "document": "24_receipt_clean_thermal_True.pdf",
+        "doc_type": "receipt",
+        "fields_defined": 10,
+        "fields_filled": 9,
+        "completeness": 0.9,
+        "critical_defined": 5,
+        "critical_filled": 5,
+        "critical_completeness": 1.0,
+        "required_missing": [],
+        "invalid": [],
+        "ungrounded": [],
+        "grounded_share": 1.0,
+        "broken_arithmetic": [],
+        "clean": true
+      },
+      {
+        "document": "25_invoice_thai_arabic_digits_True.png",
+        "doc_type": "invoice",
+        "fields_defined": 14,
+        "fields_filled": 14,
+        "completeness": 1.0,
+        "critical_defined": 7,
+        "critical_filled": 7,
+        "critical_completeness": 1.0,
+        "required_missing": [],
+        "invalid": [],
+        "ungrounded": [],
+        "grounded_share": 1.0,
+        "broken_arithmetic": [],
+        "clean": true
+      },
+      {
+        "document": "26_invoice_thai_vat_miscalculated_False.pdf",
+        "doc_type": "invoice",
+        "fields_defined": 14,
+        "fields_filled": 14,
+        "completeness": 1.0,
+        "critical_defined": 7,
+        "critical_filled": 7,
+        "critical_completeness": 1.0,
+        "required_missing": [],
+        "invalid": [],
+        "ungrounded": [],
+        "grounded_share": 1.0,
+        "broken_arithmetic": [
+          "tax_rate_consistent"
+        ],
+        "clean": false
+      },
+      {
+        "document": "27_receipt_thai_fuel_station_True.jpg",
+        "doc_type": "receipt",
+        "fields_defined": 10,
+        "fields_filled": 9,
+        "completeness": 0.9,
+        "critical_defined": 5,
+        "critical_filled": 5,
+        "critical_completeness": 1.0,
+        "required_missing": [],
+        "invalid": [],
+        "ungrounded": [],
+        "grounded_share": 1.0,
+        "broken_arithmetic": [],
+        "clean": true
+      },
+      {
+        "document": "28_contract_thai_service_True.pdf",
+        "doc_type": "contract",
+        "fields_defined": 13,
+        "fields_filled": 13,
+        "completeness": 1.0,
+        "critical_defined": 6,
+        "critical_filled": 6,
+        "critical_completeness": 1.0,
+        "required_missing": [],
+        "invalid": [],
+        "ungrounded": [
+          "notice_period_days"
+        ],
+        "grounded_share": 0.923,
+        "broken_arithmetic": [],
+        "clean": true
+      },
+      {
+        "document": "29_invoice_thai_unknown_vendor_False.png",
+        "doc_type": "invoice",
+        "fields_defined": 14,
+        "fields_filled": 13,
+        "completeness": 0.929,
+        "critical_defined": 7,
+        "critical_filled": 6,
+        "critical_completeness": 0.857,
+        "required_missing": [],
+        "invalid": [],
+        "ungrounded": [],
+        "grounded_share": 1.0,
+        "broken_arithmetic": [],
+        "clean": true
+      },
+      {
+        "document": "30_invoice_thai_no_tax_id_True.png",
+        "doc_type": "invoice",
+        "fields_defined": 14,
+        "fields_filled": 12,
+        "completeness": 0.857,
+        "critical_defined": 7,
+        "critical_filled": 6,
+        "critical_completeness": 0.857,
+        "required_missing": [],
+        "invalid": [],
+        "ungrounded": [],
+        "grounded_share": 1.0,
+        "broken_arithmetic": [],
+        "clean": true
       }
     ]
   },
   "gatekeeping": {
-    "documents": 24,
-    "decision_accuracy": 0.875,
-    "should_post": 12,
-    "should_hold": 12,
+    "documents": 30,
+    "decision_accuracy": 0.933,
+    "should_post": 16,
+    "should_hold": 14,
     "missed_defects": 0,
     "missed_defect_rate": 0.0,
     "missed_defect_documents": [],
-    "false_alarms": 3,
-    "false_alarm_rate": 0.25,
+    "false_alarms": 2,
+    "false_alarm_rate": 0.125,
     "false_alarm_documents": [
-      "9_invoice_thai_buddhist_dates_True.png",
       "18_invoice_unlabelled_amounts_True.jpg",
       "21_invoice_minimal_unlabelled_True.pdf"
     ],
     "rules_tested": 12,
-    "rules_untested": 18,
+    "rules_untested": 22,
     "rules_with_full_recall": 12,
     "rules_that_missed": [],
     "per_rule": [
@@ -420,7 +1897,7 @@
         "fired_when_expected": 1,
         "silent_when_expected": 0,
         "fired_unexpectedly": 1,
-        "silent_when_not_expected": 22,
+        "silent_when_not_expected": 28,
         "missed_on": [],
         "fired_unexpectedly_on": [
           "16_invoice_line_items_do_not_sum_False.jpg"
@@ -435,7 +1912,7 @@
         "fired_when_expected": 1,
         "silent_when_expected": 0,
         "fired_unexpectedly": 0,
-        "silent_when_not_expected": 11,
+        "silent_when_not_expected": 17,
         "missed_on": [],
         "fired_unexpectedly_on": [],
         "reading_rule": false
@@ -448,7 +1925,7 @@
         "fired_when_expected": 1,
         "silent_when_expected": 0,
         "fired_unexpectedly": 0,
-        "silent_when_not_expected": 23,
+        "silent_when_not_expected": 29,
         "missed_on": [],
         "fired_unexpectedly_on": [],
         "reading_rule": false
@@ -457,13 +1934,15 @@
         "rule_id": "duplicate_document",
         "tested": true,
         "recall": 1.0,
-        "precision": 1.0,
+        "precision": 0.5,
         "fired_when_expected": 1,
         "silent_when_expected": 0,
-        "fired_unexpectedly": 0,
-        "silent_when_not_expected": 23,
+        "fired_unexpectedly": 1,
+        "silent_when_not_expected": 28,
         "missed_on": [],
-        "fired_unexpectedly_on": [],
+        "fired_unexpectedly_on": [
+          "26_invoice_thai_vat_miscalculated_False.pdf"
+        ],
         "reading_rule": false
       },
       {
@@ -474,7 +1953,7 @@
         "fired_when_expected": 1,
         "silent_when_expected": 0,
         "fired_unexpectedly": 0,
-        "silent_when_not_expected": 23,
+        "silent_when_not_expected": 29,
         "missed_on": [],
         "fired_unexpectedly_on": [],
         "reading_rule": true
@@ -487,7 +1966,7 @@
         "fired_when_expected": 1,
         "silent_when_expected": 0,
         "fired_unexpectedly": 0,
-        "silent_when_not_expected": 23,
+        "silent_when_not_expected": 29,
         "missed_on": [],
         "fired_unexpectedly_on": [],
         "reading_rule": true
@@ -500,7 +1979,7 @@
         "fired_when_expected": 1,
         "silent_when_expected": 0,
         "fired_unexpectedly": 0,
-        "silent_when_not_expected": 23,
+        "silent_when_not_expected": 29,
         "missed_on": [],
         "fired_unexpectedly_on": [],
         "reading_rule": false
@@ -513,7 +1992,7 @@
         "fired_when_expected": 1,
         "silent_when_expected": 0,
         "fired_unexpectedly": 0,
-        "silent_when_not_expected": 23,
+        "silent_when_not_expected": 29,
         "missed_on": [],
         "fired_unexpectedly_on": [],
         "reading_rule": false
@@ -526,7 +2005,7 @@
         "fired_when_expected": 1,
         "silent_when_expected": 0,
         "fired_unexpectedly": 2,
-        "silent_when_not_expected": 21,
+        "silent_when_not_expected": 27,
         "missed_on": [],
         "fired_unexpectedly_on": [
           "4_invoice_vat_miscalculated_False.pdf",
@@ -538,15 +2017,13 @@
         "rule_id": "tax_rate_consistent",
         "tested": true,
         "recall": 1.0,
-        "precision": 0.5,
-        "fired_when_expected": 1,
+        "precision": 1.0,
+        "fired_when_expected": 2,
         "silent_when_expected": 0,
-        "fired_unexpectedly": 1,
-        "silent_when_not_expected": 22,
+        "fired_unexpectedly": 0,
+        "silent_when_not_expected": 28,
         "missed_on": [],
-        "fired_unexpectedly_on": [
-          "16_invoice_line_items_do_not_sum_False.jpg"
-        ],
+        "fired_unexpectedly_on": [],
         "reading_rule": true
       },
       {
@@ -557,7 +2034,7 @@
         "fired_when_expected": 2,
         "silent_when_expected": 0,
         "fired_unexpectedly": 0,
-        "silent_when_not_expected": 22,
+        "silent_when_not_expected": 28,
         "missed_on": [],
         "fired_unexpectedly_on": [],
         "reading_rule": false
@@ -566,11 +2043,11 @@
         "rule_id": "vendor_known",
         "tested": true,
         "recall": 1.0,
-        "precision": 0.5,
-        "fired_when_expected": 1,
+        "precision": 0.667,
+        "fired_when_expected": 2,
         "silent_when_expected": 0,
         "fired_unexpectedly": 1,
-        "silent_when_not_expected": 22,
+        "silent_when_not_expected": 27,
         "missed_on": [],
         "fired_unexpectedly_on": [
           "14_form_vendor_onboarding_True.png"
@@ -585,7 +2062,7 @@
         "fired_when_expected": 0,
         "silent_when_expected": 0,
         "fired_unexpectedly": 0,
-        "silent_when_not_expected": 24,
+        "silent_when_not_expected": 30,
         "missed_on": [],
         "fired_unexpectedly_on": [],
         "reading_rule": false
@@ -598,7 +2075,7 @@
         "fired_when_expected": 0,
         "silent_when_expected": 0,
         "fired_unexpectedly": 0,
-        "silent_when_not_expected": 24,
+        "silent_when_not_expected": 30,
         "missed_on": [],
         "fired_unexpectedly_on": [],
         "reading_rule": false
@@ -611,7 +2088,7 @@
         "fired_when_expected": 0,
         "silent_when_expected": 0,
         "fired_unexpectedly": 0,
-        "silent_when_not_expected": 24,
+        "silent_when_not_expected": 30,
         "missed_on": [],
         "fired_unexpectedly_on": [],
         "reading_rule": false
@@ -624,7 +2101,7 @@
         "fired_when_expected": 0,
         "silent_when_expected": 0,
         "fired_unexpectedly": 0,
-        "silent_when_not_expected": 24,
+        "silent_when_not_expected": 30,
         "missed_on": [],
         "fired_unexpectedly_on": [],
         "reading_rule": false
@@ -637,7 +2114,7 @@
         "fired_when_expected": 0,
         "silent_when_expected": 0,
         "fired_unexpectedly": 0,
-        "silent_when_not_expected": 24,
+        "silent_when_not_expected": 30,
         "missed_on": [],
         "fired_unexpectedly_on": [],
         "reading_rule": false
@@ -650,7 +2127,7 @@
         "fired_when_expected": 0,
         "silent_when_expected": 0,
         "fired_unexpectedly": 0,
-        "silent_when_not_expected": 24,
+        "silent_when_not_expected": 30,
         "missed_on": [],
         "fired_unexpectedly_on": [],
         "reading_rule": false
@@ -663,7 +2140,7 @@
         "fired_when_expected": 0,
         "silent_when_expected": 0,
         "fired_unexpectedly": 0,
-        "silent_when_not_expected": 24,
+        "silent_when_not_expected": 30,
         "missed_on": [],
         "fired_unexpectedly_on": [],
         "reading_rule": false
@@ -676,7 +2153,7 @@
         "fired_when_expected": 0,
         "silent_when_expected": 0,
         "fired_unexpectedly": 0,
-        "silent_when_not_expected": 24,
+        "silent_when_not_expected": 30,
         "missed_on": [],
         "fired_unexpectedly_on": [],
         "reading_rule": false
@@ -689,7 +2166,20 @@
         "fired_when_expected": 0,
         "silent_when_expected": 0,
         "fired_unexpectedly": 0,
-        "silent_when_not_expected": 24,
+        "silent_when_not_expected": 30,
+        "missed_on": [],
+        "fired_unexpectedly_on": [],
+        "reading_rule": false
+      },
+      {
+        "rule_id": "currency_is_one_we_trade_in",
+        "tested": false,
+        "recall": null,
+        "precision": null,
+        "fired_when_expected": 0,
+        "silent_when_expected": 0,
+        "fired_unexpectedly": 0,
+        "silent_when_not_expected": 30,
         "missed_on": [],
         "fired_unexpectedly_on": [],
         "reading_rule": false
@@ -698,15 +2188,13 @@
         "rule_id": "currency_matches_vendor_default",
         "tested": false,
         "recall": null,
-        "precision": 0.0,
+        "precision": null,
         "fired_when_expected": 0,
         "silent_when_expected": 0,
-        "fired_unexpectedly": 1,
-        "silent_when_not_expected": 23,
+        "fired_unexpectedly": 0,
+        "silent_when_not_expected": 30,
         "missed_on": [],
-        "fired_unexpectedly_on": [
-          "17_invoice_currency_disagrees_with_po_False.pdf"
-        ],
+        "fired_unexpectedly_on": [],
         "reading_rule": false
       },
       {
@@ -717,7 +2205,7 @@
         "fired_when_expected": 0,
         "silent_when_expected": 0,
         "fired_unexpectedly": 1,
-        "silent_when_not_expected": 23,
+        "silent_when_not_expected": 29,
         "missed_on": [],
         "fired_unexpectedly_on": [
           "16_invoice_line_items_do_not_sum_False.jpg"
@@ -732,27 +2220,61 @@
         "fired_when_expected": 0,
         "silent_when_expected": 0,
         "fired_unexpectedly": 0,
-        "silent_when_not_expected": 24,
+        "silent_when_not_expected": 30,
         "missed_on": [],
         "fired_unexpectedly_on": [],
         "reading_rule": true
       },
       {
+        "rule_id": "every_line_item_described",
+        "tested": false,
+        "recall": null,
+        "precision": null,
+        "fired_when_expected": 0,
+        "silent_when_expected": 0,
+        "fired_unexpectedly": 0,
+        "silent_when_not_expected": 30,
+        "missed_on": [],
+        "fired_unexpectedly_on": [],
+        "reading_rule": false
+      },
+      {
+        "rule_id": "large_invoice_names_a_buyer",
+        "tested": false,
+        "recall": null,
+        "precision": null,
+        "fired_when_expected": 0,
+        "silent_when_expected": 0,
+        "fired_unexpectedly": 0,
+        "silent_when_not_expected": 30,
+        "missed_on": [],
+        "fired_unexpectedly_on": [],
+        "reading_rule": false
+      },
+      {
+        "rule_id": "no_single_line_over_400k",
+        "tested": false,
+        "recall": null,
+        "precision": null,
+        "fired_when_expected": 0,
+        "silent_when_expected": 0,
+        "fired_unexpectedly": 0,
+        "silent_when_not_expected": 30,
+        "missed_on": [],
+        "fired_unexpectedly_on": [],
+        "reading_rule": false
+      },
+      {
         "rule_id": "payment_terms_stated",
         "tested": false,
         "recall": null,
-        "precision": 0.0,
+        "precision": null,
         "fired_when_expected": 0,
         "silent_when_expected": 0,
-        "fired_unexpectedly": 4,
-        "silent_when_not_expected": 15,
+        "fired_unexpectedly": 0,
+        "silent_when_not_expected": 30,
         "missed_on": [],
-        "fired_unexpectedly_on": [
-          "6_invoice_unknown_vendor_False.png",
-          "10_invoice_no_po_above_threshold_False.pdf",
-          "18_invoice_unlabelled_amounts_True.jpg",
-          "21_invoice_minimal_unlabelled_True.pdf"
-        ],
+        "fired_unexpectedly_on": [],
         "reading_rule": false
       },
       {
@@ -763,7 +2285,7 @@
         "fired_when_expected": 0,
         "silent_when_expected": 0,
         "fired_unexpectedly": 0,
-        "silent_when_not_expected": 24,
+        "silent_when_not_expected": 30,
         "missed_on": [],
         "fired_unexpectedly_on": [],
         "reading_rule": false
@@ -775,13 +2297,14 @@
         "precision": 0.0,
         "fired_when_expected": 0,
         "silent_when_expected": 0,
-        "fired_unexpectedly": 3,
-        "silent_when_not_expected": 19,
+        "fired_unexpectedly": 4,
+        "silent_when_not_expected": 26,
         "missed_on": [],
         "fired_unexpectedly_on": [
           "3_invoice_photo_on_a_desk_False.jpg",
           "8_invoice_over_the_purchase_order_False.pdf",
-          "17_invoice_currency_disagrees_with_po_False.pdf"
+          "17_invoice_currency_disagrees_with_po_False.pdf",
+          "26_invoice_thai_vat_miscalculated_False.pdf"
         ],
         "reading_rule": false
       },
@@ -789,18 +2312,13 @@
         "rule_id": "tax_id_belongs_to_this_vendor",
         "tested": false,
         "recall": null,
-        "precision": 0.0,
+        "precision": null,
         "fired_when_expected": 0,
         "silent_when_expected": 0,
-        "fired_unexpectedly": 4,
-        "silent_when_not_expected": 13,
+        "fired_unexpectedly": 0,
+        "silent_when_not_expected": 30,
         "missed_on": [],
-        "fired_unexpectedly_on": [
-          "8_invoice_over_the_purchase_order_False.pdf",
-          "10_invoice_no_po_above_threshold_False.pdf",
-          "16_invoice_line_items_do_not_sum_False.jpg",
-          "21_invoice_minimal_unlabelled_True.pdf"
-        ],
+        "fired_unexpectedly_on": [],
         "reading_rule": false
       },
       {
@@ -811,7 +2329,7 @@
         "fired_when_expected": 0,
         "silent_when_expected": 0,
         "fired_unexpectedly": 0,
-        "silent_when_not_expected": 24,
+        "silent_when_not_expected": 30,
         "missed_on": [],
         "fired_unexpectedly_on": [],
         "reading_rule": true
@@ -824,7 +2342,7 @@
         "fired_when_expected": 0,
         "silent_when_expected": 0,
         "fired_unexpectedly": 0,
-        "silent_when_not_expected": 24,
+        "silent_when_not_expected": 30,
         "missed_on": [],
         "fired_unexpectedly_on": [],
         "reading_rule": false
@@ -838,7 +2356,7 @@
         "correct": true,
         "missed_defect": false,
         "false_alarm": false,
-        "confidence": 0.934,
+        "confidence": 0.943,
         "expected_findings": [],
         "failed_findings": []
       },
@@ -849,7 +2367,7 @@
         "correct": true,
         "missed_defect": false,
         "false_alarm": false,
-        "confidence": 0.746,
+        "confidence": 0.749,
         "expected_findings": [
           "invoice_totals_consistent"
         ],
@@ -883,9 +2401,9 @@
           "vendor_active"
         ],
         "failed_findings": [
+          "purchase_order_required",
           "tax_rate_consistent",
-          "vendor_active",
-          "purchase_order_required"
+          "vendor_active"
         ]
       },
       {
@@ -895,7 +2413,7 @@
         "correct": true,
         "missed_defect": false,
         "false_alarm": false,
-        "confidence": 0.93,
+        "confidence": 0.929,
         "expected_findings": [
           "bank_account_matches_vendor"
         ],
@@ -911,13 +2429,12 @@
         "correct": true,
         "missed_defect": false,
         "false_alarm": false,
-        "confidence": 0.815,
+        "confidence": 0.412,
         "expected_findings": [
           "vendor_known"
         ],
         "failed_findings": [
-          "vendor_known",
-          "payment_terms_stated"
+          "vendor_known"
         ]
       },
       {
@@ -942,24 +2459,23 @@
         "correct": true,
         "missed_defect": false,
         "false_alarm": false,
-        "confidence": 0.934,
+        "confidence": 0.943,
         "expected_findings": [
           "po_amount_within_tolerance"
         ],
         "failed_findings": [
           "po_amount_within_tolerance",
-          "purchase_order_still_has_room",
-          "tax_id_belongs_to_this_vendor"
+          "purchase_order_still_has_room"
         ]
       },
       {
         "document": "9_invoice_thai_buddhist_dates_True.png",
         "should_post": true,
-        "posted": false,
-        "correct": false,
+        "posted": true,
+        "correct": true,
         "missed_defect": false,
-        "false_alarm": true,
-        "confidence": 0.632,
+        "false_alarm": false,
+        "confidence": 0.934,
         "expected_findings": [],
         "failed_findings": []
       },
@@ -970,14 +2486,12 @@
         "correct": true,
         "missed_defect": false,
         "false_alarm": false,
-        "confidence": 0.821,
+        "confidence": 0.808,
         "expected_findings": [
           "purchase_order_required"
         ],
         "failed_findings": [
-          "purchase_order_required",
-          "payment_terms_stated",
-          "tax_id_belongs_to_this_vendor"
+          "purchase_order_required"
         ]
       },
       {
@@ -987,7 +2501,7 @@
         "correct": true,
         "missed_defect": false,
         "false_alarm": false,
-        "confidence": 0.863,
+        "confidence": 0.85,
         "expected_findings": [],
         "failed_findings": []
       },
@@ -998,7 +2512,7 @@
         "correct": true,
         "missed_defect": false,
         "false_alarm": false,
-        "confidence": 0.923,
+        "confidence": 0.921,
         "expected_findings": [
           "contract_expiring_soon"
         ],
@@ -1013,7 +2527,7 @@
         "correct": true,
         "missed_defect": false,
         "false_alarm": false,
-        "confidence": 0.763,
+        "confidence": 0.826,
         "expected_findings": [
           "contract_expired"
         ],
@@ -1041,7 +2555,7 @@
         "correct": true,
         "missed_defect": false,
         "false_alarm": false,
-        "confidence": 0.934,
+        "confidence": 0.943,
         "expected_findings": [
           "duplicate_document"
         ],
@@ -1056,16 +2570,14 @@
         "correct": true,
         "missed_defect": false,
         "false_alarm": false,
-        "confidence": 0.45,
+        "confidence": 0.613,
         "expected_findings": [
           "line_items_sum_to_subtotal"
         ],
         "failed_findings": [
-          "dates_not_in_future",
-          "tax_rate_consistent",
-          "line_items_sum_to_subtotal",
           "bank_account_matches_vendor",
-          "tax_id_belongs_to_this_vendor"
+          "dates_not_in_future",
+          "line_items_sum_to_subtotal"
         ]
       },
       {
@@ -1075,13 +2587,12 @@
         "correct": true,
         "missed_defect": false,
         "false_alarm": false,
-        "confidence": 0.93,
+        "confidence": 0.932,
         "expected_findings": [
           "po_currency_matches"
         ],
         "failed_findings": [
           "po_currency_matches",
-          "currency_matches_vendor_default",
           "purchase_order_still_has_room"
         ]
       },
@@ -1094,9 +2605,7 @@
         "false_alarm": true,
         "confidence": 0.601,
         "expected_findings": [],
-        "failed_findings": [
-          "payment_terms_stated"
-        ]
+        "failed_findings": []
       },
       {
         "document": "19_invoice_two_column_layout_True.pdf",
@@ -1105,7 +2614,7 @@
         "correct": true,
         "missed_defect": false,
         "false_alarm": false,
-        "confidence": 0.895,
+        "confidence": 0.915,
         "expected_findings": [],
         "failed_findings": []
       },
@@ -1116,7 +2625,7 @@
         "correct": true,
         "missed_defect": false,
         "false_alarm": false,
-        "confidence": 0.912,
+        "confidence": 0.894,
         "expected_findings": [],
         "failed_findings": []
       },
@@ -1127,12 +2636,9 @@
         "correct": false,
         "missed_defect": false,
         "false_alarm": true,
-        "confidence": 0.721,
+        "confidence": 0.781,
         "expected_findings": [],
-        "failed_findings": [
-          "payment_terms_stated",
-          "tax_id_belongs_to_this_vendor"
-        ]
+        "failed_findings": []
       },
       {
         "document": "22_invoice_thai_layout_correct_True.png",
@@ -1166,19 +2672,95 @@
         "confidence": 0.849,
         "expected_findings": [],
         "failed_findings": []
+      },
+      {
+        "document": "25_invoice_thai_arabic_digits_True.png",
+        "should_post": true,
+        "posted": true,
+        "correct": true,
+        "missed_defect": false,
+        "false_alarm": false,
+        "confidence": 0.843,
+        "expected_findings": [],
+        "failed_findings": []
+      },
+      {
+        "document": "26_invoice_thai_vat_miscalculated_False.pdf",
+        "should_post": false,
+        "posted": false,
+        "correct": true,
+        "missed_defect": false,
+        "false_alarm": false,
+        "confidence": 0.683,
+        "expected_findings": [
+          "tax_rate_consistent"
+        ],
+        "failed_findings": [
+          "duplicate_document",
+          "purchase_order_still_has_room",
+          "tax_rate_consistent"
+        ]
+      },
+      {
+        "document": "27_receipt_thai_fuel_station_True.jpg",
+        "should_post": true,
+        "posted": true,
+        "correct": true,
+        "missed_defect": false,
+        "false_alarm": false,
+        "confidence": 0.914,
+        "expected_findings": [],
+        "failed_findings": []
+      },
+      {
+        "document": "28_contract_thai_service_True.pdf",
+        "should_post": true,
+        "posted": true,
+        "correct": true,
+        "missed_defect": false,
+        "false_alarm": false,
+        "confidence": 0.922,
+        "expected_findings": [],
+        "failed_findings": []
+      },
+      {
+        "document": "29_invoice_thai_unknown_vendor_False.png",
+        "should_post": false,
+        "posted": false,
+        "correct": true,
+        "missed_defect": false,
+        "false_alarm": false,
+        "confidence": 0.845,
+        "expected_findings": [
+          "vendor_known"
+        ],
+        "failed_findings": [
+          "vendor_known"
+        ]
+      },
+      {
+        "document": "30_invoice_thai_no_tax_id_True.png",
+        "should_post": true,
+        "posted": true,
+        "correct": true,
+        "missed_defect": false,
+        "false_alarm": false,
+        "confidence": 0.84,
+        "expected_findings": [],
+        "failed_findings": []
       }
     ]
   },
   "effort": {
-    "documents": 24,
-    "manual_minutes": 180.0,
-    "assisted_minutes": 22.5,
-    "machine_minutes": 13.1,
-    "rework_minutes": 0.0,
-    "saved_minutes": 157.5,
-    "saved_share": 0.875,
-    "minutes_per_document": 0.94,
-    "days_per_thousand_documents": 2.1,
+    "documents": 30,
+    "manual_minutes": 225.0,
+    "assisted_minutes": 114.0,
+    "machine_minutes": 19.8,
+    "rework_minutes": 90.0,
+    "saved_minutes": 111.0,
+    "saved_share": 0.493,
+    "minutes_per_document": 3.8,
+    "days_per_thousand_documents": 8.4,
     "manual_days_per_thousand_documents": 16.7,
     "assumptions": {
       "keying_minutes_per_document": 4.0,
@@ -1187,530 +2769,4279 @@
       "minutes_to_clean_up_one_silent_error": 45.0
     }
   },
+  "cost": {
+    "documents": 30,
+    "total_ms": 1183164,
+    "mean_ms": 39439,
+    "median_ms": 29630,
+    "p90_ms": 70405,
+    "slowest_ms": 82977,
+    "stages": {
+      "render": {
+        "total_ms": 1491,
+        "mean_ms": 50,
+        "share": 0.001,
+        "documents": 30
+      },
+      "ocr": {
+        "total_ms": 532401,
+        "mean_ms": 35493,
+        "share": 0.45,
+        "documents": 15
+      },
+      "classify": {
+        "total_ms": 6807,
+        "mean_ms": 400,
+        "share": 0.006,
+        "documents": 17
+      },
+      "extract": {
+        "total_ms": 476895,
+        "mean_ms": 15896,
+        "share": 0.403,
+        "documents": 30
+      },
+      "validate": {
+        "total_ms": 50474,
+        "mean_ms": 1869,
+        "share": 0.043,
+        "documents": 27
+      },
+      "reconcile": {
+        "total_ms": 108271,
+        "mean_ms": 7734,
+        "share": 0.092,
+        "documents": 14
+      },
+      "preprocess": {
+        "total_ms": 6825,
+        "mean_ms": 228,
+        "share": 0.006,
+        "documents": 30
+      }
+    },
+    "agent_rules_run": 9,
+    "agent_rule_verdicts": {
+      "pass": 5,
+      "fail": 3,
+      "unsure": 1
+    },
+    "undecided_rate": 0.111,
+    "agent_rule_tool_calls": 56,
+    "repeated_tool_calls": 11,
+    "reconciler_runs": 14,
+    "reconciler_tool_calls": 166
+  },
+  "field_breakdown": {
+    "": {
+      "total": 2,
+      "correct": 0,
+      "near": 0,
+      "wrong": 0,
+      "missing": 2,
+      "accuracy": 0.0
+    },
+    "payment_method": {
+      "total": 2,
+      "correct": 0,
+      "near": 0,
+      "wrong": 2,
+      "missing": 0,
+      "accuracy": 0.0
+    },
+    "contract_number": {
+      "total": 3,
+      "correct": 2,
+      "near": 0,
+      "wrong": 0,
+      "missing": 1,
+      "accuracy": 0.667
+    },
+    "party_a": {
+      "total": 3,
+      "correct": 2,
+      "near": 1,
+      "wrong": 0,
+      "missing": 0,
+      "accuracy": 0.667
+    },
+    "contract_value": {
+      "total": 3,
+      "correct": 2,
+      "near": 0,
+      "wrong": 1,
+      "missing": 0,
+      "accuracy": 0.667
+    },
+    "purchase_order_ref": {
+      "total": 12,
+      "correct": 9,
+      "near": 0,
+      "wrong": 0,
+      "missing": 3,
+      "accuracy": 0.75
+    },
+    "vendor_tax_id": {
+      "total": 19,
+      "correct": 15,
+      "near": 1,
+      "wrong": 0,
+      "missing": 3,
+      "accuracy": 0.789
+    },
+    "buyer_name": {
+      "total": 23,
+      "correct": 19,
+      "near": 1,
+      "wrong": 3,
+      "missing": 0,
+      "accuracy": 0.826
+    },
+    "due_date": {
+      "total": 22,
+      "correct": 19,
+      "near": 1,
+      "wrong": 0,
+      "missing": 2,
+      "accuracy": 0.864
+    },
+    "invoice_number": {
+      "total": 23,
+      "correct": 20,
+      "near": 0,
+      "wrong": 1,
+      "missing": 2,
+      "accuracy": 0.87
+    },
+    "invoice_date": {
+      "total": 23,
+      "correct": 20,
+      "near": 2,
+      "wrong": 0,
+      "missing": 1,
+      "accuracy": 0.87
+    },
+    "tax_rate": {
+      "total": 23,
+      "correct": 20,
+      "near": 0,
+      "wrong": 0,
+      "missing": 3,
+      "accuracy": 0.87
+    },
+    "payment_terms": {
+      "total": 21,
+      "correct": 19,
+      "near": 0,
+      "wrong": 0,
+      "missing": 2,
+      "accuracy": 0.905
+    },
+    "vendor_name": {
+      "total": 23,
+      "correct": 21,
+      "near": 2,
+      "wrong": 0,
+      "missing": 0,
+      "accuracy": 0.913
+    },
+    "bank_account": {
+      "total": 22,
+      "correct": 21,
+      "near": 0,
+      "wrong": 1,
+      "missing": 0,
+      "accuracy": 0.955
+    },
+    "subtotal": {
+      "total": 26,
+      "correct": 25,
+      "near": 0,
+      "wrong": 0,
+      "missing": 1,
+      "accuracy": 0.962
+    },
+    "currency": {
+      "total": 29,
+      "correct": 29,
+      "near": 0,
+      "wrong": 0,
+      "missing": 0,
+      "accuracy": 1.0
+    },
+    "tax_amount": {
+      "total": 26,
+      "correct": 26,
+      "near": 0,
+      "wrong": 0,
+      "missing": 0,
+      "accuracy": 1.0
+    },
+    "total_amount": {
+      "total": 26,
+      "correct": 26,
+      "near": 0,
+      "wrong": 0,
+      "missing": 0,
+      "accuracy": 1.0
+    },
+    "receipt_number": {
+      "total": 3,
+      "correct": 3,
+      "near": 0,
+      "wrong": 0,
+      "missing": 0,
+      "accuracy": 1.0
+    },
+    "receipt_date": {
+      "total": 3,
+      "correct": 3,
+      "near": 0,
+      "wrong": 0,
+      "missing": 0,
+      "accuracy": 1.0
+    },
+    "merchant_name": {
+      "total": 3,
+      "correct": 3,
+      "near": 0,
+      "wrong": 0,
+      "missing": 0,
+      "accuracy": 1.0
+    },
+    "party_b": {
+      "total": 3,
+      "correct": 3,
+      "near": 0,
+      "wrong": 0,
+      "missing": 0,
+      "accuracy": 1.0
+    },
+    "effective_date": {
+      "total": 3,
+      "correct": 3,
+      "near": 0,
+      "wrong": 0,
+      "missing": 0,
+      "accuracy": 1.0
+    },
+    "expiry_date": {
+      "total": 3,
+      "correct": 3,
+      "near": 0,
+      "wrong": 0,
+      "missing": 0,
+      "accuracy": 1.0
+    },
+    "auto_renew": {
+      "total": 3,
+      "correct": 3,
+      "near": 0,
+      "wrong": 0,
+      "missing": 0,
+      "accuracy": 1.0
+    },
+    "form_type": {
+      "total": 1,
+      "correct": 1,
+      "near": 0,
+      "wrong": 0,
+      "missing": 0,
+      "accuracy": 1.0
+    },
+    "applicant_name": {
+      "total": 1,
+      "correct": 1,
+      "near": 0,
+      "wrong": 0,
+      "missing": 0,
+      "accuracy": 1.0
+    },
+    "tax_id": {
+      "total": 1,
+      "correct": 1,
+      "near": 0,
+      "wrong": 0,
+      "missing": 0,
+      "accuracy": 1.0
+    },
+    "submitted_date": {
+      "total": 1,
+      "correct": 1,
+      "near": 0,
+      "wrong": 0,
+      "missing": 0,
+      "accuracy": 1.0
+    },
+    "contact_email": {
+      "total": 1,
+      "correct": 1,
+      "near": 0,
+      "wrong": 0,
+      "missing": 0,
+      "accuracy": 1.0
+    },
+    "contact_phone": {
+      "total": 1,
+      "correct": 1,
+      "near": 0,
+      "wrong": 0,
+      "missing": 0,
+      "accuracy": 1.0
+    },
+    "merchant_tax_id": {
+      "total": 1,
+      "correct": 1,
+      "near": 0,
+      "wrong": 0,
+      "missing": 0,
+      "accuracy": 1.0
+    },
+    "contract_title": {
+      "total": 1,
+      "correct": 1,
+      "near": 0,
+      "wrong": 0,
+      "missing": 0,
+      "accuracy": 1.0
+    },
+    "governing_law": {
+      "total": 1,
+      "correct": 1,
+      "near": 0,
+      "wrong": 0,
+      "missing": 0,
+      "accuracy": 1.0
+    }
+  },
   "documents": [
     {
-      "file": "1_invoice_clean_matches_po_True.pdf",
+      "order": 1,
+      "document": "1_invoice_clean_matches_po_True.pdf",
+      "arrival": "pdf",
+      "language": "en",
+      "doc_type": "invoice",
+      "classified_as": "invoice",
+      "type_correct": true,
+      "should_post": true,
       "decision": "auto_post",
       "posted": true,
-      "posts_expected": true,
-      "confidence": 0.934,
-      "elapsed_s": 33.4,
+      "confidence": 0.943,
+      "ocr_provider": "pdf-text-layer",
+      "ocr_ms": 0,
+      "elapsed_ms": 22807,
+      "cost": {
+        "total_ms": 21332,
+        "stage_ms": {
+          "render": 261,
+          "preprocess": 140,
+          "extract": 14143,
+          "validate": 6788
+        },
+        "agent_rules_run": 1,
+        "agent_rule_verdicts": {
+          "pass": 1
+        },
+        "agent_rule_tool_calls": 6,
+        "repeated_tool_calls": 0,
+        "reconciler_ran": false,
+        "reconciler_tool_calls": 0
+      },
       "fields_total": 14,
       "fields_correct": 14,
-      "fields_wrong": [],
-      "fields_missing": [],
-      "critical_wrong": [],
+      "fields_near": 0,
+      "fields_wrong": 0,
+      "fields_missing": 0,
+      "wrong_critical": [],
       "silent_error": false,
-      "expected": [],
-      "failed": []
+      "expected_findings": [],
+      "findings_fired": [],
+      "comparisons": [
+        {
+          "field": "invoice_number",
+          "expected": "RSW-2026-1188",
+          "actual": "RSW-2026-1188",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "invoice_date",
+          "expected": "2026-07-14",
+          "actual": "2026-07-14",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "due_date",
+          "expected": "2026-09-12",
+          "actual": "2026-09-12",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "vendor_name",
+          "expected": "Rungruang Steel Works Co., Ltd.",
+          "actual": "Rungruang Steel Works Co., Ltd.",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "vendor_tax_id",
+          "expected": "0105552000110",
+          "actual": "0105552000110",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "buyer_name",
+          "expected": "Mirtphol Industries PCL",
+          "actual": "Mirtphol Industries PCL",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "purchase_order_ref",
+          "expected": "PO-2026-0501",
+          "actual": "PO-2026-0501",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "currency",
+          "expected": "THB",
+          "actual": "THB",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "subtotal",
+          "expected": 415000.0,
+          "actual": 415000.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "tax_rate",
+          "expected": 7.0,
+          "actual": 7.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "tax_amount",
+          "expected": 29050.0,
+          "actual": 29050.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "total_amount",
+          "expected": 444050.0,
+          "actual": 444050.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "payment_terms",
+          "expected": "Net 60",
+          "actual": "Net 60",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "bank_account",
+          "expected": "3120045678",
+          "actual": "3120045678",
+          "status": "correct",
+          "similarity": 1.0
+        }
+      ]
     },
     {
-      "file": "2_invoice_total_transposed_False.pdf",
+      "order": 2,
+      "document": "2_invoice_total_transposed_False.pdf",
+      "arrival": "pdf",
+      "language": "en",
+      "doc_type": "invoice",
+      "classified_as": "invoice",
+      "type_correct": true,
+      "should_post": false,
       "decision": "needs_review",
       "posted": false,
-      "posts_expected": false,
-      "confidence": 0.746,
-      "elapsed_s": 37.3,
+      "confidence": 0.749,
+      "ocr_provider": "pdf-text-layer",
+      "ocr_ms": 0,
+      "elapsed_ms": 34922,
+      "cost": {
+        "total_ms": 34905,
+        "stage_ms": {
+          "render": 27,
+          "preprocess": 142,
+          "extract": 17667,
+          "validate": 6799,
+          "reconcile": 10270
+        },
+        "agent_rules_run": 1,
+        "agent_rule_verdicts": {
+          "pass": 1
+        },
+        "agent_rule_tool_calls": 6,
+        "repeated_tool_calls": 0,
+        "reconciler_ran": true,
+        "reconciler_tool_calls": 10
+      },
       "fields_total": 14,
       "fields_correct": 14,
-      "fields_wrong": [],
-      "fields_missing": [],
-      "critical_wrong": [],
+      "fields_near": 0,
+      "fields_wrong": 0,
+      "fields_missing": 0,
+      "wrong_critical": [],
       "silent_error": false,
-      "expected": [
+      "expected_findings": [
         "invoice_totals_consistent"
       ],
-      "failed": [
+      "findings_fired": [
         "invoice_totals_consistent"
+      ],
+      "comparisons": [
+        {
+          "field": "invoice_number",
+          "expected": "TBS-7741",
+          "actual": "TBS-7741",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "invoice_date",
+          "expected": "2026-07-16",
+          "actual": "2026-07-16",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "due_date",
+          "expected": "2026-07-31",
+          "actual": "2026-07-31",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "vendor_name",
+          "expected": "Thai Beverage Supply Co., Ltd.",
+          "actual": "Thai Beverage Supply Co., Ltd.",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "vendor_tax_id",
+          "expected": "0105563000221",
+          "actual": "0105563000221",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "buyer_name",
+          "expected": "Mirtphol Industries PCL",
+          "actual": "Mirtphol Industries PCL",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "purchase_order_ref",
+          "expected": "PO-2026-0523",
+          "actual": "PO-2026-0523",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "currency",
+          "expected": "THB",
+          "actual": "THB",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "subtotal",
+          "expected": 42000.0,
+          "actual": 42000.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "tax_rate",
+          "expected": 7.0,
+          "actual": 7.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "tax_amount",
+          "expected": 2940.0,
+          "actual": 2940.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "total_amount",
+          "expected": 49440.0,
+          "actual": 49440.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "payment_terms",
+          "expected": "Net 15",
+          "actual": "Net 15",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "bank_account",
+          "expected": "7710028899",
+          "actual": "7710028899",
+          "status": "correct",
+          "similarity": 1.0
+        }
       ]
     },
     {
-      "file": "3_invoice_photo_on_a_desk_False.jpg",
+      "order": 3,
+      "document": "3_invoice_photo_on_a_desk_False.jpg",
+      "arrival": "photo",
+      "language": "en",
+      "doc_type": "invoice",
+      "classified_as": "invoice",
+      "type_correct": true,
+      "should_post": false,
       "decision": "needs_review",
       "posted": false,
-      "posts_expected": false,
       "confidence": 0.933,
-      "elapsed_s": 35.1,
+      "ocr_provider": "ollama:scb10x/typhoon-ocr1.5-3b",
+      "ocr_ms": 9150,
+      "elapsed_ms": 38718,
+      "cost": {
+        "total_ms": 38695,
+        "stage_ms": {
+          "render": 49,
+          "preprocess": 566,
+          "ocr": 9150,
+          "extract": 17377,
+          "validate": 5249,
+          "reconcile": 6304
+        },
+        "agent_rules_run": 1,
+        "agent_rule_verdicts": {
+          "fail": 1
+        },
+        "agent_rule_tool_calls": 6,
+        "repeated_tool_calls": 1,
+        "reconciler_ran": true,
+        "reconciler_tool_calls": 12
+      },
       "fields_total": 14,
       "fields_correct": 14,
-      "fields_wrong": [],
-      "fields_missing": [],
-      "critical_wrong": [],
+      "fields_near": 0,
+      "fields_wrong": 0,
+      "fields_missing": 0,
+      "wrong_critical": [],
       "silent_error": false,
-      "expected": [],
-      "failed": [
+      "expected_findings": [],
+      "findings_fired": [
         "purchase_order_still_has_room"
+      ],
+      "comparisons": [
+        {
+          "field": "invoice_number",
+          "expected": "SE-2026-0442",
+          "actual": "SE-2026-0442",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "invoice_date",
+          "expected": "2026-07-18",
+          "actual": "2026-07-18",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "due_date",
+          "expected": "2026-09-01",
+          "actual": "2026-09-01",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "vendor_name",
+          "expected": "Sunrise Electrical Co., Ltd.",
+          "actual": "Sunrise Electrical Co., Ltd.",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "vendor_tax_id",
+          "expected": "0105571000448",
+          "actual": "0105571000448",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "buyer_name",
+          "expected": "Mirtphol Industries PCL",
+          "actual": "Mirtphol Industries PCL",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "purchase_order_ref",
+          "expected": "PO-2026-0545",
+          "actual": "PO-2026-0545",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "currency",
+          "expected": "THB",
+          "actual": "THB",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "subtotal",
+          "expected": 128000.0,
+          "actual": 128000.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "tax_rate",
+          "expected": 7.0,
+          "actual": 7.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "tax_amount",
+          "expected": 8960.0,
+          "actual": 8960.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "total_amount",
+          "expected": 136960.0,
+          "actual": 136960.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "payment_terms",
+          "expected": "Net 45",
+          "actual": "Net 45",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "bank_account",
+          "expected": "8890014455",
+          "actual": "8890014455",
+          "status": "correct",
+          "similarity": 1.0
+        }
       ]
     },
     {
-      "file": "4_invoice_vat_miscalculated_False.pdf",
+      "order": 4,
+      "document": "4_invoice_vat_miscalculated_False.pdf",
+      "arrival": "pdf",
+      "language": "en",
+      "doc_type": "invoice",
+      "classified_as": "invoice",
+      "type_correct": true,
+      "should_post": false,
       "decision": "needs_review",
       "posted": false,
-      "posts_expected": false,
       "confidence": 0.723,
-      "elapsed_s": 35.9,
+      "ocr_provider": "pdf-text-layer",
+      "ocr_ms": 0,
+      "elapsed_ms": 24360,
+      "cost": {
+        "total_ms": 24343,
+        "stage_ms": {
+          "render": 34,
+          "preprocess": 142,
+          "extract": 16901,
+          "reconcile": 7266
+        },
+        "agent_rules_run": 0,
+        "agent_rule_verdicts": {},
+        "agent_rule_tool_calls": 0,
+        "repeated_tool_calls": 1,
+        "reconciler_ran": true,
+        "reconciler_tool_calls": 9
+      },
       "fields_total": 14,
       "fields_correct": 12,
-      "fields_wrong": [
-        "buyer_name"
-      ],
-      "fields_missing": [
-        "purchase_order_ref"
-      ],
-      "critical_wrong": [],
+      "fields_near": 0,
+      "fields_wrong": 1,
+      "fields_missing": 1,
+      "wrong_critical": [],
       "silent_error": false,
-      "expected": [
+      "expected_findings": [
         "tax_rate_consistent",
         "vendor_active"
       ],
-      "failed": [
+      "findings_fired": [
+        "purchase_order_required",
         "tax_rate_consistent",
-        "vendor_active",
-        "purchase_order_required"
+        "vendor_active"
+      ],
+      "comparisons": [
+        {
+          "field": "invoice_number",
+          "expected": "NCC-30187",
+          "actual": "NCC-30187",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "invoice_date",
+          "expected": "2026-07-20",
+          "actual": "2026-07-20",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "due_date",
+          "expected": "2026-08-19",
+          "actual": "2026-08-19",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "vendor_name",
+          "expected": "Nakhon Chemicals Co., Ltd.",
+          "actual": "Nakhon Chemicals Co., Ltd.",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "vendor_tax_id",
+          "expected": "0105539000551",
+          "actual": "0105539000551",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "buyer_name",
+          "expected": "Mirtphol Industries PCL",
+          "actual": "Mirtphol Industries PCL, 88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand",
+          "status": "wrong",
+          "similarity": 0.465
+        },
+        {
+          "field": "purchase_order_ref",
+          "expected": "PO-2026-0556",
+          "actual": null,
+          "status": "missing",
+          "similarity": 0.0
+        },
+        {
+          "field": "currency",
+          "expected": "THB",
+          "actual": "THB",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "subtotal",
+          "expected": 76500.0,
+          "actual": 76500.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "tax_rate",
+          "expected": 7.0,
+          "actual": 7.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "tax_amount",
+          "expected": 4590.0,
+          "actual": 4590.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "total_amount",
+          "expected": 81090.0,
+          "actual": 81090.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "payment_terms",
+          "expected": "Net 30",
+          "actual": "Net 30",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "bank_account",
+          "expected": "6640077331",
+          "actual": "6640077331",
+          "status": "correct",
+          "similarity": 1.0
+        }
       ]
     },
     {
-      "file": "5_invoice_bank_account_changed_False.pdf",
+      "order": 5,
+      "document": "5_invoice_bank_account_changed_False.pdf",
+      "arrival": "pdf",
+      "language": "en",
+      "doc_type": "invoice",
+      "classified_as": "invoice",
+      "type_correct": true,
+      "should_post": false,
       "decision": "needs_review",
       "posted": false,
-      "posts_expected": false,
-      "confidence": 0.93,
-      "elapsed_s": 27.5,
+      "confidence": 0.929,
+      "ocr_provider": "pdf-text-layer",
+      "ocr_ms": 0,
+      "elapsed_ms": 23362,
+      "cost": {
+        "total_ms": 23345,
+        "stage_ms": {
+          "render": 27,
+          "preprocess": 144,
+          "extract": 15024,
+          "reconcile": 8150
+        },
+        "agent_rules_run": 0,
+        "agent_rule_verdicts": {},
+        "agent_rule_tool_calls": 0,
+        "repeated_tool_calls": 0,
+        "reconciler_ran": true,
+        "reconciler_tool_calls": 7
+      },
       "fields_total": 13,
       "fields_correct": 13,
-      "fields_wrong": [],
-      "fields_missing": [],
-      "critical_wrong": [],
+      "fields_near": 0,
+      "fields_wrong": 0,
+      "fields_missing": 0,
+      "wrong_critical": [],
       "silent_error": false,
-      "expected": [
+      "expected_findings": [
         "bank_account_matches_vendor"
       ],
-      "failed": [
+      "findings_fired": [
         "bank_account_matches_vendor",
         "purchase_order_required"
+      ],
+      "comparisons": [
+        {
+          "field": "invoice_number",
+          "expected": "RSW-2026-1203",
+          "actual": "RSW-2026-1203",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "invoice_date",
+          "expected": "2026-07-21",
+          "actual": "2026-07-21",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "due_date",
+          "expected": "2026-09-19",
+          "actual": "2026-09-19",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "vendor_name",
+          "expected": "Rungruang Steel Works Co., Ltd.",
+          "actual": "Rungruang Steel Works Co., Ltd.",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "vendor_tax_id",
+          "expected": "0105552000110",
+          "actual": "0105552000110",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "buyer_name",
+          "expected": "Mirtphol Industries PCL",
+          "actual": "Mirtphol Industries PCL",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "currency",
+          "expected": "THB",
+          "actual": "THB",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "subtotal",
+          "expected": 96000.0,
+          "actual": 96000.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "tax_rate",
+          "expected": 7.0,
+          "actual": 7.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "tax_amount",
+          "expected": 6720.0,
+          "actual": 6720.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "total_amount",
+          "expected": 102720.0,
+          "actual": 102720.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "payment_terms",
+          "expected": "Net 60",
+          "actual": "Net 60",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "bank_account",
+          "expected": "0455512399",
+          "actual": "0455512399",
+          "status": "correct",
+          "similarity": 1.0
+        }
       ]
     },
     {
-      "file": "6_invoice_unknown_vendor_False.png",
+      "order": 6,
+      "document": "6_invoice_unknown_vendor_False.png",
+      "arrival": "png",
+      "language": "en",
+      "doc_type": "invoice",
+      "classified_as": "invoice",
+      "type_correct": true,
+      "should_post": false,
       "decision": "needs_review",
       "posted": false,
-      "posts_expected": false,
-      "confidence": 0.815,
-      "elapsed_s": 31.9,
+      "confidence": 0.412,
+      "ocr_provider": "ollama:scb10x/typhoon-ocr1.5-3b",
+      "ocr_ms": 6269,
+      "elapsed_ms": 26717,
+      "cost": {
+        "total_ms": 26692,
+        "stage_ms": {
+          "render": 42,
+          "preprocess": 145,
+          "ocr": 6269,
+          "classify": 580,
+          "extract": 9331,
+          "validate": 9,
+          "reconcile": 10316
+        },
+        "agent_rules_run": 0,
+        "agent_rule_verdicts": {},
+        "agent_rule_tool_calls": 0,
+        "repeated_tool_calls": 0,
+        "reconciler_ran": true,
+        "reconciler_tool_calls": 20
+      },
       "fields_total": 12,
-      "fields_correct": 10,
-      "fields_wrong": [],
-      "fields_missing": [
-        "vendor_tax_id",
-        "payment_terms"
-      ],
-      "critical_wrong": [],
+      "fields_correct": 7,
+      "fields_near": 0,
+      "fields_wrong": 0,
+      "fields_missing": 5,
+      "wrong_critical": [],
       "silent_error": false,
-      "expected": [
+      "expected_findings": [
         "vendor_known"
       ],
-      "failed": [
-        "vendor_known",
-        "payment_terms_stated"
+      "findings_fired": [
+        "vendor_known"
+      ],
+      "comparisons": [
+        {
+          "field": "invoice_number",
+          "expected": "AX-2026-556",
+          "actual": null,
+          "status": "missing",
+          "similarity": 0.0
+        },
+        {
+          "field": "invoice_date",
+          "expected": "2026-07-22",
+          "actual": null,
+          "status": "missing",
+          "similarity": 0.0
+        },
+        {
+          "field": "due_date",
+          "expected": "2026-08-21",
+          "actual": "2026-08-21",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "vendor_name",
+          "expected": "Apex Industrial Fasteners Ltd.",
+          "actual": "Apex Industrial Fasteners Ltd.",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "vendor_tax_id",
+          "expected": "0105568000661",
+          "actual": null,
+          "status": "missing",
+          "similarity": 0.0
+        },
+        {
+          "field": "buyer_name",
+          "expected": "Mirtphol Industries PCL",
+          "actual": "Mirtphol Industries PCL",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "currency",
+          "expected": "THB",
+          "actual": "THB",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "subtotal",
+          "expected": 31400.0,
+          "actual": null,
+          "status": "missing",
+          "similarity": 0.0
+        },
+        {
+          "field": "tax_rate",
+          "expected": 7.0,
+          "actual": 7.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "tax_amount",
+          "expected": 2198.0,
+          "actual": 2198.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "total_amount",
+          "expected": 33598.0,
+          "actual": 33598.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "payment_terms",
+          "expected": "Net 30",
+          "actual": null,
+          "status": "missing",
+          "similarity": 0.0
+        }
       ]
     },
     {
-      "file": "7_invoice_from_a_blocked_vendor_False.pdf",
+      "order": 7,
+      "document": "7_invoice_from_a_blocked_vendor_False.pdf",
+      "arrival": "pdf",
+      "language": "en",
+      "doc_type": "invoice",
+      "classified_as": "invoice",
+      "type_correct": true,
+      "should_post": false,
       "decision": "needs_review",
       "posted": false,
-      "posts_expected": false,
       "confidence": 0.91,
-      "elapsed_s": 31.9,
-      "fields_total": 13,
-      "fields_correct": 11,
-      "fields_wrong": [
-        "buyer_name"
-      ],
-      "fields_missing": [
-        "due_date"
-      ],
-      "critical_wrong": [],
-      "silent_error": false,
-      "expected": [
-        "vendor_active"
-      ],
-      "failed": [
-        "vendor_active"
-      ]
-    },
-    {
-      "file": "8_invoice_over_the_purchase_order_False.pdf",
-      "decision": "needs_review",
-      "posted": false,
-      "posts_expected": false,
-      "confidence": 0.934,
-      "elapsed_s": 35.6,
-      "fields_total": 14,
-      "fields_correct": 13,
-      "fields_wrong": [],
-      "fields_missing": [
-        "tax_rate"
-      ],
-      "critical_wrong": [],
-      "silent_error": false,
-      "expected": [
-        "po_amount_within_tolerance"
-      ],
-      "failed": [
-        "po_amount_within_tolerance",
-        "purchase_order_still_has_room",
-        "tax_id_belongs_to_this_vendor"
-      ]
-    },
-    {
-      "file": "9_invoice_thai_buddhist_dates_True.png",
-      "decision": "needs_review",
-      "posted": false,
-      "posts_expected": true,
-      "confidence": 0.632,
-      "elapsed_s": 32.7,
+      "ocr_provider": "pdf-text-layer",
+      "ocr_ms": 0,
+      "elapsed_ms": 21970,
+      "cost": {
+        "total_ms": 21941,
+        "stage_ms": {
+          "render": 40,
+          "preprocess": 132,
+          "extract": 16233,
+          "validate": 2,
+          "reconcile": 5534
+        },
+        "agent_rules_run": 0,
+        "agent_rule_verdicts": {},
+        "agent_rule_tool_calls": 0,
+        "repeated_tool_calls": 0,
+        "reconciler_ran": true,
+        "reconciler_tool_calls": 10
+      },
       "fields_total": 13,
       "fields_correct": 12,
-      "fields_wrong": [],
-      "fields_missing": [
-        "vendor_name"
-      ],
-      "critical_wrong": [],
+      "fields_near": 0,
+      "fields_wrong": 0,
+      "fields_missing": 1,
+      "wrong_critical": [],
       "silent_error": false,
-      "expected": [],
-      "failed": []
+      "expected_findings": [
+        "vendor_active"
+      ],
+      "findings_fired": [
+        "vendor_active"
+      ],
+      "comparisons": [
+        {
+          "field": "invoice_number",
+          "expected": "KPH-2026-0912",
+          "actual": "KPH-2026-0912",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "invoice_date",
+          "expected": "2026-07-23",
+          "actual": "2026-07-23",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "due_date",
+          "expected": "2026-08-22",
+          "actual": null,
+          "status": "missing",
+          "similarity": 0.0
+        },
+        {
+          "field": "vendor_name",
+          "expected": "Krungthep Print House Co., Ltd.",
+          "actual": "Krungthep Print House Co., Ltd.",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "vendor_tax_id",
+          "expected": "0105547000336",
+          "actual": "0105547000336",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "buyer_name",
+          "expected": "Mirtphol Industries PCL",
+          "actual": "Mirtphol Industries PCL",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "currency",
+          "expected": "THB",
+          "actual": "THB",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "subtotal",
+          "expected": 18600.0,
+          "actual": 18600.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "tax_rate",
+          "expected": 7.0,
+          "actual": 7.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "tax_amount",
+          "expected": 1302.0,
+          "actual": 1302.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "total_amount",
+          "expected": 19902.0,
+          "actual": 19902.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "payment_terms",
+          "expected": "Net 30",
+          "actual": "Net 30",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "bank_account",
+          "expected": "2260031122",
+          "actual": "2260031122",
+          "status": "correct",
+          "similarity": 1.0
+        }
+      ]
     },
     {
-      "file": "10_invoice_no_po_above_threshold_False.pdf",
+      "order": 8,
+      "document": "8_invoice_over_the_purchase_order_False.pdf",
+      "arrival": "pdf",
+      "language": "en",
+      "doc_type": "invoice",
+      "classified_as": "invoice",
+      "type_correct": true,
+      "should_post": false,
       "decision": "needs_review",
       "posted": false,
-      "posts_expected": false,
-      "confidence": 0.821,
-      "elapsed_s": 29.5,
-      "fields_total": 13,
-      "fields_correct": 10,
-      "fields_wrong": [
-        "vendor_tax_id"
-      ],
-      "fields_missing": [
-        "payment_terms",
-        "bank_account"
-      ],
-      "critical_wrong": [
-        "vendor_tax_id"
-      ],
+      "confidence": 0.943,
+      "ocr_provider": "pdf-text-layer",
+      "ocr_ms": 0,
+      "elapsed_ms": 29682,
+      "cost": {
+        "total_ms": 29630,
+        "stage_ms": {
+          "render": 59,
+          "preprocess": 136,
+          "extract": 16361,
+          "validate": 6984,
+          "reconcile": 6090
+        },
+        "agent_rules_run": 1,
+        "agent_rule_verdicts": {
+          "fail": 1
+        },
+        "agent_rule_tool_calls": 6,
+        "repeated_tool_calls": 0,
+        "reconciler_ran": true,
+        "reconciler_tool_calls": 8
+      },
+      "fields_total": 14,
+      "fields_correct": 13,
+      "fields_near": 0,
+      "fields_wrong": 0,
+      "fields_missing": 1,
+      "wrong_critical": [],
       "silent_error": false,
-      "expected": [
+      "expected_findings": [
+        "po_amount_within_tolerance"
+      ],
+      "findings_fired": [
+        "po_amount_within_tolerance",
+        "purchase_order_still_has_room"
+      ],
+      "comparisons": [
+        {
+          "field": "invoice_number",
+          "expected": "MC-2026-0774",
+          "actual": "MC-2026-0774",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "invoice_date",
+          "expected": "2026-07-24",
+          "actual": "2026-07-24",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "due_date",
+          "expected": "2026-08-23",
+          "actual": "2026-08-23",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "vendor_name",
+          "expected": "Meridian Consulting LLP",
+          "actual": "Meridian Consulting LLP",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "vendor_tax_id",
+          "expected": "GB428765190",
+          "actual": "GB428765190",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "buyer_name",
+          "expected": "Mirtphol Industries PCL",
+          "actual": "Mirtphol Industries PCL",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "purchase_order_ref",
+          "expected": "PO-2026-0534",
+          "actual": "PO-2026-0534",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "currency",
+          "expected": "USD",
+          "actual": "USD",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "subtotal",
+          "expected": 44000.0,
+          "actual": 44000.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "tax_rate",
+          "expected": 0.0,
+          "actual": null,
+          "status": "missing",
+          "similarity": 0.0
+        },
+        {
+          "field": "tax_amount",
+          "expected": 0.0,
+          "actual": 0.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "total_amount",
+          "expected": 44000.0,
+          "actual": 44000.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "payment_terms",
+          "expected": "Net 30",
+          "actual": "Net 30",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "bank_account",
+          "expected": "GB29NWBK60161331926819",
+          "actual": "GB29NWBK60161331926819",
+          "status": "correct",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "order": 9,
+      "document": "9_invoice_thai_buddhist_dates_True.png",
+      "arrival": "png",
+      "language": "th",
+      "doc_type": "invoice",
+      "classified_as": "invoice",
+      "type_correct": true,
+      "should_post": true,
+      "decision": "auto_post",
+      "posted": true,
+      "confidence": 0.934,
+      "ocr_provider": "ollama:scb10x/typhoon-ocr1.5-3b",
+      "ocr_ms": 16140,
+      "elapsed_ms": 35381,
+      "cost": {
+        "total_ms": 35322,
+        "stage_ms": {
+          "render": 53,
+          "preprocess": 147,
+          "ocr": 16140,
+          "classify": 2,
+          "extract": 18979,
+          "validate": 1
+        },
+        "agent_rules_run": 0,
+        "agent_rule_verdicts": {},
+        "agent_rule_tool_calls": 0,
+        "repeated_tool_calls": 0,
+        "reconciler_ran": false,
+        "reconciler_tool_calls": 0
+      },
+      "fields_total": 13,
+      "fields_correct": 12,
+      "fields_near": 1,
+      "fields_wrong": 1,
+      "fields_missing": 0,
+      "wrong_critical": [],
+      "silent_error": false,
+      "expected_findings": [],
+      "findings_fired": [],
+      "comparisons": [
+        {
+          "field": "invoice_number",
+          "expected": "TBS-7802",
+          "actual": "TBS-7802",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "invoice_date",
+          "expected": "2026-07-25",
+          "actual": "2026-07-24",
+          "status": "near",
+          "similarity": 0.9
+        },
+        {
+          "field": "due_date",
+          "expected": "2026-08-09",
+          "actual": "2026-08-09",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "vendor_name",
+          "expected": "บริษัท ไทยเบเวอเรจ ซัพพลาย จำกัด",
+          "actual": "บริษัท ไทยเบเวอเรจ ซัพพลาย จำกัด",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "vendor_tax_id",
+          "expected": "0105563000221",
+          "actual": "0105563000221",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "buyer_name",
+          "expected": "Mirtphol Industries PCL",
+          "actual": "Mirtphol Industries PCL",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "currency",
+          "expected": "THB",
+          "actual": "THB",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "subtotal",
+          "expected": 24000.0,
+          "actual": 24000.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "tax_rate",
+          "expected": 7.0,
+          "actual": 7.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "tax_amount",
+          "expected": 1680.0,
+          "actual": 1680.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "total_amount",
+          "expected": 25680.0,
+          "actual": 25680.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "payment_terms",
+          "expected": "Net 15",
+          "actual": "Net 15",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "bank_account",
+          "expected": "7710028899",
+          "actual": "7710028899",
+          "status": "correct",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "order": 10,
+      "document": "10_invoice_no_po_above_threshold_False.pdf",
+      "arrival": "pdf",
+      "language": "en",
+      "doc_type": "invoice",
+      "classified_as": "invoice",
+      "type_correct": true,
+      "should_post": false,
+      "decision": "needs_review",
+      "posted": false,
+      "confidence": 0.808,
+      "ocr_provider": "pdf-text-layer",
+      "ocr_ms": 0,
+      "elapsed_ms": 19790,
+      "cost": {
+        "total_ms": 19732,
+        "stage_ms": {
+          "render": 47,
+          "preprocess": 157,
+          "classify": 540,
+          "extract": 11353,
+          "validate": 3,
+          "reconcile": 7632
+        },
+        "agent_rules_run": 0,
+        "agent_rule_verdicts": {},
+        "agent_rule_tool_calls": 0,
+        "repeated_tool_calls": 0,
+        "reconciler_ran": true,
+        "reconciler_tool_calls": 8
+      },
+      "fields_total": 13,
+      "fields_correct": 11,
+      "fields_near": 0,
+      "fields_wrong": 0,
+      "fields_missing": 2,
+      "wrong_critical": [],
+      "silent_error": false,
+      "expected_findings": [
         "purchase_order_required"
       ],
-      "failed": [
-        "purchase_order_required",
-        "payment_terms_stated",
-        "tax_id_belongs_to_this_vendor"
+      "findings_fired": [
+        "purchase_order_required"
+      ],
+      "comparisons": [
+        {
+          "field": "invoice_number",
+          "expected": "SE-2026-0471",
+          "actual": "SE-2026-0471",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "invoice_date",
+          "expected": "2026-07-26",
+          "actual": "2026-07-26",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "due_date",
+          "expected": "2026-09-09",
+          "actual": "2026-09-09",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "vendor_name",
+          "expected": "Sunrise Electrical Co., Ltd.",
+          "actual": "Sunrise Electrical Co., Ltd.",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "vendor_tax_id",
+          "expected": "0105571000448",
+          "actual": null,
+          "status": "missing",
+          "similarity": 0.0
+        },
+        {
+          "field": "buyer_name",
+          "expected": "Mirtphol Industries PCL",
+          "actual": "Mirtphol Industries PCL",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "currency",
+          "expected": "THB",
+          "actual": "THB",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "subtotal",
+          "expected": 200000.0,
+          "actual": 200000.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "tax_rate",
+          "expected": 7.0,
+          "actual": 7.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "tax_amount",
+          "expected": 14000.0,
+          "actual": 14000.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "total_amount",
+          "expected": 214000.0,
+          "actual": 214000.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "payment_terms",
+          "expected": "Net 45",
+          "actual": null,
+          "status": "missing",
+          "similarity": 0.0
+        },
+        {
+          "field": "bank_account",
+          "expected": "8890014455",
+          "actual": "8890014455",
+          "status": "correct",
+          "similarity": 1.0
+        }
       ]
     },
     {
-      "file": "11_receipt_photographed_True.jpg",
+      "order": 11,
+      "document": "11_receipt_photographed_True.jpg",
+      "arrival": "photo",
+      "language": "en",
+      "doc_type": "receipt",
+      "classified_as": "receipt",
+      "type_correct": true,
+      "should_post": true,
       "decision": "auto_post",
       "posted": true,
-      "posts_expected": true,
-      "confidence": 0.863,
-      "elapsed_s": 16.1,
+      "confidence": 0.85,
+      "ocr_provider": "ollama:scb10x/typhoon-ocr1.5-3b",
+      "ocr_ms": 22419,
+      "elapsed_ms": 36300,
+      "cost": {
+        "total_ms": 36236,
+        "stage_ms": {
+          "render": 11,
+          "preprocess": 439,
+          "ocr": 22419,
+          "classify": 607,
+          "extract": 12758,
+          "validate": 2
+        },
+        "agent_rules_run": 0,
+        "agent_rule_verdicts": {},
+        "agent_rule_tool_calls": 0,
+        "repeated_tool_calls": 0,
+        "reconciler_ran": false,
+        "reconciler_tool_calls": 0
+      },
       "fields_total": 9,
       "fields_correct": 7,
-      "fields_wrong": [
-        "payment_method"
-      ],
-      "fields_missing": [
-        "tax_rate"
-      ],
-      "critical_wrong": [],
+      "fields_near": 0,
+      "fields_wrong": 1,
+      "fields_missing": 1,
+      "wrong_critical": [],
       "silent_error": false,
-      "expected": [],
-      "failed": []
-    },
-    {
-      "file": "12_contract_expiring_soon_True.pdf",
-      "decision": "auto_post",
-      "posted": true,
-      "posts_expected": true,
-      "confidence": 0.923,
-      "elapsed_s": 28.0,
-      "fields_total": 8,
-      "fields_correct": 8,
-      "fields_wrong": [],
-      "fields_missing": [],
-      "critical_wrong": [],
-      "silent_error": false,
-      "expected": [
-        "contract_expiring_soon"
-      ],
-      "failed": [
-        "contract_expiring_soon"
+      "expected_findings": [],
+      "findings_fired": [],
+      "comparisons": [
+        {
+          "field": "receipt_number",
+          "expected": "PTT-556123",
+          "actual": "PTT-556123",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "receipt_date",
+          "expected": "2026-07-19",
+          "actual": "2026-07-19",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "merchant_name",
+          "expected": "PTT Station Rama IV",
+          "actual": "PTT Station Rama IV",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "currency",
+          "expected": "THB",
+          "actual": "THB",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "subtotal",
+          "expected": 1869.16,
+          "actual": 1869.16,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "",
+          "expected": 7.0,
+          "actual": null,
+          "status": "missing",
+          "similarity": 0.0
+        },
+        {
+          "field": "tax_amount",
+          "expected": 130.84,
+          "actual": 130.84,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "total_amount",
+          "expected": 2000.0,
+          "actual": 2000.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "payment_method",
+          "expected": "Corporate card",
+          "actual": "credit_card",
+          "status": "wrong",
+          "similarity": 0.56
+        }
       ]
     },
     {
-      "file": "13_contract_already_expired_False.jpg",
+      "order": 12,
+      "document": "12_contract_expiring_soon_True.pdf",
+      "arrival": "pdf",
+      "language": "en",
+      "doc_type": "contract",
+      "classified_as": "contract",
+      "type_correct": true,
+      "should_post": true,
+      "decision": "auto_post",
+      "posted": true,
+      "confidence": 0.921,
+      "ocr_provider": "pdf-text-layer",
+      "ocr_ms": 0,
+      "elapsed_ms": 14623,
+      "cost": {
+        "total_ms": 14605,
+        "stage_ms": {
+          "render": 52,
+          "preprocess": 166,
+          "classify": 836,
+          "extract": 13548,
+          "validate": 3
+        },
+        "agent_rules_run": 0,
+        "agent_rule_verdicts": {},
+        "agent_rule_tool_calls": 0,
+        "repeated_tool_calls": 0,
+        "reconciler_ran": false,
+        "reconciler_tool_calls": 0
+      },
+      "fields_total": 8,
+      "fields_correct": 8,
+      "fields_near": 0,
+      "fields_wrong": 0,
+      "fields_missing": 0,
+      "wrong_critical": [],
+      "silent_error": false,
+      "expected_findings": [
+        "contract_expiring_soon"
+      ],
+      "findings_fired": [
+        "contract_expiring_soon"
+      ],
+      "comparisons": [
+        {
+          "field": "contract_number",
+          "expected": "CT-2026-014",
+          "actual": "CT-2026-014",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "party_a",
+          "expected": "Mirtphol Industries PCL",
+          "actual": "Mirtphol Industries PCL",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "party_b",
+          "expected": "Rungruang Steel Works Co., Ltd.",
+          "actual": "Rungruang Steel Works Co., Ltd.",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "effective_date",
+          "expected": "2026-02-01",
+          "actual": "2026-02-01",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "expiry_date",
+          "expected": "2026-09-30",
+          "actual": "2026-09-30",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "auto_renew",
+          "expected": "no",
+          "actual": "no",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "contract_value",
+          "expected": 1250000.0,
+          "actual": 1250000.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "currency",
+          "expected": "THB",
+          "actual": "THB",
+          "status": "correct",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "order": 13,
+      "document": "13_contract_already_expired_False.jpg",
+      "arrival": "photocopy",
+      "language": "en",
+      "doc_type": "contract",
+      "classified_as": "contract",
+      "type_correct": true,
+      "should_post": false,
       "decision": "needs_review",
       "posted": false,
-      "posts_expected": false,
-      "confidence": 0.763,
-      "elapsed_s": 32.6,
+      "confidence": 0.826,
+      "ocr_provider": "ollama:scb10x/typhoon-ocr1.5-3b",
+      "ocr_ms": 55602,
+      "elapsed_ms": 83017,
+      "cost": {
+        "total_ms": 82977,
+        "stage_ms": {
+          "render": 44,
+          "preprocess": 557,
+          "ocr": 55602,
+          "classify": 781,
+          "extract": 16394,
+          "validate": 6,
+          "reconcile": 9593
+        },
+        "agent_rules_run": 0,
+        "agent_rule_verdicts": {},
+        "agent_rule_tool_calls": 0,
+        "repeated_tool_calls": 1,
+        "reconciler_ran": true,
+        "reconciler_tool_calls": 12
+      },
       "fields_total": 8,
       "fields_correct": 5,
-      "fields_wrong": [
+      "fields_near": 1,
+      "fields_wrong": 2,
+      "fields_missing": 1,
+      "wrong_critical": [
         "party_a",
         "contract_value"
       ],
-      "fields_missing": [
-        "contract_number"
-      ],
-      "critical_wrong": [],
       "silent_error": false,
-      "expected": [
+      "expected_findings": [
         "contract_expired"
       ],
-      "failed": [
+      "findings_fired": [
         "contract_expired"
+      ],
+      "comparisons": [
+        {
+          "field": "contract_number",
+          "expected": "CT-2025-031",
+          "actual": null,
+          "status": "missing",
+          "similarity": 0.0
+        },
+        {
+          "field": "party_a",
+          "expected": "Mirtphol Industries PCL",
+          "actual": "Mitphol Industries PCL",
+          "status": "near",
+          "similarity": 0.978
+        },
+        {
+          "field": "party_b",
+          "expected": "Sunrise Electrical Co., Ltd.",
+          "actual": "Sunrise Electrical Co., Ltd.",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "effective_date",
+          "expected": "2025-01-01",
+          "actual": "2025-01-01",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "expiry_date",
+          "expected": "2026-06-30",
+          "actual": "2026-06-30",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "auto_renew",
+          "expected": "no",
+          "actual": "no",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "contract_value",
+          "expected": 480000.0,
+          "actual": 480900.0,
+          "status": "wrong",
+          "similarity": 0.0
+        },
+        {
+          "field": "currency",
+          "expected": "THB",
+          "actual": "THB",
+          "status": "correct",
+          "similarity": 1.0
+        }
       ]
     },
     {
-      "file": "14_form_vendor_onboarding_True.png",
+      "order": 14,
+      "document": "14_form_vendor_onboarding_True.png",
+      "arrival": "png",
+      "language": "en",
+      "doc_type": "form",
+      "classified_as": "form",
+      "type_correct": true,
+      "should_post": true,
       "decision": "auto_post",
       "posted": true,
-      "posts_expected": true,
       "confidence": 0.965,
-      "elapsed_s": 20.2,
+      "ocr_provider": "ollama:scb10x/typhoon-ocr1.5-3b",
+      "ocr_ms": 44671,
+      "elapsed_ms": 59149,
+      "cost": {
+        "total_ms": 59068,
+        "stage_ms": {
+          "render": 47,
+          "preprocess": 246,
+          "ocr": 44671,
+          "classify": 733,
+          "extract": 13360,
+          "validate": 11
+        },
+        "agent_rules_run": 0,
+        "agent_rule_verdicts": {},
+        "agent_rule_tool_calls": 0,
+        "repeated_tool_calls": 0,
+        "reconciler_ran": false,
+        "reconciler_tool_calls": 0
+      },
       "fields_total": 7,
       "fields_correct": 7,
-      "fields_wrong": [],
-      "fields_missing": [],
-      "critical_wrong": [],
+      "fields_near": 0,
+      "fields_wrong": 0,
+      "fields_missing": 0,
+      "wrong_critical": [],
       "silent_error": false,
-      "expected": [],
-      "failed": [
+      "expected_findings": [],
+      "findings_fired": [
         "vendor_known"
+      ],
+      "comparisons": [
+        {
+          "field": "form_type",
+          "expected": "Vendor onboarding",
+          "actual": "vendor onboarding",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "applicant_name",
+          "expected": "Apex Industrial Fasteners Ltd.",
+          "actual": "Apex Industrial Fasteners Ltd.",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "tax_id",
+          "expected": "0105568000661",
+          "actual": "0105568000661",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "submitted_date",
+          "expected": "2026-07-22",
+          "actual": "2026-07-22",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "contact_email",
+          "expected": "accounts@apexfasteners.co.th",
+          "actual": "accounts@apexfasteners.co.th",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "contact_phone",
+          "expected": "02-115-8890",
+          "actual": "02-115-8890",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "bank_account",
+          "expected": "1180099221",
+          "actual": "1180099221",
+          "status": "correct",
+          "similarity": 1.0
+        }
       ]
     },
     {
-      "file": "15_invoice_duplicate_submission_False.pdf",
+      "order": 15,
+      "document": "15_invoice_duplicate_submission_False.pdf",
+      "arrival": "pdf",
+      "language": "en",
+      "doc_type": "invoice",
+      "classified_as": "invoice",
+      "type_correct": true,
+      "should_post": false,
       "decision": "needs_review",
       "posted": false,
-      "posts_expected": false,
-      "confidence": 0.934,
-      "elapsed_s": 37.7,
+      "confidence": 0.943,
+      "ocr_provider": "pdf-text-layer",
+      "ocr_ms": 0,
+      "elapsed_ms": 29027,
+      "cost": {
+        "total_ms": 28964,
+        "stage_ms": {
+          "render": 100,
+          "preprocess": 267,
+          "extract": 15352,
+          "validate": 6479,
+          "reconcile": 6766
+        },
+        "agent_rules_run": 1,
+        "agent_rule_verdicts": {
+          "pass": 1
+        },
+        "agent_rule_tool_calls": 7,
+        "repeated_tool_calls": 0,
+        "reconciler_ran": true,
+        "reconciler_tool_calls": 14
+      },
       "fields_total": 14,
       "fields_correct": 14,
-      "fields_wrong": [],
-      "fields_missing": [],
-      "critical_wrong": [],
+      "fields_near": 0,
+      "fields_wrong": 0,
+      "fields_missing": 0,
+      "wrong_critical": [],
       "silent_error": false,
-      "expected": [
+      "expected_findings": [
         "duplicate_document"
       ],
-      "failed": [
+      "findings_fired": [
         "duplicate_document"
+      ],
+      "comparisons": [
+        {
+          "field": "invoice_number",
+          "expected": "RSW-2026-1188",
+          "actual": "RSW-2026-1188",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "invoice_date",
+          "expected": "2026-07-14",
+          "actual": "2026-07-14",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "due_date",
+          "expected": "2026-09-12",
+          "actual": "2026-09-12",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "vendor_name",
+          "expected": "Rungruang Steel Works Co., Ltd.",
+          "actual": "Rungruang Steel Works Co., Ltd.",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "vendor_tax_id",
+          "expected": "0105552000110",
+          "actual": "0105552000110",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "buyer_name",
+          "expected": "Mirtphol Industries PCL",
+          "actual": "Mirtphol Industries PCL",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "purchase_order_ref",
+          "expected": "PO-2026-0501",
+          "actual": "PO-2026-0501",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "currency",
+          "expected": "THB",
+          "actual": "THB",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "subtotal",
+          "expected": 415000.0,
+          "actual": 415000.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "tax_rate",
+          "expected": 7.0,
+          "actual": 7.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "tax_amount",
+          "expected": 29050.0,
+          "actual": 29050.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "total_amount",
+          "expected": 444050.0,
+          "actual": 444050.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "payment_terms",
+          "expected": "Net 60",
+          "actual": "Net 60",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "bank_account",
+          "expected": "3120045678",
+          "actual": "3120045678",
+          "status": "correct",
+          "similarity": 1.0
+        }
       ]
     },
     {
-      "file": "16_invoice_line_items_do_not_sum_False.jpg",
+      "order": 16,
+      "document": "16_invoice_line_items_do_not_sum_False.jpg",
+      "arrival": "photocopy",
+      "language": "en",
+      "doc_type": "invoice",
+      "classified_as": "invoice",
+      "type_correct": true,
+      "should_post": false,
       "decision": "needs_review",
       "posted": false,
-      "posts_expected": false,
-      "confidence": 0.45,
-      "elapsed_s": 44.6,
+      "confidence": 0.613,
+      "ocr_provider": "ollama:scb10x/typhoon-ocr1.5-3b",
+      "ocr_ms": 50134,
+      "elapsed_ms": 80934,
+      "cost": {
+        "total_ms": 80872,
+        "stage_ms": {
+          "render": 61,
+          "preprocess": 426,
+          "ocr": 50134,
+          "classify": 3,
+          "extract": 18157,
+          "validate": 4,
+          "reconcile": 12087
+        },
+        "agent_rules_run": 0,
+        "agent_rule_verdicts": {},
+        "agent_rule_tool_calls": 0,
+        "repeated_tool_calls": 4,
+        "reconciler_ran": true,
+        "reconciler_tool_calls": 20
+      },
       "fields_total": 13,
-      "fields_correct": 4,
-      "fields_wrong": [
+      "fields_correct": 7,
+      "fields_near": 2,
+      "fields_wrong": 5,
+      "fields_missing": 1,
+      "wrong_critical": [
         "invoice_number",
-        "invoice_date",
-        "due_date",
-        "buyer_name",
-        "tax_rate",
-        "tax_amount",
-        "total_amount",
-        "bank_account"
-      ],
-      "fields_missing": [
-        "purchase_order_ref"
-      ],
-      "critical_wrong": [
-        "invoice_number",
-        "tax_amount",
-        "total_amount",
         "bank_account"
       ],
       "silent_error": false,
-      "expected": [
+      "expected_findings": [
         "line_items_sum_to_subtotal"
       ],
-      "failed": [
-        "dates_not_in_future",
-        "tax_rate_consistent",
-        "line_items_sum_to_subtotal",
+      "findings_fired": [
         "bank_account_matches_vendor",
-        "tax_id_belongs_to_this_vendor"
+        "dates_not_in_future",
+        "line_items_sum_to_subtotal"
+      ],
+      "comparisons": [
+        {
+          "field": "invoice_number",
+          "expected": "PRF-SG-20416",
+          "actual": "PRF-SG-2436",
+          "status": "wrong",
+          "similarity": 0.87
+        },
+        {
+          "field": "invoice_date",
+          "expected": "2026-07-17",
+          "actual": "2028-07-17",
+          "status": "near",
+          "similarity": 0.9
+        },
+        {
+          "field": "due_date",
+          "expected": "2026-08-16",
+          "actual": "2028-08-16",
+          "status": "near",
+          "similarity": 0.9
+        },
+        {
+          "field": "vendor_name",
+          "expected": "Pacific Rim Freight Pte. Ltd.",
+          "actual": "Pacific Rim Freight Pte. Ltd.",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "buyer_name",
+          "expected": "Mirtphol Industries PCL",
+          "actual": "MINGTHAI INDUSTRIES PTE. LTD.",
+          "status": "wrong",
+          "similarity": 0.72
+        },
+        {
+          "field": "purchase_order_ref",
+          "expected": "PO-2026-0512",
+          "actual": null,
+          "status": "missing",
+          "similarity": 0.0
+        },
+        {
+          "field": "currency",
+          "expected": "SGD",
+          "actual": "SGD",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "subtotal",
+          "expected": 18500.0,
+          "actual": 18500.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "tax_rate",
+          "expected": 0.0,
+          "actual": 0.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "tax_amount",
+          "expected": 0.0,
+          "actual": 0.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "total_amount",
+          "expected": 18500.0,
+          "actual": 18500.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "payment_terms",
+          "expected": "Net 30",
+          "actual": "Net 30",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "bank_account",
+          "expected": "SG21DBSS0110001234567",
+          "actual": "SG21DBSMT19@PTF.CO.TH",
+          "status": "wrong",
+          "similarity": 0.381
+        }
       ]
     },
     {
-      "file": "17_invoice_currency_disagrees_with_po_False.pdf",
+      "order": 17,
+      "document": "17_invoice_currency_disagrees_with_po_False.pdf",
+      "arrival": "pdf",
+      "language": "en",
+      "doc_type": "invoice",
+      "classified_as": "invoice",
+      "type_correct": true,
+      "should_post": false,
       "decision": "needs_review",
       "posted": false,
-      "posts_expected": false,
-      "confidence": 0.93,
-      "elapsed_s": 33.4,
+      "confidence": 0.932,
+      "ocr_provider": "pdf-text-layer",
+      "ocr_ms": 0,
+      "elapsed_ms": 26631,
+      "cost": {
+        "total_ms": 26578,
+        "stage_ms": {
+          "render": 48,
+          "preprocess": 154,
+          "extract": 14545,
+          "validate": 3878,
+          "reconcile": 7953
+        },
+        "agent_rules_run": 1,
+        "agent_rule_verdicts": {
+          "fail": 1
+        },
+        "agent_rule_tool_calls": 6,
+        "repeated_tool_calls": 3,
+        "reconciler_ran": true,
+        "reconciler_tool_calls": 18
+      },
       "fields_total": 13,
       "fields_correct": 12,
-      "fields_wrong": [],
-      "fields_missing": [
-        "tax_rate"
-      ],
-      "critical_wrong": [],
+      "fields_near": 0,
+      "fields_wrong": 0,
+      "fields_missing": 1,
+      "wrong_critical": [],
       "silent_error": false,
-      "expected": [
+      "expected_findings": [
         "po_currency_matches"
       ],
-      "failed": [
+      "findings_fired": [
         "po_currency_matches",
-        "currency_matches_vendor_default",
         "purchase_order_still_has_room"
+      ],
+      "comparisons": [
+        {
+          "field": "invoice_number",
+          "expected": "PRF-SG-20455",
+          "actual": "PRF-SG-20455",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "invoice_date",
+          "expected": "2026-07-27",
+          "actual": "2026-07-27",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "due_date",
+          "expected": "2026-08-26",
+          "actual": "2026-08-26",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "vendor_name",
+          "expected": "Pacific Rim Freight Pte. Ltd.",
+          "actual": "Pacific Rim Freight Pte. Ltd.",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "buyer_name",
+          "expected": "Mirtphol Industries PCL",
+          "actual": "Mirtphol Industries PCL",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "purchase_order_ref",
+          "expected": "PO-2026-0512",
+          "actual": "PO-2026-0512",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "currency",
+          "expected": "USD",
+          "actual": "USD",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "subtotal",
+          "expected": 18500.0,
+          "actual": 18500.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "tax_rate",
+          "expected": 0.0,
+          "actual": null,
+          "status": "missing",
+          "similarity": 0.0
+        },
+        {
+          "field": "tax_amount",
+          "expected": 0.0,
+          "actual": 0.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "total_amount",
+          "expected": 18500.0,
+          "actual": 18500.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "payment_terms",
+          "expected": "Net 30",
+          "actual": "Net 30",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "bank_account",
+          "expected": "SG21DBSS0110001234567",
+          "actual": "SG21DBSS0110001234567",
+          "status": "correct",
+          "similarity": 1.0
+        }
       ]
     },
     {
-      "file": "18_invoice_unlabelled_amounts_True.jpg",
+      "order": 18,
+      "document": "18_invoice_unlabelled_amounts_True.jpg",
+      "arrival": "photo",
+      "language": "en",
+      "doc_type": "invoice",
+      "classified_as": "invoice",
+      "type_correct": true,
+      "should_post": true,
       "decision": "needs_review",
       "posted": false,
-      "posts_expected": true,
       "confidence": 0.601,
-      "elapsed_s": 20.3,
+      "ocr_provider": "ollama:scb10x/typhoon-ocr1.5-3b",
+      "ocr_ms": 52106,
+      "elapsed_ms": 62692,
+      "cost": {
+        "total_ms": 62643,
+        "stage_ms": {
+          "render": 59,
+          "preprocess": 611,
+          "ocr": 52106,
+          "classify": 562,
+          "extract": 9300,
+          "validate": 5
+        },
+        "agent_rules_run": 0,
+        "agent_rule_verdicts": {},
+        "agent_rule_tool_calls": 0,
+        "repeated_tool_calls": 0,
+        "reconciler_ran": false,
+        "reconciler_tool_calls": 0
+      },
       "fields_total": 10,
       "fields_correct": 8,
-      "fields_wrong": [],
-      "fields_missing": [
-        "invoice_number",
-        "vendor_tax_id"
-      ],
-      "critical_wrong": [],
+      "fields_near": 0,
+      "fields_wrong": 0,
+      "fields_missing": 2,
+      "wrong_critical": [],
       "silent_error": false,
-      "expected": [],
-      "failed": [
-        "payment_terms_stated"
+      "expected_findings": [],
+      "findings_fired": [],
+      "comparisons": [
+        {
+          "field": "invoice_number",
+          "expected": "1188-B",
+          "actual": null,
+          "status": "missing",
+          "similarity": 0.0
+        },
+        {
+          "field": "invoice_date",
+          "expected": "2026-07-28",
+          "actual": "2026-07-28",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "vendor_name",
+          "expected": "Thai Beverage Supply Co., Ltd.",
+          "actual": "Thai Beverage Supply Co., Ltd.",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "vendor_tax_id",
+          "expected": "0105563000221",
+          "actual": null,
+          "status": "missing",
+          "similarity": 0.0
+        },
+        {
+          "field": "buyer_name",
+          "expected": "Mirtphol Industries PCL",
+          "actual": "Mirtphol Industries PCL",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "currency",
+          "expected": "THB",
+          "actual": "THB",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "subtotal",
+          "expected": 9800.0,
+          "actual": 9800.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "tax_rate",
+          "expected": 7.0,
+          "actual": 7.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "tax_amount",
+          "expected": 686.0,
+          "actual": 686.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "total_amount",
+          "expected": 10486.0,
+          "actual": 10486.0,
+          "status": "correct",
+          "similarity": 1.0
+        }
       ]
     },
     {
-      "file": "19_invoice_two_column_layout_True.pdf",
+      "order": 19,
+      "document": "19_invoice_two_column_layout_True.pdf",
+      "arrival": "pdf",
+      "language": "en",
+      "doc_type": "invoice",
+      "classified_as": "invoice",
+      "type_correct": true,
+      "should_post": true,
       "decision": "auto_post",
       "posted": true,
-      "posts_expected": true,
-      "confidence": 0.895,
-      "elapsed_s": 30.5,
+      "confidence": 0.915,
+      "ocr_provider": "pdf-text-layer",
+      "ocr_ms": 0,
+      "elapsed_ms": 22552,
+      "cost": {
+        "total_ms": 22521,
+        "stage_ms": {
+          "render": 46,
+          "preprocess": 147,
+          "extract": 22327,
+          "validate": 1
+        },
+        "agent_rules_run": 0,
+        "agent_rule_verdicts": {},
+        "agent_rule_tool_calls": 0,
+        "repeated_tool_calls": 0,
+        "reconciler_ran": false,
+        "reconciler_tool_calls": 0
+      },
       "fields_total": 14,
-      "fields_correct": 11,
-      "fields_wrong": [
-        "buyer_name"
-      ],
-      "fields_missing": [
-        "due_date",
-        "purchase_order_ref"
-      ],
-      "critical_wrong": [],
+      "fields_correct": 12,
+      "fields_near": 0,
+      "fields_wrong": 0,
+      "fields_missing": 2,
+      "wrong_critical": [],
       "silent_error": false,
-      "expected": [],
-      "failed": []
+      "expected_findings": [],
+      "findings_fired": [],
+      "comparisons": [
+        {
+          "field": "invoice_number",
+          "expected": "TBS-7855",
+          "actual": "TBS-7855",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "invoice_date",
+          "expected": "2026-07-29",
+          "actual": "2026-07-29",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "due_date",
+          "expected": "2026-08-13",
+          "actual": null,
+          "status": "missing",
+          "similarity": 0.0
+        },
+        {
+          "field": "vendor_name",
+          "expected": "Thai Beverage Supply Co., Ltd.",
+          "actual": "Thai Beverage Supply Co., Ltd.",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "vendor_tax_id",
+          "expected": "0105563000221",
+          "actual": "0105563000221",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "buyer_name",
+          "expected": "Mirtphol Industries PCL",
+          "actual": "Mirtphol Industries PCL",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "purchase_order_ref",
+          "expected": "PO-2026-0523",
+          "actual": null,
+          "status": "missing",
+          "similarity": 0.0
+        },
+        {
+          "field": "currency",
+          "expected": "THB",
+          "actual": "THB",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "subtotal",
+          "expected": 38000.0,
+          "actual": 38000.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "tax_rate",
+          "expected": 7.0,
+          "actual": 7.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "tax_amount",
+          "expected": 2660.0,
+          "actual": 2660.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "total_amount",
+          "expected": 40660.0,
+          "actual": 40660.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "payment_terms",
+          "expected": "Net 15",
+          "actual": "Net 15",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "bank_account",
+          "expected": "7710028899",
+          "actual": "7710028899",
+          "status": "correct",
+          "similarity": 1.0
+        }
+      ]
     },
     {
-      "file": "20_invoice_dense_no_whitespace_True.pdf",
+      "order": 20,
+      "document": "20_invoice_dense_no_whitespace_True.pdf",
+      "arrival": "pdf",
+      "language": "en",
+      "doc_type": "invoice",
+      "classified_as": "invoice",
+      "type_correct": true,
+      "should_post": true,
       "decision": "auto_post",
       "posted": true,
-      "posts_expected": true,
-      "confidence": 0.912,
-      "elapsed_s": 51.9,
+      "confidence": 0.894,
+      "ocr_provider": "pdf-text-layer",
+      "ocr_ms": 0,
+      "elapsed_ms": 18457,
+      "cost": {
+        "total_ms": 18428,
+        "stage_ms": {
+          "render": 34,
+          "preprocess": 146,
+          "extract": 18247,
+          "validate": 1
+        },
+        "agent_rules_run": 0,
+        "agent_rule_verdicts": {},
+        "agent_rule_tool_calls": 0,
+        "repeated_tool_calls": 0,
+        "reconciler_ran": false,
+        "reconciler_tool_calls": 0
+      },
       "fields_total": 12,
-      "fields_correct": 10,
-      "fields_wrong": [
-        "due_date",
-        "buyer_name"
-      ],
-      "fields_missing": [],
-      "critical_wrong": [],
+      "fields_correct": 11,
+      "fields_near": 0,
+      "fields_wrong": 1,
+      "fields_missing": 0,
+      "wrong_critical": [],
       "silent_error": false,
-      "expected": [],
-      "failed": []
+      "expected_findings": [],
+      "findings_fired": [],
+      "comparisons": [
+        {
+          "field": "invoice_number",
+          "expected": "RSW-2026-1240",
+          "actual": "RSW-2026-1240",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "invoice_date",
+          "expected": "2026-07-29",
+          "actual": "2026-07-29",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "due_date",
+          "expected": "2026-09-27",
+          "actual": "2026-09-27",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "vendor_name",
+          "expected": "Rungruang Steel Works Co., Ltd.",
+          "actual": "Rungruang Steel Works Co., Ltd.",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "vendor_tax_id",
+          "expected": "0105552000110",
+          "actual": "0105552000110",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "buyer_name",
+          "expected": "Mirtphol Industries PCL",
+          "actual": "Mirtphol Industries PCL, 88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand",
+          "status": "wrong",
+          "similarity": 0.465
+        },
+        {
+          "field": "currency",
+          "expected": "THB",
+          "actual": "THB",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "subtotal",
+          "expected": 28000.0,
+          "actual": 28000.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "tax_rate",
+          "expected": 7.0,
+          "actual": 7.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "tax_amount",
+          "expected": 1960.0,
+          "actual": 1960.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "total_amount",
+          "expected": 29960.0,
+          "actual": 29960.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "bank_account",
+          "expected": "3120045678",
+          "actual": "3120045678",
+          "status": "correct",
+          "similarity": 1.0
+        }
+      ]
     },
     {
-      "file": "21_invoice_minimal_unlabelled_True.pdf",
+      "order": 21,
+      "document": "21_invoice_minimal_unlabelled_True.pdf",
+      "arrival": "pdf",
+      "language": "en",
+      "doc_type": "invoice",
+      "classified_as": "invoice",
+      "type_correct": true,
+      "should_post": true,
       "decision": "needs_review",
       "posted": false,
-      "posts_expected": true,
-      "confidence": 0.721,
-      "elapsed_s": 30.3,
+      "confidence": 0.781,
+      "ocr_provider": "pdf-text-layer",
+      "ocr_ms": 0,
+      "elapsed_ms": 11007,
+      "cost": {
+        "total_ms": 10989,
+        "stage_ms": {
+          "render": 27,
+          "preprocess": 137,
+          "classify": 483,
+          "extract": 10341,
+          "validate": 1
+        },
+        "agent_rules_run": 0,
+        "agent_rule_verdicts": {},
+        "agent_rule_tool_calls": 0,
+        "repeated_tool_calls": 0,
+        "reconciler_ran": false,
+        "reconciler_tool_calls": 0
+      },
       "fields_total": 11,
-      "fields_correct": 10,
-      "fields_wrong": [],
-      "fields_missing": [
-        "bank_account"
-      ],
-      "critical_wrong": [],
+      "fields_correct": 11,
+      "fields_near": 0,
+      "fields_wrong": 0,
+      "fields_missing": 0,
+      "wrong_critical": [],
       "silent_error": false,
-      "expected": [],
-      "failed": [
-        "payment_terms_stated",
-        "tax_id_belongs_to_this_vendor"
+      "expected_findings": [],
+      "findings_fired": [],
+      "comparisons": [
+        {
+          "field": "invoice_number",
+          "expected": "SE-2026-0488",
+          "actual": "SE-2026-0488",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "invoice_date",
+          "expected": "2026-07-29",
+          "actual": "2026-07-29",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "due_date",
+          "expected": "2026-09-12",
+          "actual": "2026-09-12",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "vendor_name",
+          "expected": "Sunrise Electrical Co., Ltd.",
+          "actual": "Sunrise Electrical Co., Ltd.",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "buyer_name",
+          "expected": "Mirtphol Industries PCL",
+          "actual": "Mirtphol Industries PCL",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "currency",
+          "expected": "THB",
+          "actual": "THB",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "subtotal",
+          "expected": 22000.0,
+          "actual": 22000.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "tax_rate",
+          "expected": 7.0,
+          "actual": 7.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "tax_amount",
+          "expected": 1540.0,
+          "actual": 1540.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "total_amount",
+          "expected": 23540.0,
+          "actual": 23540.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "bank_account",
+          "expected": "8890014455",
+          "actual": "8890014455",
+          "status": "correct",
+          "similarity": 1.0
+        }
       ]
     },
     {
-      "file": "22_invoice_thai_layout_correct_True.png",
+      "order": 22,
+      "document": "22_invoice_thai_layout_correct_True.png",
+      "arrival": "png",
+      "language": "th",
+      "doc_type": "invoice",
+      "classified_as": "invoice",
+      "type_correct": true,
+      "should_post": true,
       "decision": "auto_post",
       "posted": true,
-      "posts_expected": true,
       "confidence": 0.934,
-      "elapsed_s": 36.8,
+      "ocr_provider": "ollama:scb10x/typhoon-ocr1.5-3b",
+      "ocr_ms": 45491,
+      "elapsed_ms": 61612,
+      "cost": {
+        "total_ms": 61589,
+        "stage_ms": {
+          "render": 36,
+          "preprocess": 142,
+          "ocr": 45491,
+          "classify": 2,
+          "extract": 15918
+        },
+        "agent_rules_run": 0,
+        "agent_rule_verdicts": {},
+        "agent_rule_tool_calls": 0,
+        "repeated_tool_calls": 0,
+        "reconciler_ran": false,
+        "reconciler_tool_calls": 0
+      },
       "fields_total": 13,
-      "fields_correct": 13,
-      "fields_wrong": [],
-      "fields_missing": [],
-      "critical_wrong": [],
+      "fields_correct": 12,
+      "fields_near": 1,
+      "fields_wrong": 1,
+      "fields_missing": 0,
+      "wrong_critical": [],
       "silent_error": false,
-      "expected": [],
-      "failed": []
+      "expected_findings": [],
+      "findings_fired": [],
+      "comparisons": [
+        {
+          "field": "invoice_number",
+          "expected": "TBS-7860",
+          "actual": "TBS-7860",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "invoice_date",
+          "expected": "2026-07-30",
+          "actual": "2026-07-30",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "due_date",
+          "expected": "2026-08-14",
+          "actual": "2026-08-14",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "vendor_name",
+          "expected": "บริษัท ไทยเบเวอเรจ ซัพพลาย จำกัด",
+          "actual": "บริษัท ไทยเบเวอเรจ ซัพพลาย จำกัด",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "vendor_tax_id",
+          "expected": "0105563000221",
+          "actual": "0105563000221",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "buyer_name",
+          "expected": "Mirtphol Industries PCL",
+          "actual": "Mirthphol Industries PCL",
+          "status": "near",
+          "similarity": 0.979
+        },
+        {
+          "field": "currency",
+          "expected": "THB",
+          "actual": "THB",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "subtotal",
+          "expected": 16000.0,
+          "actual": 16000.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "tax_rate",
+          "expected": 7.0,
+          "actual": 7.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "tax_amount",
+          "expected": 1120.0,
+          "actual": 1120.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "total_amount",
+          "expected": 17120.0,
+          "actual": 17120.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "payment_terms",
+          "expected": "Net 15",
+          "actual": "Net 15",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "bank_account",
+          "expected": "7710028899",
+          "actual": "7710028899",
+          "status": "correct",
+          "similarity": 1.0
+        }
+      ]
     },
     {
-      "file": "23_invoice_modern_scanned_True.png",
+      "order": 23,
+      "document": "23_invoice_modern_scanned_True.png",
+      "arrival": "png",
+      "language": "en",
+      "doc_type": "invoice",
+      "classified_as": "invoice",
+      "type_correct": true,
+      "should_post": true,
       "decision": "auto_post",
       "posted": true,
-      "posts_expected": true,
       "confidence": 0.934,
-      "elapsed_s": 48.8,
+      "ocr_provider": "ollama:scb10x/typhoon-ocr1.5-3b",
+      "ocr_ms": 51693,
+      "elapsed_ms": 75598,
+      "cost": {
+        "total_ms": 75548,
+        "stage_ms": {
+          "render": 42,
+          "preprocess": 157,
+          "ocr": 51693,
+          "extract": 18896,
+          "validate": 4760
+        },
+        "agent_rules_run": 1,
+        "agent_rule_verdicts": {
+          "pass": 1
+        },
+        "agent_rule_tool_calls": 6,
+        "repeated_tool_calls": 0,
+        "reconciler_ran": false,
+        "reconciler_tool_calls": 0
+      },
       "fields_total": 14,
       "fields_correct": 13,
-      "fields_wrong": [],
-      "fields_missing": [
-        "tax_rate"
-      ],
-      "critical_wrong": [],
+      "fields_near": 0,
+      "fields_wrong": 0,
+      "fields_missing": 1,
+      "wrong_critical": [],
       "silent_error": false,
-      "expected": [],
-      "failed": []
+      "expected_findings": [],
+      "findings_fired": [],
+      "comparisons": [
+        {
+          "field": "invoice_number",
+          "expected": "MC-2026-0801",
+          "actual": "MC-2026-0801",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "invoice_date",
+          "expected": "2026-07-30",
+          "actual": "2026-07-30",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "due_date",
+          "expected": "2026-08-29",
+          "actual": "2026-08-29",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "vendor_name",
+          "expected": "Meridian Consulting LLP",
+          "actual": "Meridian Consulting LLP",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "vendor_tax_id",
+          "expected": "GB428765190",
+          "actual": "GB428765190",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "buyer_name",
+          "expected": "Mirtphol Industries PCL",
+          "actual": "Mirtphol Industries PCL",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "purchase_order_ref",
+          "expected": "PO-2026-0534",
+          "actual": "PO-2026-0534",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "currency",
+          "expected": "USD",
+          "actual": "USD",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "subtotal",
+          "expected": 36000.0,
+          "actual": 36000.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "tax_rate",
+          "expected": 0.0,
+          "actual": null,
+          "status": "missing",
+          "similarity": 0.0
+        },
+        {
+          "field": "tax_amount",
+          "expected": 0.0,
+          "actual": 0.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "total_amount",
+          "expected": 36000.0,
+          "actual": 36000.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "payment_terms",
+          "expected": "Net 30",
+          "actual": "Net 30",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "bank_account",
+          "expected": "GB29NWBK60161331926819",
+          "actual": "GB29NWBK60161331926819",
+          "status": "correct",
+          "similarity": 1.0
+        }
+      ]
     },
     {
-      "file": "24_receipt_clean_thermal_True.pdf",
+      "order": 24,
+      "document": "24_receipt_clean_thermal_True.pdf",
+      "arrival": "pdf",
+      "language": "en",
+      "doc_type": "receipt",
+      "classified_as": "receipt",
+      "type_correct": true,
+      "should_post": true,
       "decision": "auto_post",
       "posted": true,
-      "posts_expected": true,
       "confidence": 0.849,
-      "elapsed_s": 26.8,
+      "ocr_provider": "ollama:scb10x/typhoon-ocr1.5-3b",
+      "ocr_ms": 24896,
+      "elapsed_ms": 36313,
+      "cost": {
+        "total_ms": 36274,
+        "stage_ms": {
+          "render": 29,
+          "preprocess": 112,
+          "ocr": 24896,
+          "classify": 593,
+          "extract": 10641,
+          "validate": 3
+        },
+        "agent_rules_run": 0,
+        "agent_rule_verdicts": {},
+        "agent_rule_tool_calls": 0,
+        "repeated_tool_calls": 0,
+        "reconciler_ran": false,
+        "reconciler_tool_calls": 0
+      },
       "fields_total": 9,
       "fields_correct": 7,
-      "fields_wrong": [
-        "payment_method"
-      ],
-      "fields_missing": [
-        "tax_rate"
-      ],
-      "critical_wrong": [],
+      "fields_near": 0,
+      "fields_wrong": 1,
+      "fields_missing": 1,
+      "wrong_critical": [],
       "silent_error": false,
-      "expected": [],
-      "failed": []
+      "expected_findings": [],
+      "findings_fired": [],
+      "comparisons": [
+        {
+          "field": "receipt_number",
+          "expected": "PTT-556890",
+          "actual": "PTT-556890",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "receipt_date",
+          "expected": "2026-07-28",
+          "actual": "2026-07-28",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "merchant_name",
+          "expected": "PTT Station Rama IV",
+          "actual": "PTT Station Rama IV",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "currency",
+          "expected": "THB",
+          "actual": "THB",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "subtotal",
+          "expected": 1401.87,
+          "actual": 1401.87,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "",
+          "expected": 7.0,
+          "actual": null,
+          "status": "missing",
+          "similarity": 0.0
+        },
+        {
+          "field": "tax_amount",
+          "expected": 98.13,
+          "actual": 98.13,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "total_amount",
+          "expected": 1500.0,
+          "actual": 1500.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "payment_method",
+          "expected": "Corporate card",
+          "actual": "credit_card",
+          "status": "wrong",
+          "similarity": 0.56
+        }
+      ]
+    },
+    {
+      "order": 25,
+      "document": "25_invoice_thai_arabic_digits_True.png",
+      "arrival": "png",
+      "language": "th",
+      "doc_type": "invoice",
+      "classified_as": "invoice",
+      "type_correct": true,
+      "should_post": true,
+      "decision": "auto_post",
+      "posted": true,
+      "confidence": 0.843,
+      "ocr_provider": "ollama:scb10x/typhoon-ocr1.5-3b",
+      "ocr_ms": 45311,
+      "elapsed_ms": 70443,
+      "cost": {
+        "total_ms": 70405,
+        "stage_ms": {
+          "render": 40,
+          "preprocess": 183,
+          "ocr": 45311,
+          "classify": 1,
+          "extract": 19934,
+          "validate": 4936
+        },
+        "agent_rules_run": 1,
+        "agent_rule_verdicts": {
+          "pass": 1
+        },
+        "agent_rule_tool_calls": 6,
+        "repeated_tool_calls": 0,
+        "reconciler_ran": false,
+        "reconciler_tool_calls": 0
+      },
+      "fields_total": 14,
+      "fields_correct": 13,
+      "fields_near": 1,
+      "fields_wrong": 1,
+      "fields_missing": 0,
+      "wrong_critical": [
+        "vendor_name"
+      ],
+      "silent_error": true,
+      "expected_findings": [],
+      "findings_fired": [],
+      "comparisons": [
+        {
+          "field": "invoice_number",
+          "expected": "STS-2026-0318",
+          "actual": "STS-2026-0318",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "invoice_date",
+          "expected": "2026-07-24",
+          "actual": "2026-07-24",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "due_date",
+          "expected": "2026-08-23",
+          "actual": "2026-08-23",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "vendor_name",
+          "expected": "บริษัท สยามเทค ซัพพลาย จำกัด",
+          "actual": "บริษัท สยามเทค ชัพพลาย จำกัด",
+          "status": "near",
+          "similarity": 0.966
+        },
+        {
+          "field": "vendor_tax_id",
+          "expected": "0105543000129",
+          "actual": "0105543000129",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "buyer_name",
+          "expected": "Mirtphol Industries PCL",
+          "actual": "Mirtphol Industries PCL",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "purchase_order_ref",
+          "expected": "PO-2026-0567",
+          "actual": "PO-2026-0567",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "currency",
+          "expected": "THB",
+          "actual": "THB",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "subtotal",
+          "expected": 135000.0,
+          "actual": 135000.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "tax_rate",
+          "expected": 7.0,
+          "actual": 7.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "tax_amount",
+          "expected": 9450.0,
+          "actual": 9450.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "total_amount",
+          "expected": 144450.0,
+          "actual": 144450.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "payment_terms",
+          "expected": "Net 30",
+          "actual": "Net 30",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "bank_account",
+          "expected": "1234567890",
+          "actual": "1234567890",
+          "status": "correct",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "order": 26,
+      "document": "26_invoice_thai_vat_miscalculated_False.pdf",
+      "arrival": "pdf",
+      "language": "th",
+      "doc_type": "invoice",
+      "classified_as": "invoice",
+      "type_correct": true,
+      "should_post": false,
+      "decision": "needs_review",
+      "posted": false,
+      "confidence": 0.683,
+      "ocr_provider": "pdf-text-layer",
+      "ocr_ms": 0,
+      "elapsed_ms": 28947,
+      "cost": {
+        "total_ms": 28909,
+        "stage_ms": {
+          "render": 47,
+          "preprocess": 184,
+          "extract": 18409,
+          "validate": 4528,
+          "reconcile": 5741
+        },
+        "agent_rules_run": 1,
+        "agent_rule_verdicts": {
+          "unsure": 1
+        },
+        "agent_rule_tool_calls": 7,
+        "repeated_tool_calls": 1,
+        "reconciler_ran": true,
+        "reconciler_tool_calls": 9
+      },
+      "fields_total": 14,
+      "fields_correct": 14,
+      "fields_near": 0,
+      "fields_wrong": 0,
+      "fields_missing": 0,
+      "wrong_critical": [],
+      "silent_error": false,
+      "expected_findings": [
+        "tax_rate_consistent"
+      ],
+      "findings_fired": [
+        "duplicate_document",
+        "purchase_order_still_has_room",
+        "tax_rate_consistent"
+      ],
+      "comparisons": [
+        {
+          "field": "invoice_number",
+          "expected": "RSW-2026-1240",
+          "actual": "RSW-2026-1240",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "invoice_date",
+          "expected": "2026-07-27",
+          "actual": "2026-07-27",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "due_date",
+          "expected": "2026-09-25",
+          "actual": "2026-09-25",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "vendor_name",
+          "expected": "บริษัท รุ่งเรือง สตีล เวิร์ค จำกัด",
+          "actual": "บริษัท รุ่งเรือง สตีล เวิร์ค จำกัด",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "vendor_tax_id",
+          "expected": "0105552000110",
+          "actual": "0105552000110",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "buyer_name",
+          "expected": "Mirtphol Industries PCL",
+          "actual": "Mirtphol Industries PCL",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "purchase_order_ref",
+          "expected": "PO-2026-0578",
+          "actual": "PO-2026-0578",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "currency",
+          "expected": "THB",
+          "actual": "THB",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "subtotal",
+          "expected": 88000.0,
+          "actual": 88000.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "tax_rate",
+          "expected": 7.0,
+          "actual": 7.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "tax_amount",
+          "expected": 5280.0,
+          "actual": 5280.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "total_amount",
+          "expected": 93280.0,
+          "actual": 93280.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "payment_terms",
+          "expected": "Net 60",
+          "actual": "Net 60",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "bank_account",
+          "expected": "3120045678",
+          "actual": "3120045678",
+          "status": "correct",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "order": 27,
+      "document": "27_receipt_thai_fuel_station_True.jpg",
+      "arrival": "photo",
+      "language": "th",
+      "doc_type": "receipt",
+      "classified_as": "receipt",
+      "type_correct": true,
+      "should_post": true,
+      "decision": "auto_post",
+      "posted": true,
+      "confidence": 0.914,
+      "ocr_provider": "ollama:scb10x/typhoon-ocr1.5-3b",
+      "ocr_ms": 23226,
+      "elapsed_ms": 39021,
+      "cost": {
+        "total_ms": 38996,
+        "stage_ms": {
+          "render": 8,
+          "preprocess": 410,
+          "ocr": 23226,
+          "classify": 569,
+          "extract": 14779,
+          "validate": 4
+        },
+        "agent_rules_run": 0,
+        "agent_rule_verdicts": {},
+        "agent_rule_tool_calls": 0,
+        "repeated_tool_calls": 0,
+        "reconciler_ran": false,
+        "reconciler_tool_calls": 0
+      },
+      "fields_total": 8,
+      "fields_correct": 8,
+      "fields_near": 0,
+      "fields_wrong": 0,
+      "fields_missing": 0,
+      "wrong_critical": [],
+      "silent_error": false,
+      "expected_findings": [],
+      "findings_fired": [],
+      "comparisons": [
+        {
+          "field": "receipt_number",
+          "expected": "PTT-880451",
+          "actual": "PTT-880451",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "receipt_date",
+          "expected": "2026-07-28",
+          "actual": "2026-07-28",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "merchant_name",
+          "expected": "บริษัท ปตท. น้ำมันและการค้าปลีก จำกัด",
+          "actual": "บริษัท ปตท. น้ำมันและการค้าปลีก จำกัด",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "merchant_tax_id",
+          "expected": "0105554000770",
+          "actual": "0105554000770",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "currency",
+          "expected": "THB",
+          "actual": "THB",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "subtotal",
+          "expected": 2000.0,
+          "actual": 2000.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "tax_amount",
+          "expected": 140.0,
+          "actual": 140.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "total_amount",
+          "expected": 2140.0,
+          "actual": 2140.0,
+          "status": "correct",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "order": 28,
+      "document": "28_contract_thai_service_True.pdf",
+      "arrival": "pdf",
+      "language": "th",
+      "doc_type": "contract",
+      "classified_as": "contract",
+      "type_correct": true,
+      "should_post": true,
+      "decision": "auto_post",
+      "posted": true,
+      "confidence": 0.922,
+      "ocr_provider": "pdf-text-layer",
+      "ocr_ms": 0,
+      "elapsed_ms": 23924,
+      "cost": {
+        "total_ms": 23885,
+        "stage_ms": {
+          "render": 47,
+          "preprocess": 158,
+          "classify": 511,
+          "extract": 23168,
+          "validate": 1
+        },
+        "agent_rules_run": 0,
+        "agent_rule_verdicts": {},
+        "agent_rule_tool_calls": 0,
+        "repeated_tool_calls": 0,
+        "reconciler_ran": false,
+        "reconciler_tool_calls": 0
+      },
+      "fields_total": 11,
+      "fields_correct": 11,
+      "fields_near": 0,
+      "fields_wrong": 0,
+      "fields_missing": 0,
+      "wrong_critical": [],
+      "silent_error": false,
+      "expected_findings": [],
+      "findings_fired": [],
+      "comparisons": [
+        {
+          "field": "contract_number",
+          "expected": "CT-2026-027",
+          "actual": "CT-2026-027",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "contract_title",
+          "expected": "สัญญาจ้างบริการทำความสะอาดและบำรุงรักษาอาคาร",
+          "actual": "สัญญาจ้างบริการทำความสะอาดและบำรุงรักษาอาคาร",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "party_a",
+          "expected": "Mirtphol Industries PCL",
+          "actual": "Mirtphol Industries PCL",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "party_b",
+          "expected": "บริษัท เจ้าพระยา แฟซิลิตี้ จำกัด",
+          "actual": "บริษัท เจ้าพระยา แฟซิลิตี้ จำกัด",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "effective_date",
+          "expected": "2026-06-01",
+          "actual": "2026-06-01",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "expiry_date",
+          "expected": "2027-05-31",
+          "actual": "2027-05-31",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "contract_value",
+          "expected": 420000.0,
+          "actual": 420000.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "currency",
+          "expected": "THB",
+          "actual": "THB",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "payment_terms",
+          "expected": "ชำระรายเดือนภายใน 30 วัน",
+          "actual": "ชำระรายเดือนภายใน 30 วัน",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "auto_renew",
+          "expected": "no",
+          "actual": "no",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "governing_law",
+          "expected": "กฎหมายไทย",
+          "actual": "กฎหมายไทย",
+          "status": "correct",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "order": 29,
+      "document": "29_invoice_thai_unknown_vendor_False.png",
+      "arrival": "png",
+      "language": "th",
+      "doc_type": "invoice",
+      "classified_as": "invoice",
+      "type_correct": true,
+      "should_post": false,
+      "decision": "needs_review",
+      "posted": false,
+      "confidence": 0.845,
+      "ocr_provider": "ollama:scb10x/typhoon-ocr1.5-3b",
+      "ocr_ms": 36953,
+      "elapsed_ms": 60771,
+      "cost": {
+        "total_ms": 60746,
+        "stage_ms": {
+          "render": 36,
+          "preprocess": 167,
+          "ocr": 36953,
+          "classify": 1,
+          "extract": 19013,
+          "validate": 7,
+          "reconcile": 4569
+        },
+        "agent_rules_run": 0,
+        "agent_rule_verdicts": {},
+        "agent_rule_tool_calls": 0,
+        "repeated_tool_calls": 0,
+        "reconciler_ran": true,
+        "reconciler_tool_calls": 9
+      },
+      "fields_total": 13,
+      "fields_correct": 12,
+      "fields_near": 1,
+      "fields_wrong": 1,
+      "fields_missing": 0,
+      "wrong_critical": [],
+      "silent_error": false,
+      "expected_findings": [
+        "vendor_known"
+      ],
+      "findings_fired": [
+        "vendor_known"
+      ],
+      "comparisons": [
+        {
+          "field": "invoice_number",
+          "expected": "SCK-2569-0142",
+          "actual": "SCK-2569-0142",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "invoice_date",
+          "expected": "2026-07-29",
+          "actual": "2026-07-29",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "due_date",
+          "expected": "2026-08-28",
+          "actual": "2026-08-28",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "vendor_name",
+          "expected": "หจก. สมชายการช่าง",
+          "actual": "หจก. สมชายการช่าง",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "vendor_tax_id",
+          "expected": "0105566000991",
+          "actual": "0105566009991",
+          "status": "near",
+          "similarity": 0.923
+        },
+        {
+          "field": "buyer_name",
+          "expected": "Mirtphol Industries PCL",
+          "actual": "Mirtphol Industries PCL",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "currency",
+          "expected": "THB",
+          "actual": "THB",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "subtotal",
+          "expected": 42000.0,
+          "actual": 42000.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "tax_rate",
+          "expected": 7.0,
+          "actual": 7.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "tax_amount",
+          "expected": 2940.0,
+          "actual": 2940.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "total_amount",
+          "expected": 44940.0,
+          "actual": 44940.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "payment_terms",
+          "expected": "Net 30",
+          "actual": "Net 30",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "bank_account",
+          "expected": "6650071234",
+          "actual": "6650071234",
+          "status": "correct",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "order": 30,
+      "document": "30_invoice_thai_no_tax_id_True.png",
+      "arrival": "png",
+      "language": "th",
+      "doc_type": "invoice",
+      "classified_as": "invoice",
+      "type_correct": true,
+      "should_post": true,
+      "decision": "auto_post",
+      "posted": true,
+      "confidence": 0.84,
+      "ocr_provider": "ollama:scb10x/typhoon-ocr1.5-3b",
+      "ocr_ms": 48340,
+      "elapsed_ms": 67031,
+      "cost": {
+        "total_ms": 66994,
+        "stage_ms": {
+          "render": 38,
+          "preprocess": 165,
+          "ocr": 48340,
+          "classify": 3,
+          "extract": 18439,
+          "validate": 9
+        },
+        "agent_rules_run": 0,
+        "agent_rule_verdicts": {},
+        "agent_rule_tool_calls": 0,
+        "repeated_tool_calls": 0,
+        "reconciler_ran": false,
+        "reconciler_tool_calls": 0
+      },
+      "fields_total": 12,
+      "fields_correct": 11,
+      "fields_near": 1,
+      "fields_wrong": 1,
+      "fields_missing": 0,
+      "wrong_critical": [
+        "vendor_name"
+      ],
+      "silent_error": true,
+      "expected_findings": [],
+      "findings_fired": [],
+      "comparisons": [
+        {
+          "field": "invoice_number",
+          "expected": "SE-2026-0498",
+          "actual": "SE-2026-0498",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "invoice_date",
+          "expected": "2026-07-31",
+          "actual": "2026-07-31",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "due_date",
+          "expected": "2026-09-14",
+          "actual": "2026-09-14",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "vendor_name",
+          "expected": "บริษัท ซันไรส์ อิเล็คทริคอล จำกัด",
+          "actual": "บริษัท ชันไรส์ อีเล็คทริคอล จำกัด",
+          "status": "near",
+          "similarity": 0.941
+        },
+        {
+          "field": "buyer_name",
+          "expected": "Mirtphol Industries PCL",
+          "actual": "Mirtphol Industries PCL",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "currency",
+          "expected": "THB",
+          "actual": "THB",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "subtotal",
+          "expected": 36000.0,
+          "actual": 36000.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "tax_rate",
+          "expected": 7.0,
+          "actual": 7.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "tax_amount",
+          "expected": 2520.0,
+          "actual": 2520.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "total_amount",
+          "expected": 38520.0,
+          "actual": 38520.0,
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "payment_terms",
+          "expected": "Net 45",
+          "actual": "Net 45",
+          "status": "correct",
+          "similarity": 1.0
+        },
+        {
+          "field": "bank_account",
+          "expected": "8890014455",
+          "actual": "8890014455",
+          "status": "correct",
+          "similarity": 1.0
+        }
+      ]
     }
   ]
 }

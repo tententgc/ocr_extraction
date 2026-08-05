@@ -5,7 +5,8 @@ pluggable model layer. The headline metric is the **silent error rate**:
 documents that posted automatically while carrying a wrong critical value.
 
 Full docs: [README.md](README.md) · [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-· [docs/EVALUATION.md](docs/EVALUATION.md) · [docs/RULES.th.md](docs/RULES.th.md)
+· [docs/EVALUATION.md](docs/EVALUATION.md) (Thai:
+[docs/EVALUATION.th.md](docs/EVALUATION.th.md)) · [docs/RULES.th.md](docs/RULES.th.md)
 
 **Before starting anything substantial, read
 [docs/TECH-DEBT.th.md](docs/TECH-DEBT.th.md).** It is the standing work list,
@@ -86,11 +87,12 @@ docuflow reset --confirm --keep-master       # keep the register
 docuflow master load real_samples/master     # a directory, loaded in dependency order
 docuflow rules load real_samples/rules.json  # 5 expression + 2 agent rules
 docuflow real-samples --out real_samples     # regenerate the corpus
-docuflow evaluate --out report.json          # accuracy, coverage, time saved
+docuflow evaluate --corpus real_samples      # the corpus docs/EVALUATION.md quotes
+docuflow evaluate --out report.json          # the 13 catalogue samples, fields only
 docuflow split <file> --out <dir>            # one PDF per document in a scanned stack
 docuflow export --doc-type invoice           # the ledger as CSV or JSONL
 docuflow serve                               # the web UI on :8000
-.venv/bin/python -m pytest -q                # 1,021 tests, no API key needed
+.venv/bin/python -m pytest -q                # 1,194 tests, no API key needed
 .venv/bin/python -m pytest -m ui -q          # + 20 browser tests, opt-in
 ```
 
@@ -325,6 +327,9 @@ code, not about one machine's `.env`.
 | A Thai contract auto-posted with both parties misread | `contract_matches_master` compared dates and value but never the parties, though the register stores both and the contract number is an exact key. An invoice has `vendor_known`; a contract had nothing. Compare as *organisations* (legal form stripped, fuzzy) and resolve through the vendor register for cross-language aliases — string equality would block every one-stroke Thai misread. |
 | A long PDF read short, in silence | `render` capped at `OCR_MAX_PAGES` (8) and said nothing. Nothing downstream can miss a page it was never shown — an earlier subtotal passes for the total and the arithmetic agrees with itself. `PageImage.document_pages` now carries the true length, the trace says "N of M", and the shortfall degrades the run. |
 | A document taking ten minutes instead of thirty seconds | Typhoon Cloud returned 408 on the Thai-numeral pages; the engine treated a timeout like bad text and escalated down the chain to a local 3B model. **Bad text is a verdict on the page and warrants escalation; a timeout is not and warrants a retry.** `OcrTransientError` now separates them. |
+| A Thai bank account posted to the ledger in Thai numerals | `"๑๒๓๔๕๖๗๘๙๐".isdigit()` is **True**, so `normalize_account_number` returned early without converting. It still *matched* its vendor — `bank_account_matches_vendor` compares through `reference_key`, which does convert — so the document auto-posted, nobody looked, and the export handed the next system an account nobody can pay. `"เลขที่บัญชี"[:2].isalpha()` is also True, so a labelled Thai account took the IBAN branch and the caption was stored as part of the number. |
+| Two Thai words differing by a tone mark keyed to the same record | `reference_key` filtered on `str.isalnum()`, False for every Thai vowel sign and tone mark (category `Mn`). `เก่า`/`เก้า` and `เสื้อ`/`เสือ` collapsed together. It resolves purchase orders and contracts against the register, so a collision matches the **wrong row** and every check then compares against a contract that is not the document's. |
+| An evaluation nobody could reproduce | `docs/EVALUATION.md` said to run `docuflow evaluate`, which scored the 13 catalogue samples; every published figure came from `real_samples/` via a script that was never committed. `--corpus` is that harness. **Publish the command with the number, and run the command you published.** |
 
 When the evaluation says the system is wrong, suspect the corpus first. On this
 project it has been the corpus more often than the pipeline: a VAT that was

@@ -1,0 +1,212 @@
+
+==============================================================================
+CORPUS EVALUATION
+==============================================================================
+
+--- The run -----------------------------------------------------------------
+Corpus               : real_samples
+Master data          : 13 vendors, 12 purchase orders, 6 contracts
+Rules written here   : 7  (every_line_item_described, no_single_line_over_400k, payment_terms_stated, currency_is_one_we_trade_in, large_invoice_names_a_buyer, purchase_order_still_has_room, tax_id_belongs_to_this_vendor)
+Auto-post threshold  : 84%
+OCR / read / verify  : ollama / typhoon / claude
+Rules switched off   : currency_matches_vendor_default, payment_terms_stated, tax_id_belongs_to_this_vendor, tax_id_checksum, vat_rate_expected
+  re-enabled for this run: bank_account_matches_vendor, po_amount_within_tolerance
+  (the corpus declares them; leaving them off would report a
+   missed defect where nothing was missed)
+
+--- Is the corpus gradeable -------------------------------------------------
+!! 11 of 298 ground-truth values (3.7%) are NOT printed on their page.
+   Extraction is graded against values no reader could find, so they
+   report as missing on every engine anyone tries. Field recall below
+   is understated by this much; nothing has been silently dropped.
+
+   FIELD                    N  DOCUMENTS
+   purchase_order_ref       3  documents 4, 16, 19
+   vendor_tax_id            2  documents 6, 10
+   payment_terms            2  documents 6, 10
+   due_date                 2  documents 7, 19
+   payment_method           2  documents 11, 24
+
+!! 1 page(s) have almost no text layer, so
+   nothing can be proved about their ground truth either way:
+     · 18_invoice_unlabelled_amounts_True.jpg
+
+ · held but naming no rule (the defect is real but unstated, so no
+   rule gets credit for catching it and defect recall cannot see it):
+     · 3_invoice_photo_on_a_desk_False.jpg
+
+--- Were the values read correctly ------------------------------------------
+Documents            : 30  (1186.5s wall clock)
+Document type        : ██████████████████████ 100.0%
+Field accuracy       : ████████████████████·· 90.0% (325/361 exact)
+  allowing near-miss : ████████████████████·· 92.2%
+  not found          : 20
+Average confidence   : 84.3%
+
+--- Precision and recall: document type -------------------------------------
+Accuracy             : ██████████████████████ 100.0%
+Macro precision      :  100%    recall  100%    F1  100%
+  macro averages the classes equally, so a rare type that is never
+  recognised cannot be hidden behind the commonest one
+
+TYPE               N  PRED   PREC  RECALL     F1
+contract           3     3  100%    100%   100%
+form               1     1  100%    100%   100%
+invoice           23    23  100%    100%   100%
+receipt            3     3  100%    100%   100%
+
+--- Precision and recall: extracted values ----------------------------------
+Precision            :   95%  of 341 values answered, 325 were right
+Recall               :   90%  of 361 values present, 325 were found
+F1                   :   93%
+  wrong     16  answered, and not right
+  missing   20  there, and not found (left for a person - the safe way to be wrong)
+  spurious   0  not there, and answered anyway (invisible to accuracy)
+
+WEAKEST FIELDS             PREC  RECALL     F1  WRONG  MISS  SPUR
+contract_value             67%     67%    67%      1     0     0
+party_a                    67%     67%    67%      1     0     0
+contract_number           100%     67%    80%      0     1     0
+buyer_name                 83%     83%    83%      4     0     0
+purchase_order_ref        100%     75%    86%      0     3     0
+vendor_tax_id              94%     79%    86%      1     3     0
+invoice_date               91%     87%    89%      2     1     0
+due_date                   95%     86%    90%      1     2     0
+invoice_number             95%     87%    91%      1     2     0
+vendor_name                91%     91%    91%      2     0     0
+
+--- Was the page read -------------------------------------------------------
+Character accuracy   : ███████████████████··· 86.8%  (CER 13.20%)   over 15 recognised page(s)
+Value recall         : ███████████████████··· 86.2%  (119/138 values survived)
+
+Read without OCR     : 15 PDF(s) served from their own text
+  layer. Their transcript IS the reference, so their CER is zero by
+  construction and is excluded from the figure above.
+  Corpus-wide, diluted : 93.7% character, 91.6% value recall
+
+  CER describes the transcript; value recall describes the values that
+  become a payment. They disagree, which is why both are here.
+
+READ WORST                                     CHAR  VALUES  MISSING
+11_receipt_photographed_True.jpg              55.3%     86%  payment_method
+24_receipt_clean_thermal_True.pdf             55.4%     86%  payment_method
+16_invoice_line_items_do_not_sum_False.jpg    64.0%     40%  invoice_number, invoice_date, due_date
+27_receipt_thai_fuel_station_True.jpg         69.4%    100%  -
+29_invoice_thai_unknown_vendor_False.png      85.2%     91%  vendor_tax_id
+
+--- Data quality: is the record usable --------------------------------------
+Completeness         : ████████████████████·· 88.8%  (357/402 fields filled)
+  critical fields    : ████████████████████·· 89.3%  (176/197)
+  an absent field is not automatically a defect - an invoice with no
+  purchase-order reference is a legitimate invoice
+Validity             : ██████████████████████ 100.0%  (0 value(s) not the shape their type promises)
+Grounded in the page : ██████████████████████ 98.9%  (4 value(s) with no span behind them)
+Self-consistent      : 26/30 documents whose arithmetic closes
+Usable as-is         : ██████████████████···· 80.0%  (24/30 complete, valid and consistent)
+
+Missing a required field:
+    · 6_invoice_unknown_vendor_False.png
+    · 18_invoice_unlabelled_amounts_True.jpg
+
+--- Did the gate open correctly ---------------------------------------------
+Decision accuracy    : █████████████████████· 93.3%
+Missed defects       : 0/14 (0%)   ← a wrong payment each
+False alarms         : 2/16 (12%)   ← a wasted review each
+    · 18_invoice_unlabelled_amounts_True.jpg
+    · 21_invoice_minimal_unlabelled_True.pdf
+
+Rules exercised      : 12 tested, 22 untested
+  (a rule no document exercises is untested, not passing)
+
+--- Business safety ---------------------------------------------------------
+Silent error rate    : 6.7%  [FAIL]
+  (posted automatically while carrying a wrong critical value)
+    ! 25_invoice_thai_arabic_digits_True.png
+    ! 30_invoice_thai_no_tax_id_True.png
+Auto-posted          : 14/30 (47%)
+Auto-post precision  : 85.7%
+Planted defects      : 15/15 caught (100% recall)
+
+--- Time saved --------------------------------------------------------------
+By hand              : 225 min (16.7 days per 1,000 documents)
+Through here         : 114 min (8.4 days per 1,000 documents)
+  of which rework    : 90 min cleaning up posted errors
+Saved                : 111 min (49% of the manual effort)
+Machine time         : 19.8 min wall clock (nobody waits for it in a batch)
+  assuming, per document:
+    keying minutes per document                        4.0 min
+    cross check minutes per document                   3.5 min
+    assisted review minutes per held document          1.5 min
+    minutes to clean up one silent error              45.0 min
+
+--- Where the time went -----------------------------------------------------
+Per document         : 39.4s mean · 29.6s median · 70.4s p90 · 83.0s slowest
+STAGE              TOTAL     MEAN   SHARE
+render              1.5s     0.1s      0%
+ocr               532.4s    35.5s     45%
+classify            6.8s     0.4s      1%
+extract           476.9s    15.9s     40%
+validate           50.5s     1.9s      4%
+reconcile         108.3s     7.7s      9%
+preprocess          6.8s     0.2s      1%
+
+--- What the agents did -----------------------------------------------------
+Agent rules run      : 9  (3 fail, 5 pass, 1 unsure)
+Could not decide     : 11%  (held for a person, never passed)
+Tool calls           : 56
+Reconciler ran on    : 14/30 documents (166 tool calls)
+Repeated calls       : 11  (asked something already answered)
+
+--- Fields needing work -----------------------------------------------------
+FIELD                     ACCURACY   OK WRONG NEAR MISS
+                               0%    0     0    0    2
+payment_method                 0%    0     2    0    0
+contract_number               67%    2     0    0    1
+party_a                       67%    2     0    1    0
+contract_value                67%    2     1    0    0
+purchase_order_ref            75%    9     0    0    3
+vendor_tax_id                 79%   15     0    1    3
+buyer_name                    83%   19     3    1    0
+due_date                      86%   19     0    1    2
+invoice_number                87%   20     1    0    2
+invoice_date                  87%   20     0    2    1
+tax_rate                      87%   20     0    0    3
+payment_terms                 90%   19     0    0    2
+vendor_name                   91%   21     0    2    0
+bank_account                  96%   21     1    0    0
+
+--- Per document ------------------------------------------------------------
+DOCUMENT                                      WANT   GOT  FIELDS   CONF NOTE
+1_invoice_clean_matches_po_True.pdf           post  post 14/14       94% 
+2_invoice_total_transposed_False.pdf          hold  hold 14/14       75% 
+3_invoice_photo_on_a_desk_False.jpg           hold  hold 14/14       93% 
+4_invoice_vat_miscalculated_False.pdf         hold  hold 12/14       72% 
+5_invoice_bank_account_changed_False.pdf      hold  hold 13/13       93% 
+6_invoice_unknown_vendor_False.png            hold  hold 7/12       41% 
+7_invoice_from_a_blocked_vendor_False.pdf     hold  hold 12/13       91% 
+8_invoice_over_the_purchase_order_False.pdf   hold  hold 13/14       94% 
+9_invoice_thai_buddhist_dates_True.png        post  post 12/13       93% 
+10_invoice_no_po_above_threshold_False.pdf    hold  hold 11/13       81% 
+11_receipt_photographed_True.jpg              post  post 7/9        85% 
+12_contract_expiring_soon_True.pdf            post  post 8/8        92% 
+13_contract_already_expired_False.jpg         hold  hold 5/8        83% 
+14_form_vendor_onboarding_True.png            post  post 7/7        96% 
+15_invoice_duplicate_submission_False.pdf     hold  hold 14/14       94% 
+16_invoice_line_items_do_not_sum_False.jpg    hold  hold 7/13       61% 
+17_invoice_currency_disagrees_with_po_False   hold  hold 12/13       93% 
+18_invoice_unlabelled_amounts_True.jpg        post  hold 8/10       60% false alarm
+19_invoice_two_column_layout_True.pdf         post  post 12/14       92% 
+20_invoice_dense_no_whitespace_True.pdf       post  post 11/12       89% 
+21_invoice_minimal_unlabelled_True.pdf        post  hold 11/11       78% false alarm
+22_invoice_thai_layout_correct_True.png       post  post 12/13       93% 
+23_invoice_modern_scanned_True.png            post  post 13/14       93% 
+24_receipt_clean_thermal_True.pdf             post  post 7/9        85% 
+25_invoice_thai_arabic_digits_True.png        post  post 13/14       84%   SILENT ERROR: vendor_name
+26_invoice_thai_vat_miscalculated_False.pdf   hold  hold 14/14       68% 
+27_receipt_thai_fuel_station_True.jpg         post  post 8/8        91% 
+28_contract_thai_service_True.pdf             post  post 11/11       92% 
+29_invoice_thai_unknown_vendor_False.png      hold  hold 12/13       84% 
+30_invoice_thai_no_tax_id_True.png            post  post 11/12       84%   SILENT ERROR: vendor_name
+
+
+Wrote /private/tmp/claude-501/-Users-tententgc-dev-mirtphol-doc-extraction/37631e55-78f5-4907-9022-7540fe21d648/scratchpad/full-run.json
