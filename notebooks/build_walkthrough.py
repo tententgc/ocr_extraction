@@ -216,6 +216,14 @@ settings = Settings(
     po_required_above=50_000,
     expected_vat_rates="0,7",
     amount_tolerance=0.02,
+    # Which rules run, pinned for the same reason as the numbers above and with
+    # more at stake: `Settings` fills any field it was not given from a `.env`
+    # in the working directory, so without this the notebook runs whichever
+    # checks that machine has switched off and reports the result as the
+    # system's. Every stage below is meant to be a statement about the code.
+    rules_free_mode=False,
+    builtin_rules_disabled=False,
+    disabled_rules="",
 )
 
 info = bootstrap(settings, with_samples=False)

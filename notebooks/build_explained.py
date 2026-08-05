@@ -228,6 +228,16 @@ settings = Settings(
     po_required_above=50_000,        # baht, above which an invoice must quote a PO
     expected_vat_rates="0,7",        # Thailand is 7%
     amount_tolerance=0.02,           # how far an invoice may differ from its PO
+    # --- which rules run ---------------------------------------------------
+    # Pinned, and this is not a formality. `Settings` reads any field it was not
+    # given from a `.env` sitting in the working directory, so a notebook that
+    # states its thresholds but says nothing about its rule set quietly runs
+    # whichever checks that machine happens to have switched off — and prints
+    # the results as though they described the system. Stating it here makes
+    # every stage below a statement about the code.
+    rules_free_mode=False,
+    builtin_rules_disabled=False,
+    disabled_rules="",
     # Master data comes from the CSVs two cells down, the way an ERP export
     # would arrive. Nothing is invented here.
     seed_demo_master_data=False,
