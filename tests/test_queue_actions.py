@@ -201,6 +201,64 @@ class TestDelete:
             delete_document(settings, "DOC-POSTED")
         assert documents.get("DOC-POSTED") is not None
 
+    def test_deleting_the_record_sends_the_document_back_as_unreviewed(
+        self, settings, master, documents, make_run
+    ):
+        """A document with no ledger entry must not still claim it was posted.
+
+        Deleting the record unlinks it, so the document returns to the queue -
+        but it kept `decision="auto_post"`, and the queue renders that as
+        "Posted automatically" beside an empty record column. The row then says
+        two contradictory things, and the one a reviewer believes is the one
+        that means nobody needs to look at it.
+        """
+        run = make_run(GOOD_INVOICE).evolve(document_id="DOC-RELEASED", decision="auto_post")
+        documents.save(run)
+        records = RecordStore(settings.db_path)
+        posted = records.post_record(run, "V-1001")
+        documents.save(run.evolve(record_id=posted["record_id"]))
+
+        records.delete(posted["record_id"])
+
+        released = documents.get("DOC-RELEASED")
+        assert released.record_id is None
+        assert released.decision == "needs_review", (
+            "the document is back in the queue still claiming it posted"
+        )
+        assert documents.summary("DOC-RELEASED")["decision"] == "needs_review", (
+            "the column the queue actually filters on was left behind"
+        )
+
+    def test_a_released_document_is_counted_as_awaiting_review(
+        self, settings, master, documents, make_run
+    ):
+        """The queue badge counts the column, so it has to move too."""
+        run = make_run(GOOD_INVOICE).evolve(document_id="DOC-COUNTED", decision="auto_post")
+        documents.save(run)
+        records = RecordStore(settings.db_path)
+        posted = records.post_record(run, "V-1001")
+        documents.save(run.evolve(record_id=posted["record_id"]))
+        assert documents.count(decision="needs_review") == 0
+
+        records.delete(posted["record_id"])
+
+        assert documents.count(decision="needs_review") == 1
+
+    def test_releasing_a_document_is_written_to_the_audit_trail(
+        self, settings, master, documents, make_run
+    ):
+        """A decision that changed without a person deciding it must be traceable."""
+        run = make_run(GOOD_INVOICE).evolve(document_id="DOC-AUDITED", decision="auto_post")
+        documents.save(run)
+        records = RecordStore(settings.db_path)
+        posted = records.post_record(run, "V-1001")
+        documents.save(run.evolve(record_id=posted["record_id"]))
+
+        records.delete(posted["record_id"], actor="tester")
+
+        entries = records.audit_for("DOC-AUDITED")
+        assert any(entry["action"] == "record_deleted" for entry in entries)
+
     def test_a_missing_document_is_refused(self, settings):
         with pytest.raises(DeletionError, match="not found"):
             delete_document(settings, "DOC-NOPE")
@@ -359,7 +417,11 @@ class TestStartingOver:
 
         stats = client.get("/api/status").json()["stats"]
         assert stats["posted_records"] == 0
-        assert stats["by_decision"]["auto_post"] == 1, "the document stays, as evidence"
+        # The document stays, as evidence - but not as `auto_post`, which is a
+        # claim about the ledger entry that was just deleted. It comes back as
+        # something a person still has to decide on.
+        assert stats["by_decision"].get("auto_post", 0) == 0
+        assert stats["by_decision"]["needs_review"] == 1, "the document stays, as evidence"
 
 
 class TestQueueActionEndpoints:
