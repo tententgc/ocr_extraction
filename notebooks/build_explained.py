@@ -264,27 +264,27 @@ from pathlib import Path
 def ready():
     have_code = Path("mirtphol_doc_extraction").exists() or Path("src/docuflow").exists()
     checks = [
-        ("the code",     have_code,                                        "Option A or B"),
-        ("the package",  importlib.util.find_spec("docuflow") is not None, "the %pip cell"),
-        ("Typhoon key",  bool(os.environ.get("TYPHOON_API_KEY")),          "the keys cell"),
+        ("the code",    have_code,                                        "Option A or B"),
+        ("the package", importlib.util.find_spec("docuflow") is not None, "the %pip cell"),
+        ("Typhoon key", bool(os.environ.get("TYPHOON_API_KEY")),          "the keys cell"),
     ]
-    optional = [("Claude key", bool(os.environ.get("ANTHROPIC_API_KEY")), "the keys cell")]
-
+    # One width for both words, or the ok rows sit three characters left of the
+    # missing ones and the column looks broken on the runtime that needs it most.
     for label, ok, where in checks:
-        print(f"  {'ok  ' if ok else 'MISSING'}  {label:14} {'' if ok else f'← re-run {where}'}")
-    for label, ok, where in optional:
-        print(f"  {'ok  ' if ok else 'absent '}  {label:14} "
-              f"{'' if ok else '← optional; the second reading falls back without it'}")
+        print(f"  {'ok' if ok else 'MISSING':<8}{label:14} {'' if ok else f'← re-run {where}'}")
+    claude = bool(os.environ.get("ANTHROPIC_API_KEY"))
+    print(f"  {'ok' if claude else 'absent':<8}{'Claude key':14} "
+          f"{'' if claude else '← optional; the second reading falls back without it'}")
 
     missing = [where for _, ok, where in checks if not ok]
     print()
-    if missing:
-        print(f"Not ready. Re-run: {', '.join(dict.fromkeys(missing))}.")
-    else:
-        print("Ready — everything below can run.")
+    print(f"Not ready. Re-run: {', '.join(dict.fromkeys(missing))}."
+          if missing else "Ready — everything below can run.")
     return not missing
 
-ready()
+# Bound, not echoed: the bare `False` a returned bool prints under the report
+# reads as an error even when the report above it says everything is fine.
+_ = ready()
 ''')
 
 md(r"""
