@@ -377,13 +377,45 @@ def cmd_serve(args: argparse.Namespace) -> int:
 
 
 def cmd_evaluate(args: argparse.Namespace) -> int:
-    from docuflow.evaluation.harness import run_evaluation
-    from docuflow.evaluation.report import print_report
+    """Measure the system against ground truth.
 
+    Two corpora, and they answer different questions. `--corpus <dir>` runs a
+    `real_samples`-shaped set - documents that arrive the way documents arrive,
+    scored four ways including whether the page was read and whether the gate
+    opened correctly. Without it, the thirteen catalogue samples in
+    `data/samples` are scored for fields alone.
+    """
     settings = get_settings()
-    bootstrap(settings, with_samples=True)
-    report = run_evaluation(settings, limit=args.limit)
-    print_report(report)
+
+    if args.corpus:
+        from docuflow.evaluation.corpus import run_corpus
+        from docuflow.evaluation.report import print_corpus_report
+
+        corpus_dir = Path(args.corpus)
+        if not corpus_dir.is_dir():
+            print(f"error: {corpus_dir} is not a directory", file=sys.stderr)
+            return 1
+        bootstrap(settings, with_samples=False)
+        try:
+            report = run_corpus(
+                settings,
+                corpus_dir,
+                limit=args.limit,
+                label=corpus_dir.name,
+                respect_disabled=args.respect_disabled,
+            )
+        except (FileNotFoundError, ValueError) as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        print_corpus_report(report)
+    else:
+        from docuflow.evaluation.harness import run_evaluation
+        from docuflow.evaluation.report import print_report
+
+        bootstrap(settings, with_samples=True)
+        report = run_evaluation(settings, limit=args.limit)
+        print_report(report)
+
     if args.out:
         Path(args.out).write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
         print(f"\nWrote {args.out}")
@@ -776,6 +808,18 @@ def main(argv: list[str] | None = None) -> int:
     eval_parser = subparsers.add_parser("evaluate", help="measure accuracy against ground truth")
     eval_parser.add_argument("--limit", type=int, default=0)
     eval_parser.add_argument("--out", help="write the JSON report here")
+    eval_parser.add_argument(
+        "--corpus",
+        help="a real_samples-shaped directory to score instead of the catalogue "
+             "samples; adds OCR accuracy and per-rule gatekeeping",
+    )
+    eval_parser.add_argument(
+        "--respect-disabled",
+        action="store_true",
+        help="run with this machine's disabled rules as they stand. The default "
+             "switches back on any rule the corpus declares, because a rule that "
+             "was never asked reports as a missed defect",
+    )
     eval_parser.set_defaults(func=cmd_evaluate)
 
     vendor_parser = subparsers.add_parser("vendor", help="manage the vendor master file")
