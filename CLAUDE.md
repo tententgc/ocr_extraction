@@ -92,7 +92,7 @@ docuflow evaluate --out report.json          # the 13 catalogue samples, fields 
 docuflow split <file> --out <dir>            # one PDF per document in a scanned stack
 docuflow export --doc-type invoice           # the ledger as CSV or JSONL
 docuflow serve                               # the web UI on :8000
-.venv/bin/python -m pytest -q                # 1,194 tests, no API key needed
+.venv/bin/python -m pytest -q                # 1,213 tests, no API key needed
 .venv/bin/python -m pytest -m ui -q          # + 20 browser tests, opt-in
 ```
 
@@ -268,8 +268,8 @@ contents fails there rather than in front of an audience. It calls no model.
 
 ## The corpus
 
-`real_samples/` — filenames are `<n>_<slug>_<True|False>.<ext>`. The suffix is
-the **expected outcome**, stated before the system is asked:
+`real_samples/` — 51 documents. Filenames are `<n>_<slug>_<True|False>.<ext>`.
+The suffix is the **expected outcome**, stated before the system is asked:
 
 - `_True` — nothing is wrong; holding it is a false alarm costing a review
 - `_False` — something is wrong; posting it is a silent error
@@ -280,7 +280,18 @@ missed defect is a wrong payment, a false alarm is a wasted minute.
 `REAL_DOCUMENTS` are the defect cases. `VARIED_DOCUMENTS` are correct documents
 in unfamiliar layouts — they measure the false-alarm rate, which the accuracy
 figures cannot see. `THAI_DOCUMENTS` hold the language fixed and vary what is
-asked of it.
+asked of it. `COVERAGE_DOCUMENTS` exist for one reason each: the 2026-08-06
+evaluation reported **22 of 34 rules as untested**, and a rule no document trips
+has never been shown to work. Twenty-one documents took that to 0, and
+`test_every_rule_is_exercised_by_some_document` holds it there. They are
+appended rather than interleaved, because the README, the tests and
+`docs/EVALUATION.md` all quote documents by number.
+
+**Verify a new corpus document against the rule engine, not against a run.**
+`run_rules` takes ground truth directly, so a document's declared findings can
+be checked in a second with no model, no OCR and no key — which is how the
+twenty-one above were all confirmed to trip what they claim, and how four of
+them were caught carrying a second finding by accident.
 
 **Thai numerals and Thai labels are different problems, and only one of them is
 loud.** ๙ either comes back from OCR or it does not. Arabic digits under Thai

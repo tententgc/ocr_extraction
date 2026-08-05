@@ -1,6 +1,9 @@
 contract_number,vendor_id,party_a,party_b,effective_date,expiry_date,value,currency
 CT-2025-018,V-1004,Mirtphol Industries PCL,"Chao Phraya Facility Services Co., Ltd.",2025-08-01,2026-07-31,368000.0,THB
 CT-2026-004,V-1003,Mirtphol Industries PCL,Bluepeak Software GmbH,2026-01-15,2027-01-14,24000.0,EUR
+CT-2026-052,V-1002,Mirtphol Industries PCL,Northwind Logistics Ltd.,2026-06-01,2027-05-31,,THB
+CT-2026-041,V-1009,Mirtphol Industries PCL,Meridian Consulting LLP,2027-04-30,2027-09-01,96000.0,USD
+CT-2026-046,V-1004,Mirtphol Industries PCL,"Chao Phraya Facility Services Co., Ltd",2026-05-01,2027-04-30,210000.0,THB
 CT-2026-011,V-1009,Mirtphol Industries PCL,Meridian Consulting LLP,2026-03-01,2027-02-28,144000.0,USD
 CT-2026-014,V-1006,Mirtphol Industries PCL,"Rungruang Steel Works Co., Ltd.",2026-02-01,2026-09-30,1250000.0,THB
 CT-2025-031,V-1011,Mirtphol Industries PCL,"Sunrise Electrical Co., Ltd.",2025-01-01,2026-06-30,480000.0,THB

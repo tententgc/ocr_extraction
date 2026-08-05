@@ -142,8 +142,11 @@ class TestThisCorpus:
     problems does not fail the suite - only a corpus that got worse does."""
 
     def test_the_check_runs_over_the_real_manifest(self) -> None:
+        """A lower bound rather than an exact count: the corpus is meant to
+        grow, and a test that fails on every added document teaches people to
+        edit the test rather than read it."""
         report = integrity.check(load_manifest(CORPUS))
-        assert report["documents"] == 30
+        assert report["documents"] >= 30
         assert report["gradeable_values"] > 200
 
     def test_no_document_has_lost_its_ground_truth(self) -> None:
@@ -177,3 +180,27 @@ class TestThisCorpus:
         is the closed purchase order it quotes, not the photograph."""
         report = integrity.check(load_manifest(CORPUS))
         assert report["held_without_a_declared_rule"] == []
+
+    def test_every_rule_is_exercised_by_some_document(self) -> None:
+        """A rule no document trips has never been shown to work, and the first
+        time it matters will be on a real document with real money behind it.
+
+        This was 12 of 34 on 2026-08-06. `untested` is the honest word for the
+        other 22, and this test is what stops it drifting back.
+        """
+        import json
+
+        from docuflow.rules import all_rules
+        from docuflow.samples.real_world import ALL_DOCUMENTS
+
+        declared = {rule for *_, doc in ALL_DOCUMENTS for rule in doc.expected_findings}
+        known = {info.rule_id for info in all_rules()}
+        rules_file = CORPUS / "rules.json"
+        if rules_file.exists():
+            payload = json.loads(rules_file.read_text(encoding="utf-8"))
+            known |= {entry["rule_id"] for entry in payload.get("rules", payload)}
+
+        assert not (known - declared), (
+            "no corpus document declares these rules, so nothing tests them: "
+            f"{sorted(known - declared)}"
+        )

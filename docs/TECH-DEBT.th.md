@@ -169,11 +169,30 @@ order"* แต่โค้ดทดสอบ `abs(difference)` จึง**จั
 | รันเจาะจง render/pdf/ocr 5 รอบ | exit=0 ทั้ง 5 |
 | รันเต็มบน `main` 2 รอบ | exit=0 ทั้ง 2 |
 
-### น่าจะเป็นอะไร
+### เกิดซ้ำอีกครั้ง 2026-08-06 — และคราวนี้ได้ stack trace
+
+รอบนี้ Python พิมพ์ trace ออกมาก่อนตาย ซึ่งชี้กลไกได้ชัดกว่าเดิมมาก:
+
+```
+Fatal Python error: Segmentation fault
+Thread 0x00000001701df000 (most recent call first):
+  pypdfium2/_helpers/document.py, line 114 in _close_impl
+  pypdfium2/internal/bases.py,   line  87 in _close_template
+  weakref.py,                    line 590 in __call__      ← finalizer
+```
+
+**สองอย่างที่อ่านได้จาก trace นี้:**
+
+1. การปิดเอกสารเกิดใน **weakref finalizer** ไม่ใช่ `.close()` ที่เราเรียกเอง —
+   แปลว่า **GC เป็นคนเรียก** และ GC รันบน thread ไหนก็ได้
+2. thread ที่ตาย (`0x1701df000`) **ไม่ใช่ main thread**
 
 `CLAUDE.md` บันทึกไว้แล้วว่า **PDFium ไม่ thread-safe** และ `render.py` ถือ
-module lock อยู่ — segfault ตระกูลนี้เคยเกิดมาก่อน เดาว่าเป็น flake ระดับ
-C library ไม่ใช่โค้ด Python
+module lock — แต่ **lock นั้นคุมเฉพาะโค้ดที่เราเขียน** มันคุม finalizer ที่ GC
+เรียกเองไม่ได้ นั่นคือช่องที่เหลืออยู่
+
+ยังไม่แก้ เพราะยัง reproduce ตามสั่งไม่ได้ (รันเต็มอีก 2 รอบหลังจากนั้น exit=0
+ทั้งคู่) แต่ตอนนี้มี**สมมติฐานที่ทดสอบได้**แล้ว ไม่ใช่แค่ "flake ระดับ C library"
 
 ### ทำไมต้องบันทึกไว้
 

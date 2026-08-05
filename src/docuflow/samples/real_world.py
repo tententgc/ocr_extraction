@@ -170,6 +170,31 @@ EXTRA_PURCHASE_ORDERS: tuple[dict[str, Any], ...] = (
 
 EXTRA_CONTRACTS: tuple[dict[str, Any], ...] = (
     {
+        # For `contract_without_a_stated_value`. A framework agreement commits
+        # no total, so the register holds none either - the document is not
+        # missing a value, the arrangement has one to miss.
+        "contract_number": "CT-2026-052", "vendor_id": "V-1002",
+        "party_a": BUYER, "party_b": "Northwind Logistics Ltd.",
+        "effective_date": "2026-06-01", "expiry_date": "2027-05-31",
+        "value": None, "currency": "THB",
+    },
+    {
+        # For `contract_dates_out_of_order`. Registered with the dates in the
+        # right order, so the disagreement the document creates is only ever
+        # about the order, not about being unknown.
+        "contract_number": "CT-2026-041", "vendor_id": "V-1009",
+        "party_a": BUYER, "party_b": "Meridian Consulting LLP",
+        "effective_date": "2027-04-30", "expiry_date": "2027-09-01",
+        "value": 96_000.00, "currency": "USD",
+    },
+    {
+        # For `contract_naming_one_party_twice`.
+        "contract_number": "CT-2026-046", "vendor_id": "V-1004",
+        "party_a": BUYER, "party_b": "Chao Phraya Facility Services Co., Ltd",
+        "effective_date": "2026-05-01", "expiry_date": "2027-04-30",
+        "value": 210_000.00, "currency": "THB",
+    },
+    {
         "contract_number": "CT-2026-011", "vendor_id": "V-1009",
         "party_a": BUYER, "party_b": "Meridian Consulting LLP",
         "effective_date": "2026-03-01", "expiry_date": "2027-02-28",
@@ -1010,8 +1035,483 @@ THAI_DOCUMENTS: tuple[tuple[str, Arrival, bool, SampleDoc], ...] = (
 )
 
 
+
+# --------------------------------------------------------------------------- #
+# Coverage: rules the corpus above never exercised                              #
+# --------------------------------------------------------------------------- #
+#
+# The 2026-08-06 evaluation reported twenty-two of thirty-four rules as
+# **untested** rather than as passing, and untested is the honest word: a rule
+# no document trips has never been shown to work, and the first time it matters
+# will be on a real document with real money behind it.
+#
+# One defect each, and each names the rule it is for. Appended rather than
+# interleaved so the numbering of every document above stays put - the README,
+# the tests and `docs/EVALUATION.md` all quote documents by number.
+
+COVERAGE_DOCUMENTS: tuple[tuple[str, Arrival, bool, SampleDoc], ...] = (
+    (
+        "invoice_dated_next_year", "pdf", False,
+        SampleDoc(
+            doc_id="invoice_dated_next_year",
+            doc_type="invoice", layout="classic",
+            title="Siam Tech invoice dated well into the future",
+            demonstrates="Dated 2027-03-14. Past 120 days a future date stops being a typo and starts being a document that should not exist yet, so it blocks rather than warns.",
+            ground_truth={
+                "invoice_number": "STS-2027-0031", "invoice_date": "2027-03-14",
+                "due_date": "2027-04-13", "vendor_name": "Siam Tech Supply Co., Ltd.",
+                "vendor_tax_id": "0105543000129", "buyer_name": BUYER,
+                "currency": "THB", "subtotal": 42_000.00, "tax_rate": 7.0,
+                "tax_amount": 2_940.00, "total_amount": 44_940.00,
+                "payment_terms": "Net 30", "bank_account": "1234567890",
+            },
+            line_items=(
+                {"description": "Rack-mount patch panel, 48 port", "quantity": 20, "unit_price": 2_100.00, "amount": 42_000.00},
+            ),
+            expected_findings=("dates_not_in_future",),
+        ),
+    ),
+    (
+        "invoice_quotes_an_unknown_purchase_order", "pdf", False,
+        SampleDoc(
+            doc_id="invoice_quotes_an_unknown_purchase_order",
+            doc_type="invoice", layout="classic",
+            title="Northwind invoice against an order nobody raised",
+            demonstrates="Quotes PO-2026-9999, which is not in the register at all. Different from quoting no order: this one claims an authority that does not exist.",
+            ground_truth={
+                "invoice_number": "NWL-2026-0741", "invoice_date": "2026-07-24",
+                "due_date": "2026-08-23", "vendor_name": "Northwind Logistics Ltd.",
+                "vendor_tax_id": "0105561071237", "buyer_name": BUYER,
+                "purchase_order_ref": "PO-2026-9999", "currency": "THB",
+                "subtotal": 31_000.00, "tax_rate": 7.0, "tax_amount": 2_170.00,
+                "total_amount": 33_170.00, "payment_terms": "Net 30",
+                "bank_account": "9876543210",
+            },
+            line_items=(
+                {"description": "Inbound freight, August", "quantity": 1, "unit_price": 31_000.00, "amount": 31_000.00},
+            ),
+            expected_findings=("po_exists",),
+        ),
+    ),
+    (
+        "invoice_with_a_broken_tax_id", "pdf", False,
+        SampleDoc(
+            doc_id="invoice_with_a_broken_tax_id",
+            doc_type="invoice", layout="classic",
+            title="Rungruang Steel invoice whose tax ID fails its check digit",
+            demonstrates="Thirteen digits that are not a valid Thai tax ID. The vendor still resolves by name, so this isolates the checksum from vendor matching.",
+            ground_truth={
+                "invoice_number": "RSW-2026-1204", "invoice_date": "2026-07-21",
+                "due_date": "2026-09-19", "vendor_name": "Rungruang Steel Works Co., Ltd.",
+                "vendor_tax_id": "0105552000119", "buyer_name": BUYER,
+                # Deliberately under `po_required_above` (50,000), so the
+                # checksum is the only thing wrong with the document. A second
+                # finding by accident makes a corpus document test two things
+                # and prove neither.
+                "currency": "THB", "subtotal": 40_000.00, "tax_rate": 7.0,
+                "tax_amount": 2_800.00, "total_amount": 42_800.00,
+                "payment_terms": "Net 60", "bank_account": "3120045678",
+            },
+            line_items=(
+                {"description": "Cold-rolled sheet 3mm", "quantity": 10, "unit_price": 4_000.00, "amount": 40_000.00},
+            ),
+            expected_findings=("tax_id_checksum",),
+        ),
+    ),
+    (
+        "invoice_due_before_it_was_issued", "pdf", True,
+        SampleDoc(
+            doc_id="invoice_due_before_it_was_issued",
+            doc_type="invoice", layout="classic",
+            title="Siam Tech invoice whose due date precedes its issue date",
+            demonstrates="Due 2026-07-01 on an invoice issued 2026-07-20. A warning, because the ordinary cause is a misread date rather than a bad invoice - and a warning must not hold a document on its own.",
+            ground_truth={
+                "invoice_number": "STS-2026-0522", "invoice_date": "2026-07-20",
+                "due_date": "2026-07-01", "vendor_name": "Siam Tech Supply Co., Ltd.",
+                "vendor_tax_id": "0105543000129", "buyer_name": BUYER,
+                "currency": "THB", "subtotal": 18_000.00, "tax_rate": 7.0,
+                "tax_amount": 1_260.00, "total_amount": 19_260.00,
+                "payment_terms": "Net 30", "bank_account": "1234567890",
+            },
+            line_items=(
+                {"description": "Fibre patch lead, 3m", "quantity": 60, "unit_price": 300.00, "amount": 18_000.00},
+            ),
+            expected_findings=("due_date_after_issue",),
+        ),
+    ),
+    (
+        "invoice_vat_at_an_unlisted_rate", "pdf", True,
+        SampleDoc(
+            doc_id="invoice_vat_at_an_unlisted_rate",
+            doc_type="invoice", layout="classic",
+            title="Northwind invoice charging a VAT rate we do not expect",
+            demonstrates="Charges 10%, which is arithmetically consistent and simply not a rate Thailand uses. A warning: an unexpected rate is a question for a person, not a wrong document.",
+            ground_truth={
+                "invoice_number": "NWL-2026-0802", "invoice_date": "2026-07-25",
+                "due_date": "2026-08-24", "vendor_name": "Northwind Logistics Ltd.",
+                "vendor_tax_id": "0105561071237", "buyer_name": BUYER,
+                "currency": "THB", "subtotal": 20_000.00, "tax_rate": 10.0,
+                "tax_amount": 2_000.00, "total_amount": 22_000.00,
+                "payment_terms": "Net 30", "bank_account": "9876543210",
+            },
+            line_items=(
+                {"description": "Customs brokerage, August", "quantity": 1, "unit_price": 20_000.00, "amount": 20_000.00},
+            ),
+            expected_findings=("vat_rate_expected",),
+        ),
+    ),
+    (
+        "contract_dates_out_of_order", "pdf", False,
+        SampleDoc(
+            doc_id="contract_dates_out_of_order",
+            doc_type="contract", layout="prose",
+            title="Meridian agreement that expires before it starts",
+            demonstrates="Effective 2026-09-01, expiring 2026-04-30. Either date could be the misread one, so it blocks and names both rather than guessing.",
+            ground_truth={
+                "contract_number": "CT-2026-041", "party_a": BUYER,
+                "party_b": "Meridian Consulting LLP",
+                "effective_date": "2027-09-01", "expiry_date": "2027-04-30",
+                "auto_renew": "no", "contract_value": 96_000.00, "currency": "USD",
+            },
+            body=(
+                "This Advisory Services Agreement is made as of 1 September 2027 (the "
+                "\"Effective Date\") between Mirtphol Industries PCL (\"Party A\") and Meridian "
+                "Consulting LLP (\"Party B\").",
+                "1. TERM. This Agreement commences on the Effective Date and expires on "
+                "30 April 2027. It shall not renew automatically.",
+                "2. CONTRACT VALUE. The total value for the term is USD 96,000.00.",
+                "3. SCOPE. Party B shall provide operations advisory services to Party A on a "
+                "time-and-materials basis against statements of work agreed in writing.",
+            ),
+            # Both, and both are right: a contract whose own dates are out
+            # of order also disagrees with the register that holds them in
+            # order. Declaring one would score the other as an over-fire.
+            expected_findings=("contract_dates_ordered", "contract_matches_master"),
+        ),
+    ),
+    (
+        "contract_naming_one_party_twice", "pdf", False,
+        SampleDoc(
+            doc_id="contract_naming_one_party_twice",
+            doc_type="contract", layout="prose",
+            title="Agreement where both parties are the buyer",
+            demonstrates="Party A and Party B are the same organisation. Nobody contracts with themselves, so one side was misread - and which side is not knowable from the page.",
+            ground_truth={
+                "contract_number": "CT-2026-046", "party_a": BUYER, "party_b": BUYER,
+                "effective_date": "2026-05-01", "expiry_date": "2027-04-30",
+                "auto_renew": "no", "contract_value": 210_000.00, "currency": "THB",
+            },
+            body=(
+                "This Services Agreement is made as of 1 May 2026 between Mirtphol Industries "
+                "PCL (\"Party A\") and Mirtphol Industries PCL (\"Party B\").",
+                "1. TERM. This Agreement commences on 1 May 2026 and expires on 30 April 2027.",
+                "2. CONTRACT VALUE. The total value for the term is THB 210,000.00.",
+                "3. SCOPE. Party B shall provide maintenance services to Party A at the Rayong "
+                "fabrication yard on a scheduled basis.",
+            ),
+            # As above: naming the buyer as both parties disagrees with the
+            # register about `party_b` as well as with itself.
+            expected_findings=("contract_parties_distinct", "contract_matches_master"),
+        ),
+    ),
+    (
+        "contract_disagreeing_with_the_register", "pdf", False,
+        SampleDoc(
+            doc_id="contract_disagreeing_with_the_register",
+            doc_type="contract", layout="prose",
+            title="CT-2026-011 with a value the register does not hold",
+            demonstrates="The contract number is an exact key into the register, and everything it keys to disagrees: the value is 144,000 on file and 244,000 on the page.",
+            ground_truth={
+                "contract_number": "CT-2026-011", "party_a": BUYER,
+                "party_b": "Meridian Consulting LLP",
+                "effective_date": "2026-03-01", "expiry_date": "2027-02-28",
+                "auto_renew": "no", "contract_value": 244_000.00, "currency": "USD",
+            },
+            body=(
+                "This Consulting Agreement is made as of 1 March 2026 (the \"Effective Date\") "
+                "between Mirtphol Industries PCL (\"Party A\") and Meridian Consulting LLP "
+                "(\"Party B\"), and is registered under number CT-2026-011.",
+                "1. TERM. This Agreement commences on the Effective Date and continues until "
+                "28 February 2027. It shall not renew automatically.",
+                "2. CONTRACT VALUE. The total value for the term is USD 244,000.00, payable "
+                "monthly in arrears against approved statements of work.",
+                "3. SCOPE. Party B shall provide operations advisory and process improvement "
+                "services to Party A's manufacturing division.",
+            ),
+            expected_findings=("contract_matches_master",),
+        ),
+    ),
+    (
+        "form_reusing_a_registered_bank_account", "png", False,
+        SampleDoc(
+            doc_id="form_reusing_a_registered_bank_account",
+            doc_type="form", layout="form",
+            title="Onboarding form quoting an account already on file for someone else",
+            demonstrates="A new supplier asking to be paid into Siam Tech's registered account. The signature of an invoice-redirection attempt, and the one form defect that blocks.",
+            ground_truth={
+                "form_type": "Vendor onboarding", "applicant_name": "Bangkok Precision Tools Ltd.",
+                "tax_id": "0105566000419", "submitted_date": "2026-07-28",
+                "contact_email": "accounts@bkkprecision.co.th",
+                "contact_phone": "02-118-4420", "bank_account": "1234567890",
+            },
+            expected_findings=("bank_account_not_reused",),
+        ),
+    ),
+    (
+        "form_with_an_unusable_email", "png", True,
+        SampleDoc(
+            doc_id="form_with_an_unusable_email",
+            doc_type="form", layout="form",
+            title="Onboarding form whose contact address cannot be written to",
+            demonstrates="`accounts@bkkfittings` has no domain suffix. A warning: nothing about the supplier is wrong, but nobody can reach them, and a form that blocks on a typo is a form nobody submits.",
+            ground_truth={
+                "form_type": "Vendor onboarding", "applicant_name": "Bangkok Fittings Co., Ltd.",
+                "tax_id": "0105569000118", "submitted_date": "2026-07-29",
+                "contact_email": "accounts@bkkfittings",
+                "contact_phone": "02-119-7730", "bank_account": "2280046610",
+            },
+            expected_findings=("contact_email_valid",),
+        ),
+    ),
+    (
+        "invoice_thai_vendor_name_misread", "png", True,
+        SampleDoc(
+            doc_id="invoice_thai_vendor_name_misread",
+            doc_type="invoice", layout="thai_tax", language="th",
+            title="Thai invoice naming the vendor with one stroke wrong",
+            demonstrates="ซ printed where the register has ช. The corpus document for the failure that produced two silent errors on 2026-08-06: everything reconciles, the vendor still resolves, and only the register knows the name is misspelt.",
+            ground_truth={
+                "invoice_number": "SNR-2026-0318", "invoice_date": "2026-07-23",
+                "due_date": "2026-09-06", "vendor_name": "บริษัท ชันไรส์ อิเล็คทริคอล จำกัด",
+                "buyer_name": BUYER, "currency": "THB",
+                "subtotal": 45_000.00, "tax_rate": 7.0, "tax_amount": 3_150.00,
+                "total_amount": 48_150.00, "payment_terms": "Net 45",
+                "bank_account": "8890014455",
+            },
+            line_items=(
+                {"description": "ตู้ควบคุมไฟฟ้าแรงต่ำ", "quantity": 3, "unit_price": 15_000.00, "amount": 45_000.00},
+            ),
+            expected_findings=("vendor_name_matches_register",),
+        ),
+    ),
+    (
+        "invoice_billed_in_the_wrong_currency_for_the_vendor", "pdf", True,
+        SampleDoc(
+            doc_id="invoice_billed_in_the_wrong_currency_for_the_vendor",
+            doc_type="invoice", layout="classic",
+            title="Meridian invoice in THB against a vendor registered in USD",
+            demonstrates="Meridian is registered to bill in USD and this one is in THB. A warning: suppliers do change billing currency, and a rule that blocked would be wrong more often than right.",
+            ground_truth={
+                "invoice_number": "MC-2026-0611", "invoice_date": "2026-07-26",
+                "due_date": "2026-08-25", "vendor_name": "Meridian Consulting LLP",
+                "vendor_tax_id": "GB428765190", "buyer_name": BUYER,
+                "currency": "THB", "subtotal": 30_000.00, "tax_rate": 0.0,
+                "tax_amount": 0.00, "total_amount": 30_000.00,
+                "payment_terms": "Net 30", "bank_account": "GB29NWBK60161331926819",
+            },
+            line_items=(
+                {"description": "Operations advisory, July", "quantity": 1, "unit_price": 30_000.00, "amount": 30_000.00},
+            ),
+            expected_findings=("currency_matches_vendor_default",),
+        ),
+    ),
+    (
+        "contract_without_a_stated_value", "pdf", True,
+        SampleDoc(
+            doc_id="contract_without_a_stated_value",
+            doc_type="contract", layout="prose",
+            title="Framework agreement that names no total value",
+            demonstrates="A genuine framework agreement: the value is whatever is ordered under it. A warning rather than a block, because this is a real way for a contract to be written.",
+            ground_truth={
+                "contract_number": "CT-2026-052", "party_a": BUYER,
+                "party_b": "Northwind Logistics Ltd.",
+                "effective_date": "2026-06-01", "expiry_date": "2027-05-31",
+                "auto_renew": "no", "currency": "THB",
+            },
+            body=(
+                "This Framework Logistics Agreement is made as of 1 June 2026 (the \"Effective "
+                "Date\") between Mirtphol Industries PCL (\"Party A\") and Northwind Logistics "
+                "Ltd. (\"Party B\").",
+                "1. TERM. This Agreement commences on the Effective Date and expires on "
+                "31 May 2027. It shall not renew automatically.",
+                "2. CHARGES. No total value is committed under this Agreement. Party B shall "
+                "invoice against the rate card at Schedule 1 for services actually ordered.",
+                "3. SCOPE. Party B shall provide inbound and outbound freight forwarding to "
+                "Party A on a call-off basis.",
+            ),
+            expected_findings=("contract_value_present",),
+        ),
+    ),
+    (
+        "form_from_a_vendor_already_on_file", "png", True,
+        SampleDoc(
+            doc_id="form_from_a_vendor_already_on_file",
+            doc_type="form", layout="form",
+            title="Onboarding form for a supplier already registered",
+            demonstrates="Siam Tech is already V-1001. Usually a duplicate submission rather than fraud, so a warning - but it needs a person, because the alternative is two records for one supplier.",
+            ground_truth={
+                "form_type": "Vendor onboarding", "applicant_name": "Siam Tech Supply Co., Ltd.",
+                "tax_id": "0105543000129", "submitted_date": "2026-07-30",
+                "contact_email": "accounts@siamtech.co.th",
+                "contact_phone": "02-115-2200", "bank_account": "1234567890",
+            },
+            expected_findings=("applicant_already_registered",),
+        ),
+    ),
+    (
+        "form_missing_its_payment_details", "png", True,
+        SampleDoc(
+            doc_id="form_missing_its_payment_details",
+            doc_type="form", layout="form",
+            title="Onboarding form with no bank account and an unusable phone number",
+            demonstrates="Two warnings on one form, both about reaching or paying the supplier rather than about whether to trust them. Neither blocks: an incomplete form is chased, not refused.",
+            ground_truth={
+                "form_type": "Vendor onboarding", "applicant_name": "Lanna Toolworks Co., Ltd.",
+                "tax_id": "0105567000218", "submitted_date": "2026-07-31",
+                "contact_email": "finance@lannatoolworks.co.th",
+                "contact_phone": "12",
+            },
+            expected_findings=("bank_details_complete", "contact_phone_valid"),
+        ),
+    ),
+    (
+        "invoice_in_a_currency_we_do_not_trade", "pdf", False,
+        SampleDoc(
+            doc_id="invoice_in_a_currency_we_do_not_trade",
+            doc_type="invoice", layout="classic",
+            title="Pacific Rim invoice denominated in JPY",
+            demonstrates="JPY is not one of the four currencies this business settles in. A rule written here rather than built in, because which currencies a company trades is a business fact, not a property of invoices.",
+            ground_truth={
+                "invoice_number": "PRF-JP-30188", "invoice_date": "2026-07-27",
+                "due_date": "2026-08-26", "vendor_name": "Pacific Rim Freight Pte. Ltd.",
+                "vendor_tax_id": "SG198800123K", "buyer_name": BUYER,
+                "currency": "JPY", "subtotal": 42_000.00, "tax_rate": 0.0,
+                "tax_amount": 0.00, "total_amount": 42_000.00,
+                "payment_terms": "Net 30", "bank_account": "SG21DBSS0110001234567",
+            },
+            line_items=(
+                {"description": "Air freight, Osaka to Bangkok", "quantity": 1, "unit_price": 42_000.00, "amount": 42_000.00},
+            ),
+            expected_findings=("currency_is_one_we_trade_in",),
+        ),
+    ),
+    (
+        "invoice_with_a_line_over_the_ceiling", "pdf", False,
+        SampleDoc(
+            doc_id="invoice_with_a_line_over_the_ceiling",
+            doc_type="invoice", layout="classic",
+            title="Rungruang Steel invoice with a single 460,000 line",
+            demonstrates="One line above the 400,000 ceiling this business set. Nothing is arithmetically wrong; the limit is a policy about how much may move on one line without a person.",
+            ground_truth={
+                "invoice_number": "RSW-2026-1290", "invoice_date": "2026-07-28",
+                "due_date": "2026-09-26", "vendor_name": "Rungruang Steel Works Co., Ltd.",
+                "vendor_tax_id": "0105552000110", "buyer_name": BUYER,
+                "purchase_order_ref": "PO-2026-0501", "currency": "THB",
+                "subtotal": 460_000.00, "tax_rate": 7.0, "tax_amount": 32_200.00,
+                "total_amount": 492_200.00, "payment_terms": "Net 60",
+                "bank_account": "3120045678",
+            },
+            line_items=(
+                {"description": "Hot-rolled plate 12mm, full coil", "quantity": 1, "unit_price": 460_000.00, "amount": 460_000.00},
+            ),
+            expected_findings=("no_single_line_over_400k",),
+        ),
+    ),
+    (
+        "invoice_with_an_undescribed_line", "pdf", True,
+        SampleDoc(
+            doc_id="invoice_with_an_undescribed_line",
+            doc_type="invoice", layout="classic",
+            title="Siam Tech invoice with a line that says nothing",
+            demonstrates="A charge with an amount and no description. Cannot be coded to an account, so somebody has to ask - a warning, because the invoice may still be perfectly good.",
+            ground_truth={
+                "invoice_number": "STS-2026-0655", "invoice_date": "2026-07-29",
+                "due_date": "2026-08-28", "vendor_name": "Siam Tech Supply Co., Ltd.",
+                "vendor_tax_id": "0105543000129", "buyer_name": BUYER,
+                "currency": "THB", "subtotal": 26_000.00, "tax_rate": 7.0,
+                "tax_amount": 1_820.00, "total_amount": 27_820.00,
+                "payment_terms": "Net 30", "bank_account": "1234567890",
+            },
+            line_items=(
+                {"description": "Network switch, 24 port", "quantity": 2, "unit_price": 9_000.00, "amount": 18_000.00},
+                {"description": "", "quantity": 1, "unit_price": 8_000.00, "amount": 8_000.00},
+            ),
+            expected_findings=("every_line_item_described",),
+        ),
+    ),
+    (
+        "invoice_stating_no_payment_terms", "pdf", True,
+        SampleDoc(
+            doc_id="invoice_stating_no_payment_terms",
+            doc_type="invoice", layout="classic",
+            title="Northwind invoice that never says when it is due",
+            demonstrates="No payment terms anywhere on the page. The ledger can still hold it; nobody can schedule it. A warning that exists because this business asked for it.",
+            ground_truth={
+                "invoice_number": "NWL-2026-0915", "invoice_date": "2026-07-30",
+                "vendor_name": "Northwind Logistics Ltd.",
+                "vendor_tax_id": "0105561071237", "buyer_name": BUYER,
+                "currency": "THB", "subtotal": 12_000.00, "tax_rate": 7.0,
+                "tax_amount": 840.00, "total_amount": 12_840.00,
+                "bank_account": "9876543210",
+            },
+            line_items=(
+                {"description": "Courier, July", "quantity": 1, "unit_price": 12_000.00, "amount": 12_000.00},
+            ),
+            expected_findings=("payment_terms_stated",),
+        ),
+    ),
+    (
+        "invoice_large_with_no_buyer_named", "pdf", True,
+        SampleDoc(
+            doc_id="invoice_large_with_no_buyer_named",
+            doc_type="invoice", layout="classic",
+            title="A 214,000 invoice addressed to nobody in particular",
+            demonstrates="Above 100,000 and naming no buyer. Below that threshold this business does not care; above it, an invoice that does not say who owes the money is one to look at.",
+            ground_truth={
+                "invoice_number": "STS-2026-0701", "invoice_date": "2026-07-31",
+                "due_date": "2026-08-30", "vendor_name": "Siam Tech Supply Co., Ltd.",
+                "vendor_tax_id": "0105543000129", "currency": "THB",
+                "purchase_order_ref": "PO-2026-0412",
+                "subtotal": 200_000.00, "tax_rate": 7.0, "tax_amount": 14_000.00,
+                "total_amount": 214_000.00, "payment_terms": "Net 30",
+                "bank_account": "1234567890",
+            },
+            line_items=(
+                {"description": "Data centre rack build-out", "quantity": 1, "unit_price": 200_000.00, "amount": 200_000.00},
+            ),
+            expected_findings=("large_invoice_names_a_buyer",),
+        ),
+    ),
+    (
+        "invoice_quoting_another_vendors_tax_id", "pdf", False,
+        SampleDoc(
+            doc_id="invoice_quoting_another_vendors_tax_id",
+            doc_type="invoice", layout="classic",
+            title="Siam Tech invoice carrying Northwind's tax ID",
+            demonstrates="A valid Thai tax ID, correct checksum, registered - to a different supplier. `find_vendor` takes the tax ID as the strongest evidence there is and resolves to Northwind, so the bank account then belongs to the wrong vendor too. Both findings are correct and the second is the consequence of the first.",
+            ground_truth={
+                "invoice_number": "STS-2026-0733", "invoice_date": "2026-07-31",
+                "due_date": "2026-08-30", "vendor_name": "Siam Tech Supply Co., Ltd.",
+                "vendor_tax_id": "0105561071237", "buyer_name": BUYER,
+                "currency": "THB", "subtotal": 15_000.00, "tax_rate": 7.0,
+                "tax_amount": 1_050.00, "total_amount": 16_050.00,
+                "payment_terms": "Net 30", "bank_account": "1234567890",
+            },
+            line_items=(
+                {"description": "Cable tray, 3m section", "quantity": 30, "unit_price": 500.00, "amount": 15_000.00},
+            ),
+            # Both, in order of cause. A tax ID is an exact identifier, so
+            # quoting someone else's does not merely mislabel the document -
+            # it resolves the whole document to the other supplier, and the
+            # account on the page then matches nobody.
+            expected_findings=("tax_id_belongs_to_this_vendor", "bank_account_matches_vendor"),
+        ),
+    ),
+)
+
+
 ALL_DOCUMENTS: tuple[tuple[str, Arrival, bool, SampleDoc], ...] = (
-    REAL_DOCUMENTS + VARIED_DOCUMENTS + THAI_DOCUMENTS
+    REAL_DOCUMENTS + VARIED_DOCUMENTS + THAI_DOCUMENTS + COVERAGE_DOCUMENTS
 )
 
 

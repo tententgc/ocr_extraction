@@ -1273,6 +1273,815 @@
       "order": 30,
       "posts": true,
       "reference_text": "บริษัท ซันไรส์ อิเล็คทริคอล จำกัด\r\nBangkok, Thailand\r\nโทร. 02-118-4400\r\nใบกำกับภาษี / ใบแจ้งหนี้\r\nTAX INVOICE (ORIGINAL)\r\nลูกค้า\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nเลขที่เอกสาร SE-2026-0498\r\nวันที่ออก 31 กรกฎาคม 2569\r\nกำหนดชำระ 14 กันยายน 2569\r\nรายละเอียด จำนวน ราคา/หน่วย รวมเงิน\r\nหลอดไฟ LED 18W 300 90.00 27,000.00\r\nค่าแรงติดตั้ง 1 9,000.00 9,000.00\r\nมูลค่าสินค้า/บริการ 36,000.00\r\nภาษีมูลค่าเพิ่ม 7% 2,520.00\r\nจำนวนเงินทั้งสิ้น (บาท) 38,520.00\r\nเงื่อนไขการชำระเงิน Net 45\r\nชำระเข้าบัญชีเลขที่ 8890014455\r\nผู้รับเงิน ______________________"
+    },
+    {
+      "doc_id": "invoice_dated_next_year",
+      "doc_type": "invoice",
+      "layout": "classic",
+      "title": "Siam Tech invoice dated well into the future",
+      "demonstrates": "Dated 2027-03-14. Past 120 days a future date stops being a typo and starts being a document that should not exist yet, so it blocks rather than warns.",
+      "ground_truth": {
+        "invoice_number": "STS-2027-0031",
+        "invoice_date": "2027-03-14",
+        "due_date": "2027-04-13",
+        "vendor_name": "Siam Tech Supply Co., Ltd.",
+        "vendor_tax_id": "0105543000129",
+        "buyer_name": "Mirtphol Industries PCL",
+        "currency": "THB",
+        "subtotal": 42000.0,
+        "tax_rate": 7.0,
+        "tax_amount": 2940.0,
+        "total_amount": 44940.0,
+        "payment_terms": "Net 30",
+        "bank_account": "1234567890"
+      },
+      "line_items": [
+        {
+          "description": "Rack-mount patch panel, 48 port",
+          "quantity": 20,
+          "unit_price": 2100.0,
+          "amount": 42000.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [
+        "dates_not_in_future"
+      ],
+      "requires_posted": null,
+      "file": "31_invoice_dated_next_year_False.pdf",
+      "arrival": "pdf",
+      "order": 31,
+      "posts": false,
+      "reference_text": "Siam Tech Supply Co., Ltd.\r\n199/22 Ratchadaphisek Road, Din Daeng, Bangkok 10400\r\nTax ID: 0105543000129\r\nTAX INVOICE\r\nInvoice No.: STS-2027-0031\r\nInvoice Date: 14 March 2027\r\nDue Date: 13 April 2027\r\nBill To\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nDescription Qty Unit Price Amount\r\nRack-mount patch panel, 48 port 20 2,100.00 42,000.00\r\nSubtotal 42,000.00 THB\r\nVAT 7% 2,940.00 THB\r\nAmount Due 44,940.00 THB\r\nPayment Terms: Net 30\r\nRemit to Account No: 1234567890"
+    },
+    {
+      "doc_id": "invoice_quotes_an_unknown_purchase_order",
+      "doc_type": "invoice",
+      "layout": "classic",
+      "title": "Northwind invoice against an order nobody raised",
+      "demonstrates": "Quotes PO-2026-9999, which is not in the register at all. Different from quoting no order: this one claims an authority that does not exist.",
+      "ground_truth": {
+        "invoice_number": "NWL-2026-0741",
+        "invoice_date": "2026-07-24",
+        "due_date": "2026-08-23",
+        "vendor_name": "Northwind Logistics Ltd.",
+        "vendor_tax_id": "0105561071237",
+        "buyer_name": "Mirtphol Industries PCL",
+        "purchase_order_ref": "PO-2026-9999",
+        "currency": "THB",
+        "subtotal": 31000.0,
+        "tax_rate": 7.0,
+        "tax_amount": 2170.0,
+        "total_amount": 33170.0,
+        "payment_terms": "Net 30",
+        "bank_account": "9876543210"
+      },
+      "line_items": [
+        {
+          "description": "Inbound freight, August",
+          "quantity": 1,
+          "unit_price": 31000.0,
+          "amount": 31000.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [
+        "po_exists"
+      ],
+      "requires_posted": null,
+      "file": "32_invoice_quotes_an_unknown_purchase_order_False.pdf",
+      "arrival": "pdf",
+      "order": 32,
+      "posts": false,
+      "reference_text": "Northwind Logistics Ltd.\r\n45 Bangna-Trad Km.19, Bang Phli, Samut Prakan 10540\r\nTax ID: 0105561071237\r\nTAX INVOICE\r\nInvoice No.: NWL-2026-0741\r\nInvoice Date: 24 July 2026\r\nDue Date: 23 August 2026\r\nPO Reference: PO-2026-9999\r\nBill To\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nDescription Qty Unit Price Amount\r\nInbound freight, August 1 31,000.00 31,000.00\r\nSubtotal 31,000.00 THB\r\nVAT 7% 2,170.00 THB\r\nAmount Due 33,170.00 THB\r\nPayment Terms: Net 30\r\nRemit to Account No: 9876543210"
+    },
+    {
+      "doc_id": "invoice_with_a_broken_tax_id",
+      "doc_type": "invoice",
+      "layout": "classic",
+      "title": "Rungruang Steel invoice whose tax ID fails its check digit",
+      "demonstrates": "Thirteen digits that are not a valid Thai tax ID. The vendor still resolves by name, so this isolates the checksum from vendor matching.",
+      "ground_truth": {
+        "invoice_number": "RSW-2026-1204",
+        "invoice_date": "2026-07-21",
+        "due_date": "2026-09-19",
+        "vendor_name": "Rungruang Steel Works Co., Ltd.",
+        "vendor_tax_id": "0105552000119",
+        "buyer_name": "Mirtphol Industries PCL",
+        "currency": "THB",
+        "subtotal": 40000.0,
+        "tax_rate": 7.0,
+        "tax_amount": 2800.0,
+        "total_amount": 42800.0,
+        "payment_terms": "Net 60",
+        "bank_account": "3120045678"
+      },
+      "line_items": [
+        {
+          "description": "Cold-rolled sheet 3mm",
+          "quantity": 10,
+          "unit_price": 4000.0,
+          "amount": 40000.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [
+        "tax_id_checksum"
+      ],
+      "requires_posted": null,
+      "file": "33_invoice_with_a_broken_tax_id_False.pdf",
+      "arrival": "pdf",
+      "order": 33,
+      "posts": false,
+      "reference_text": "Rungruang Steel Works Co., Ltd.\r\nBangkok, Thailand\r\nTax ID: 0105552000119\r\nTAX INVOICE\r\nInvoice No.: RSW-2026-1204\r\nInvoice Date: 21 July 2026\r\nDue Date: 19 September 2026\r\nBill To\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nDescription Qty Unit Price Amount\r\nCold-rolled sheet 3mm 10 4,000.00 40,000.00\r\nSubtotal 40,000.00 THB\r\nVAT 7% 2,800.00 THB\r\nAmount Due 42,800.00 THB\r\nPayment Terms: Net 60\r\nRemit to Account No: 3120045678"
+    },
+    {
+      "doc_id": "invoice_due_before_it_was_issued",
+      "doc_type": "invoice",
+      "layout": "classic",
+      "title": "Siam Tech invoice whose due date precedes its issue date",
+      "demonstrates": "Due 2026-07-01 on an invoice issued 2026-07-20. A warning, because the ordinary cause is a misread date rather than a bad invoice - and a warning must not hold a document on its own.",
+      "ground_truth": {
+        "invoice_number": "STS-2026-0522",
+        "invoice_date": "2026-07-20",
+        "due_date": "2026-07-01",
+        "vendor_name": "Siam Tech Supply Co., Ltd.",
+        "vendor_tax_id": "0105543000129",
+        "buyer_name": "Mirtphol Industries PCL",
+        "currency": "THB",
+        "subtotal": 18000.0,
+        "tax_rate": 7.0,
+        "tax_amount": 1260.0,
+        "total_amount": 19260.0,
+        "payment_terms": "Net 30",
+        "bank_account": "1234567890"
+      },
+      "line_items": [
+        {
+          "description": "Fibre patch lead, 3m",
+          "quantity": 60,
+          "unit_price": 300.0,
+          "amount": 18000.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [
+        "due_date_after_issue"
+      ],
+      "requires_posted": null,
+      "file": "34_invoice_due_before_it_was_issued_True.pdf",
+      "arrival": "pdf",
+      "order": 34,
+      "posts": true,
+      "reference_text": "Siam Tech Supply Co., Ltd.\r\n199/22 Ratchadaphisek Road, Din Daeng, Bangkok 10400\r\nTax ID: 0105543000129\r\nTAX INVOICE\r\nInvoice No.: STS-2026-0522\r\nInvoice Date: 20 July 2026\r\nDue Date: 1 July 2026\r\nBill To\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nDescription Qty Unit Price Amount\r\nFibre patch lead, 3m 60 300.00 18,000.00\r\nSubtotal 18,000.00 THB\r\nVAT 7% 1,260.00 THB\r\nAmount Due 19,260.00 THB\r\nPayment Terms: Net 30\r\nRemit to Account No: 1234567890"
+    },
+    {
+      "doc_id": "invoice_vat_at_an_unlisted_rate",
+      "doc_type": "invoice",
+      "layout": "classic",
+      "title": "Northwind invoice charging a VAT rate we do not expect",
+      "demonstrates": "Charges 10%, which is arithmetically consistent and simply not a rate Thailand uses. A warning: an unexpected rate is a question for a person, not a wrong document.",
+      "ground_truth": {
+        "invoice_number": "NWL-2026-0802",
+        "invoice_date": "2026-07-25",
+        "due_date": "2026-08-24",
+        "vendor_name": "Northwind Logistics Ltd.",
+        "vendor_tax_id": "0105561071237",
+        "buyer_name": "Mirtphol Industries PCL",
+        "currency": "THB",
+        "subtotal": 20000.0,
+        "tax_rate": 10.0,
+        "tax_amount": 2000.0,
+        "total_amount": 22000.0,
+        "payment_terms": "Net 30",
+        "bank_account": "9876543210"
+      },
+      "line_items": [
+        {
+          "description": "Customs brokerage, August",
+          "quantity": 1,
+          "unit_price": 20000.0,
+          "amount": 20000.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [
+        "vat_rate_expected"
+      ],
+      "requires_posted": null,
+      "file": "35_invoice_vat_at_an_unlisted_rate_True.pdf",
+      "arrival": "pdf",
+      "order": 35,
+      "posts": true,
+      "reference_text": "Northwind Logistics Ltd.\r\n45 Bangna-Trad Km.19, Bang Phli, Samut Prakan 10540\r\nTax ID: 0105561071237\r\nTAX INVOICE\r\nInvoice No.: NWL-2026-0802\r\nInvoice Date: 25 July 2026\r\nDue Date: 24 August 2026\r\nBill To\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nDescription Qty Unit Price Amount\r\nCustoms brokerage, August 1 20,000.00 20,000.00\r\nSubtotal 20,000.00 THB\r\nVAT 10% 2,000.00 THB\r\nAmount Due 22,000.00 THB\r\nPayment Terms: Net 30\r\nRemit to Account No: 9876543210"
+    },
+    {
+      "doc_id": "contract_dates_out_of_order",
+      "doc_type": "contract",
+      "layout": "prose",
+      "title": "Meridian agreement that expires before it starts",
+      "demonstrates": "Effective 2026-09-01, expiring 2026-04-30. Either date could be the misread one, so it blocks and names both rather than guessing.",
+      "ground_truth": {
+        "contract_number": "CT-2026-041",
+        "party_a": "Mirtphol Industries PCL",
+        "party_b": "Meridian Consulting LLP",
+        "effective_date": "2027-09-01",
+        "expiry_date": "2027-04-30",
+        "auto_renew": "no",
+        "contract_value": 96000.0,
+        "currency": "USD"
+      },
+      "line_items": [],
+      "body": [
+        "This Advisory Services Agreement is made as of 1 September 2027 (the \"Effective Date\") between Mirtphol Industries PCL (\"Party A\") and Meridian Consulting LLP (\"Party B\").",
+        "1. TERM. This Agreement commences on the Effective Date and expires on 30 April 2027. It shall not renew automatically.",
+        "2. CONTRACT VALUE. The total value for the term is USD 96,000.00.",
+        "3. SCOPE. Party B shall provide operations advisory services to Party A on a time-and-materials basis against statements of work agreed in writing."
+      ],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [
+        "contract_dates_ordered",
+        "contract_matches_master"
+      ],
+      "requires_posted": null,
+      "file": "36_contract_dates_out_of_order_False.pdf",
+      "arrival": "pdf",
+      "order": 36,
+      "posts": false,
+      "reference_text": "AGREEMENT\r\nContract No. CT-2026-041\r\nThis Advisory Services Agreement is made as of 1 September 2027 (the \"Effective Date\") between Mirtphol Industries\r\nPCL (\"Party A\") and Meridian Consulting LLP (\"Party B\").\r\n1. TERM. This Agreement commences on the Effective Date and expires on 30 April 2027. It shall not renew\r\nautomatically.\r\n2. CONTRACT VALUE. The total value for the term is USD 96,000.00.\r\n3. SCOPE. Party B shall provide operations advisory services to Party A on a time-and-materials basis against\r\nstatements of work agreed in writing.\r\nIN WITNESS WHEREOF, the parties have executed this Agreement as of the Effective Date.\r\n_________________________\r\nMirtphol Industries PCL\r\nSomchai Wattanakul, Chief Financial Officer\r\n_________________________\r\nMeridian Consulting LLP\r\nNaruemon Pichai, Managing Director"
+    },
+    {
+      "doc_id": "contract_naming_one_party_twice",
+      "doc_type": "contract",
+      "layout": "prose",
+      "title": "Agreement where both parties are the buyer",
+      "demonstrates": "Party A and Party B are the same organisation. Nobody contracts with themselves, so one side was misread - and which side is not knowable from the page.",
+      "ground_truth": {
+        "contract_number": "CT-2026-046",
+        "party_a": "Mirtphol Industries PCL",
+        "party_b": "Mirtphol Industries PCL",
+        "effective_date": "2026-05-01",
+        "expiry_date": "2027-04-30",
+        "auto_renew": "no",
+        "contract_value": 210000.0,
+        "currency": "THB"
+      },
+      "line_items": [],
+      "body": [
+        "This Services Agreement is made as of 1 May 2026 between Mirtphol Industries PCL (\"Party A\") and Mirtphol Industries PCL (\"Party B\").",
+        "1. TERM. This Agreement commences on 1 May 2026 and expires on 30 April 2027.",
+        "2. CONTRACT VALUE. The total value for the term is THB 210,000.00.",
+        "3. SCOPE. Party B shall provide maintenance services to Party A at the Rayong fabrication yard on a scheduled basis."
+      ],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [
+        "contract_parties_distinct",
+        "contract_matches_master"
+      ],
+      "requires_posted": null,
+      "file": "37_contract_naming_one_party_twice_False.pdf",
+      "arrival": "pdf",
+      "order": 37,
+      "posts": false,
+      "reference_text": "AGREEMENT\r\nContract No. CT-2026-046\r\nThis Services Agreement is made as of 1 May 2026 between Mirtphol Industries PCL (\"Party A\") and Mirtphol\r\nIndustries PCL (\"Party B\").\r\n1. TERM. This Agreement commences on 1 May 2026 and expires on 30 April 2027.\r\n2. CONTRACT VALUE. The total value for the term is THB 210,000.00.\r\n3. SCOPE. Party B shall provide maintenance services to Party A at the Rayong fabrication yard on a scheduled basis.\r\nIN WITNESS WHEREOF, the parties have executed this Agreement as of the Effective Date.\r\n_________________________\r\nMirtphol Industries PCL\r\nSomchai Wattanakul, Chief Financial Officer\r\n_________________________\r\nMirtphol Industries PCL\r\nNaruemon Pichai, Managing Director"
+    },
+    {
+      "doc_id": "contract_disagreeing_with_the_register",
+      "doc_type": "contract",
+      "layout": "prose",
+      "title": "CT-2026-011 with a value the register does not hold",
+      "demonstrates": "The contract number is an exact key into the register, and everything it keys to disagrees: the value is 144,000 on file and 244,000 on the page.",
+      "ground_truth": {
+        "contract_number": "CT-2026-011",
+        "party_a": "Mirtphol Industries PCL",
+        "party_b": "Meridian Consulting LLP",
+        "effective_date": "2026-03-01",
+        "expiry_date": "2027-02-28",
+        "auto_renew": "no",
+        "contract_value": 244000.0,
+        "currency": "USD"
+      },
+      "line_items": [],
+      "body": [
+        "This Consulting Agreement is made as of 1 March 2026 (the \"Effective Date\") between Mirtphol Industries PCL (\"Party A\") and Meridian Consulting LLP (\"Party B\"), and is registered under number CT-2026-011.",
+        "1. TERM. This Agreement commences on the Effective Date and continues until 28 February 2027. It shall not renew automatically.",
+        "2. CONTRACT VALUE. The total value for the term is USD 244,000.00, payable monthly in arrears against approved statements of work.",
+        "3. SCOPE. Party B shall provide operations advisory and process improvement services to Party A's manufacturing division."
+      ],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [
+        "contract_matches_master"
+      ],
+      "requires_posted": null,
+      "file": "38_contract_disagreeing_with_the_register_False.pdf",
+      "arrival": "pdf",
+      "order": 38,
+      "posts": false,
+      "reference_text": "AGREEMENT\r\nContract No. CT-2026-011\r\nThis Consulting Agreement is made as of 1 March 2026 (the \"Effective Date\") between Mirtphol Industries PCL (\"Party\r\nA\") and Meridian Consulting LLP (\"Party B\"), and is registered under number CT-2026-011.\r\n1. TERM. This Agreement commences on the Effective Date and continues until 28 February 2027. It shall not renew\r\nautomatically.\r\n2. CONTRACT VALUE. The total value for the term is USD 244,000.00, payable monthly in arrears against approved\r\nstatements of work.\r\n3. SCOPE. Party B shall provide operations advisory and process improvement services to Party A's manufacturing\r\ndivision.\r\nIN WITNESS WHEREOF, the parties have executed this Agreement as of the Effective Date.\r\n_________________________\r\nMirtphol Industries PCL\r\nSomchai Wattanakul, Chief Financial Officer\r\n_________________________\r\nMeridian Consulting LLP\r\nNaruemon Pichai, Managing Director"
+    },
+    {
+      "doc_id": "form_reusing_a_registered_bank_account",
+      "doc_type": "form",
+      "layout": "form",
+      "title": "Onboarding form quoting an account already on file for someone else",
+      "demonstrates": "A new supplier asking to be paid into Siam Tech's registered account. The signature of an invoice-redirection attempt, and the one form defect that blocks.",
+      "ground_truth": {
+        "form_type": "Vendor onboarding",
+        "applicant_name": "Bangkok Precision Tools Ltd.",
+        "tax_id": "0105566000419",
+        "submitted_date": "2026-07-28",
+        "contact_email": "accounts@bkkprecision.co.th",
+        "contact_phone": "02-118-4420",
+        "bank_account": "1234567890"
+      },
+      "line_items": [],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [
+        "bank_account_not_reused"
+      ],
+      "requires_posted": null,
+      "file": "39_form_reusing_a_registered_bank_account_False.png",
+      "arrival": "png",
+      "order": 39,
+      "posts": false,
+      "reference_text": "Mirtphol Industries PCL\r\nProcurement - Supplier Registration\r\nRef: \r\nVENDOR ONBOARDING FORM\r\nDate submitted: 28/07/2026\r\nRegistration type (tick one):\r\nNew supplier Update existing Reactivation\r\nCompany / Applicant name\r\nBangkok Precision Tools Ltd.\r\nTax registration number\r\n0105566000419\r\nRegistered address\r\nContact e-mail\r\naccounts@bkkprecision.co.th\r\nContact telephone\r\n02-118-4420\r\nBank account number\r\n1234567890\r\nDeclaration\r\nI confirm that the information given above is true and complete, and that the bank account provided belongs to the applicant\r\ncompany. I understand that payment will only be made to the registered account.\r\n_________________________\r\nSigned: \r\n_________________________\r\nDate: 28/07/2026"
+    },
+    {
+      "doc_id": "form_with_an_unusable_email",
+      "doc_type": "form",
+      "layout": "form",
+      "title": "Onboarding form whose contact address cannot be written to",
+      "demonstrates": "`accounts@bkkfittings` has no domain suffix. A warning: nothing about the supplier is wrong, but nobody can reach them, and a form that blocks on a typo is a form nobody submits.",
+      "ground_truth": {
+        "form_type": "Vendor onboarding",
+        "applicant_name": "Bangkok Fittings Co., Ltd.",
+        "tax_id": "0105569000118",
+        "submitted_date": "2026-07-29",
+        "contact_email": "accounts@bkkfittings",
+        "contact_phone": "02-119-7730",
+        "bank_account": "2280046610"
+      },
+      "line_items": [],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [
+        "contact_email_valid"
+      ],
+      "requires_posted": null,
+      "file": "40_form_with_an_unusable_email_True.png",
+      "arrival": "png",
+      "order": 40,
+      "posts": true,
+      "reference_text": "Mirtphol Industries PCL\r\nProcurement - Supplier Registration\r\nRef: \r\nVENDOR ONBOARDING FORM\r\nDate submitted: 29/07/2026\r\nRegistration type (tick one):\r\nNew supplier Update existing Reactivation\r\nCompany / Applicant name\r\nBangkok Fittings Co., Ltd.\r\nTax registration number\r\n0105569000118\r\nRegistered address\r\nContact e-mail\r\naccounts@bkkfittings\r\nContact telephone\r\n02-119-7730\r\nBank account number\r\n2280046610\r\nDeclaration\r\nI confirm that the information given above is true and complete, and that the bank account provided belongs to the applicant\r\ncompany. I understand that payment will only be made to the registered account.\r\n_________________________\r\nSigned: \r\n_________________________\r\nDate: 29/07/2026"
+    },
+    {
+      "doc_id": "invoice_thai_vendor_name_misread",
+      "doc_type": "invoice",
+      "layout": "thai_tax",
+      "title": "Thai invoice naming the vendor with one stroke wrong",
+      "demonstrates": "ซ printed where the register has ช. The corpus document for the failure that produced two silent errors on 2026-08-06: everything reconciles, the vendor still resolves, and only the register knows the name is misspelt.",
+      "ground_truth": {
+        "invoice_number": "SNR-2026-0318",
+        "invoice_date": "2026-07-23",
+        "due_date": "2026-09-06",
+        "vendor_name": "บริษัท ชันไรส์ อิเล็คทริคอล จำกัด",
+        "buyer_name": "Mirtphol Industries PCL",
+        "currency": "THB",
+        "subtotal": 45000.0,
+        "tax_rate": 7.0,
+        "tax_amount": 3150.0,
+        "total_amount": 48150.0,
+        "payment_terms": "Net 45",
+        "bank_account": "8890014455"
+      },
+      "line_items": [
+        {
+          "description": "ตู้ควบคุมไฟฟ้าแรงต่ำ",
+          "quantity": 3,
+          "unit_price": 15000.0,
+          "amount": 45000.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "th",
+      "expected_findings": [
+        "vendor_name_matches_register"
+      ],
+      "requires_posted": null,
+      "file": "41_invoice_thai_vendor_name_misread_True.png",
+      "arrival": "png",
+      "order": 41,
+      "posts": true,
+      "reference_text": "บริษัท ชันไรส์ อิเล็คทริคอล จำกัด\r\nBangkok, Thailand\r\nเลขประจำตัวผู้เสียภาษี \r\nใบกำกับภาษี / ใบแจ้งหนี้\r\n(ต้นฉบับ)\r\nเลขที่: SNR-2026-0318\r\nวันที่: ๒๓ กรกฎาคม ๒๕๖๙\r\nครบกำหนดชำระ: ๖ กันยายน ๒๕๖๙\r\nลูกค้า / ผู้ซื้อ\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nรายการ จำนวน ราคาต่อหน่วย จำนวนเงิน\r\nตู้ควบคุมไฟฟ้าแรงต่ำ ๓ ๑๕,๐๐๐.๐๐ ๔๕,๐๐๐.๐๐\r\nรวมเป็นเงิน ๔๕,๐๐๐.๐๐\r\nภาษีมูลค่าเพิ่ม ๗% ๓,๑๕๐.๐๐\r\nจำนวนเงินรวมทั้งสิ้น ๔๘,๑๕๐.๐๐\r\nเงื่อนไขการชำระเงิน: Net 45\r\nเลขที่บัญชีธนาคาร: 8890014455\r\nผู้รับเงิน .............................."
+    },
+    {
+      "doc_id": "invoice_billed_in_the_wrong_currency_for_the_vendor",
+      "doc_type": "invoice",
+      "layout": "classic",
+      "title": "Meridian invoice in THB against a vendor registered in USD",
+      "demonstrates": "Meridian is registered to bill in USD and this one is in THB. A warning: suppliers do change billing currency, and a rule that blocked would be wrong more often than right.",
+      "ground_truth": {
+        "invoice_number": "MC-2026-0611",
+        "invoice_date": "2026-07-26",
+        "due_date": "2026-08-25",
+        "vendor_name": "Meridian Consulting LLP",
+        "vendor_tax_id": "GB428765190",
+        "buyer_name": "Mirtphol Industries PCL",
+        "currency": "THB",
+        "subtotal": 30000.0,
+        "tax_rate": 0.0,
+        "tax_amount": 0.0,
+        "total_amount": 30000.0,
+        "payment_terms": "Net 30",
+        "bank_account": "GB29NWBK60161331926819"
+      },
+      "line_items": [
+        {
+          "description": "Operations advisory, July",
+          "quantity": 1,
+          "unit_price": 30000.0,
+          "amount": 30000.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [
+        "currency_matches_vendor_default"
+      ],
+      "requires_posted": null,
+      "file": "42_invoice_billed_in_the_wrong_currency_for_the_vendor_True.pdf",
+      "arrival": "pdf",
+      "order": 42,
+      "posts": true,
+      "reference_text": "Meridian Consulting LLP\r\nBangkok, Thailand\r\nTax ID: GB428765190\r\nTAX INVOICE\r\nInvoice No.: MC-2026-0611\r\nInvoice Date: 26 July 2026\r\nDue Date: 25 August 2026\r\nBill To\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nDescription Qty Unit Price Amount\r\nOperations advisory, July 1 30,000.00 30,000.00\r\nSubtotal 30,000.00 THB\r\nVAT 0.00 THB\r\nAmount Due 30,000.00 THB\r\nPayment Terms: Net 30\r\nRemit to Account No: GB29NWBK60161331926819"
+    },
+    {
+      "doc_id": "contract_without_a_stated_value",
+      "doc_type": "contract",
+      "layout": "prose",
+      "title": "Framework agreement that names no total value",
+      "demonstrates": "A genuine framework agreement: the value is whatever is ordered under it. A warning rather than a block, because this is a real way for a contract to be written.",
+      "ground_truth": {
+        "contract_number": "CT-2026-052",
+        "party_a": "Mirtphol Industries PCL",
+        "party_b": "Northwind Logistics Ltd.",
+        "effective_date": "2026-06-01",
+        "expiry_date": "2027-05-31",
+        "auto_renew": "no",
+        "currency": "THB"
+      },
+      "line_items": [],
+      "body": [
+        "This Framework Logistics Agreement is made as of 1 June 2026 (the \"Effective Date\") between Mirtphol Industries PCL (\"Party A\") and Northwind Logistics Ltd. (\"Party B\").",
+        "1. TERM. This Agreement commences on the Effective Date and expires on 31 May 2027. It shall not renew automatically.",
+        "2. CHARGES. No total value is committed under this Agreement. Party B shall invoice against the rate card at Schedule 1 for services actually ordered.",
+        "3. SCOPE. Party B shall provide inbound and outbound freight forwarding to Party A on a call-off basis."
+      ],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [
+        "contract_value_present"
+      ],
+      "requires_posted": null,
+      "file": "43_contract_without_a_stated_value_True.pdf",
+      "arrival": "pdf",
+      "order": 43,
+      "posts": true,
+      "reference_text": "AGREEMENT\r\nContract No. CT-2026-052\r\nThis Framework Logistics Agreement is made as of 1 June 2026 (the \"Effective Date\") between Mirtphol Industries\r\nPCL (\"Party A\") and Northwind Logistics Ltd. (\"Party B\").\r\n1. TERM. This Agreement commences on the Effective Date and expires on 31 May 2027. It shall not renew\r\nautomatically.\r\n2. CHARGES. No total value is committed under this Agreement. Party B shall invoice against the rate card at\r\nSchedule 1 for services actually ordered.\r\n3. SCOPE. Party B shall provide inbound and outbound freight forwarding to Party A on a call-off basis.\r\nIN WITNESS WHEREOF, the parties have executed this Agreement as of the Effective Date.\r\n_________________________\r\nMirtphol Industries PCL\r\nSomchai Wattanakul, Chief Financial Officer\r\n_________________________\r\nNorthwind Logistics Ltd.\r\nNaruemon Pichai, Managing Director"
+    },
+    {
+      "doc_id": "form_from_a_vendor_already_on_file",
+      "doc_type": "form",
+      "layout": "form",
+      "title": "Onboarding form for a supplier already registered",
+      "demonstrates": "Siam Tech is already V-1001. Usually a duplicate submission rather than fraud, so a warning - but it needs a person, because the alternative is two records for one supplier.",
+      "ground_truth": {
+        "form_type": "Vendor onboarding",
+        "applicant_name": "Siam Tech Supply Co., Ltd.",
+        "tax_id": "0105543000129",
+        "submitted_date": "2026-07-30",
+        "contact_email": "accounts@siamtech.co.th",
+        "contact_phone": "02-115-2200",
+        "bank_account": "1234567890"
+      },
+      "line_items": [],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [
+        "applicant_already_registered"
+      ],
+      "requires_posted": null,
+      "file": "44_form_from_a_vendor_already_on_file_True.png",
+      "arrival": "png",
+      "order": 44,
+      "posts": true,
+      "reference_text": "Mirtphol Industries PCL\r\nProcurement - Supplier Registration\r\nRef: \r\nVENDOR ONBOARDING FORM\r\nDate submitted: 30/07/2026\r\nRegistration type (tick one):\r\nNew supplier Update existing Reactivation\r\nCompany / Applicant name\r\nSiam Tech Supply Co., Ltd.\r\nTax registration number\r\n0105543000129\r\nRegistered address\r\nContact e-mail\r\naccounts@siamtech.co.th\r\nContact telephone\r\n02-115-2200\r\nBank account number\r\n1234567890\r\nDeclaration\r\nI confirm that the information given above is true and complete, and that the bank account provided belongs to the applicant\r\ncompany. I understand that payment will only be made to the registered account.\r\n_________________________\r\nSigned: \r\n_________________________\r\nDate: 30/07/2026"
+    },
+    {
+      "doc_id": "form_missing_its_payment_details",
+      "doc_type": "form",
+      "layout": "form",
+      "title": "Onboarding form with no bank account and an unusable phone number",
+      "demonstrates": "Two warnings on one form, both about reaching or paying the supplier rather than about whether to trust them. Neither blocks: an incomplete form is chased, not refused.",
+      "ground_truth": {
+        "form_type": "Vendor onboarding",
+        "applicant_name": "Lanna Toolworks Co., Ltd.",
+        "tax_id": "0105567000218",
+        "submitted_date": "2026-07-31",
+        "contact_email": "finance@lannatoolworks.co.th",
+        "contact_phone": "12"
+      },
+      "line_items": [],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [
+        "bank_details_complete",
+        "contact_phone_valid"
+      ],
+      "requires_posted": null,
+      "file": "45_form_missing_its_payment_details_True.png",
+      "arrival": "png",
+      "order": 45,
+      "posts": true,
+      "reference_text": "Mirtphol Industries PCL\r\nProcurement - Supplier Registration\r\nRef: \r\nVENDOR ONBOARDING FORM\r\nDate submitted: 31/07/2026\r\nRegistration type (tick one):\r\nNew supplier Update existing Reactivation\r\nCompany / Applicant name\r\nLanna Toolworks Co., Ltd.\r\nTax registration number\r\n0105567000218\r\nRegistered address\r\nContact e-mail\r\nfinance@lannatoolworks.co.th\r\nContact telephone\r\n12\r\nBank account number\r\nDeclaration\r\nI confirm that the information given above is true and complete, and that the bank account provided belongs to the applicant\r\ncompany. I understand that payment will only be made to the registered account.\r\n_________________________\r\nSigned: \r\n_________________________\r\nDate: 31/07/2026"
+    },
+    {
+      "doc_id": "invoice_in_a_currency_we_do_not_trade",
+      "doc_type": "invoice",
+      "layout": "classic",
+      "title": "Pacific Rim invoice denominated in JPY",
+      "demonstrates": "JPY is not one of the four currencies this business settles in. A rule written here rather than built in, because which currencies a company trades is a business fact, not a property of invoices.",
+      "ground_truth": {
+        "invoice_number": "PRF-JP-30188",
+        "invoice_date": "2026-07-27",
+        "due_date": "2026-08-26",
+        "vendor_name": "Pacific Rim Freight Pte. Ltd.",
+        "vendor_tax_id": "SG198800123K",
+        "buyer_name": "Mirtphol Industries PCL",
+        "currency": "JPY",
+        "subtotal": 42000.0,
+        "tax_rate": 0.0,
+        "tax_amount": 0.0,
+        "total_amount": 42000.0,
+        "payment_terms": "Net 30",
+        "bank_account": "SG21DBSS0110001234567"
+      },
+      "line_items": [
+        {
+          "description": "Air freight, Osaka to Bangkok",
+          "quantity": 1,
+          "unit_price": 42000.0,
+          "amount": 42000.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [
+        "currency_is_one_we_trade_in"
+      ],
+      "requires_posted": null,
+      "file": "46_invoice_in_a_currency_we_do_not_trade_False.pdf",
+      "arrival": "pdf",
+      "order": 46,
+      "posts": false,
+      "reference_text": "Pacific Rim Freight Pte. Ltd.\r\nBangkok, Thailand\r\nTax ID: SG198800123K\r\nTAX INVOICE\r\nInvoice No.: PRF-JP-30188\r\nInvoice Date: 27 July 2026\r\nDue Date: 26 August 2026\r\nBill To\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nDescription Qty Unit Price Amount\r\nAir freight, Osaka to Bangkok 1 42,000.00 42,000.00\r\nSubtotal 42,000.00 JPY\r\nVAT 0.00 JPY\r\nAmount Due 42,000.00 JPY\r\nPayment Terms: Net 30\r\nRemit to Account No: SG21DBSS0110001234567"
+    },
+    {
+      "doc_id": "invoice_with_a_line_over_the_ceiling",
+      "doc_type": "invoice",
+      "layout": "classic",
+      "title": "Rungruang Steel invoice with a single 460,000 line",
+      "demonstrates": "One line above the 400,000 ceiling this business set. Nothing is arithmetically wrong; the limit is a policy about how much may move on one line without a person.",
+      "ground_truth": {
+        "invoice_number": "RSW-2026-1290",
+        "invoice_date": "2026-07-28",
+        "due_date": "2026-09-26",
+        "vendor_name": "Rungruang Steel Works Co., Ltd.",
+        "vendor_tax_id": "0105552000110",
+        "buyer_name": "Mirtphol Industries PCL",
+        "purchase_order_ref": "PO-2026-0501",
+        "currency": "THB",
+        "subtotal": 460000.0,
+        "tax_rate": 7.0,
+        "tax_amount": 32200.0,
+        "total_amount": 492200.0,
+        "payment_terms": "Net 60",
+        "bank_account": "3120045678"
+      },
+      "line_items": [
+        {
+          "description": "Hot-rolled plate 12mm, full coil",
+          "quantity": 1,
+          "unit_price": 460000.0,
+          "amount": 460000.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [
+        "no_single_line_over_400k"
+      ],
+      "requires_posted": null,
+      "file": "47_invoice_with_a_line_over_the_ceiling_False.pdf",
+      "arrival": "pdf",
+      "order": 47,
+      "posts": false,
+      "reference_text": "Rungruang Steel Works Co., Ltd.\r\nBangkok, Thailand\r\nTax ID: 0105552000110\r\nTAX INVOICE\r\nInvoice No.: RSW-2026-1290\r\nInvoice Date: 28 July 2026\r\nDue Date: 26 September 2026\r\nPO Reference: PO-2026-0501\r\nBill To\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nDescription Qty Unit Price Amount\r\nHot-rolled plate 12mm, full coil 1 460,000.00 460,000.00\r\nSubtotal 460,000.00 THB\r\nVAT 7% 32,200.00 THB\r\nAmount Due 492,200.00 THB\r\nPayment Terms: Net 60\r\nRemit to Account No: 3120045678"
+    },
+    {
+      "doc_id": "invoice_with_an_undescribed_line",
+      "doc_type": "invoice",
+      "layout": "classic",
+      "title": "Siam Tech invoice with a line that says nothing",
+      "demonstrates": "A charge with an amount and no description. Cannot be coded to an account, so somebody has to ask - a warning, because the invoice may still be perfectly good.",
+      "ground_truth": {
+        "invoice_number": "STS-2026-0655",
+        "invoice_date": "2026-07-29",
+        "due_date": "2026-08-28",
+        "vendor_name": "Siam Tech Supply Co., Ltd.",
+        "vendor_tax_id": "0105543000129",
+        "buyer_name": "Mirtphol Industries PCL",
+        "currency": "THB",
+        "subtotal": 26000.0,
+        "tax_rate": 7.0,
+        "tax_amount": 1820.0,
+        "total_amount": 27820.0,
+        "payment_terms": "Net 30",
+        "bank_account": "1234567890"
+      },
+      "line_items": [
+        {
+          "description": "Network switch, 24 port",
+          "quantity": 2,
+          "unit_price": 9000.0,
+          "amount": 18000.0
+        },
+        {
+          "description": "",
+          "quantity": 1,
+          "unit_price": 8000.0,
+          "amount": 8000.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [
+        "every_line_item_described"
+      ],
+      "requires_posted": null,
+      "file": "48_invoice_with_an_undescribed_line_True.pdf",
+      "arrival": "pdf",
+      "order": 48,
+      "posts": true,
+      "reference_text": "Siam Tech Supply Co., Ltd.\r\n199/22 Ratchadaphisek Road, Din Daeng, Bangkok 10400\r\nTax ID: 0105543000129\r\nTAX INVOICE\r\nInvoice No.: STS-2026-0655\r\nInvoice Date: 29 July 2026\r\nDue Date: 28 August 2026\r\nBill To\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nDescription Qty Unit Price Amount\r\nNetwork switch, 24 port 2 9,000.00 18,000.00\r\n1 8,000.00 8,000.00\r\nSubtotal 26,000.00 THB\r\nVAT 7% 1,820.00 THB\r\nAmount Due 27,820.00 THB\r\nPayment Terms: Net 30\r\nRemit to Account No: 1234567890"
+    },
+    {
+      "doc_id": "invoice_stating_no_payment_terms",
+      "doc_type": "invoice",
+      "layout": "classic",
+      "title": "Northwind invoice that never says when it is due",
+      "demonstrates": "No payment terms anywhere on the page. The ledger can still hold it; nobody can schedule it. A warning that exists because this business asked for it.",
+      "ground_truth": {
+        "invoice_number": "NWL-2026-0915",
+        "invoice_date": "2026-07-30",
+        "vendor_name": "Northwind Logistics Ltd.",
+        "vendor_tax_id": "0105561071237",
+        "buyer_name": "Mirtphol Industries PCL",
+        "currency": "THB",
+        "subtotal": 12000.0,
+        "tax_rate": 7.0,
+        "tax_amount": 840.0,
+        "total_amount": 12840.0,
+        "bank_account": "9876543210"
+      },
+      "line_items": [
+        {
+          "description": "Courier, July",
+          "quantity": 1,
+          "unit_price": 12000.0,
+          "amount": 12000.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [
+        "payment_terms_stated"
+      ],
+      "requires_posted": null,
+      "file": "49_invoice_stating_no_payment_terms_True.pdf",
+      "arrival": "pdf",
+      "order": 49,
+      "posts": true,
+      "reference_text": "Northwind Logistics Ltd.\r\n45 Bangna-Trad Km.19, Bang Phli, Samut Prakan 10540\r\nTax ID: 0105561071237\r\nTAX INVOICE\r\nInvoice No.: NWL-2026-0915\r\nInvoice Date: 30 July 2026\r\nDue Date:\r\nBill To\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nDescription Qty Unit Price Amount\r\nCourier, July 1 12,000.00 12,000.00\r\nSubtotal 12,000.00 THB\r\nVAT 7% 840.00 THB\r\nAmount Due 12,840.00 THB\r\nRemit to Account No: 9876543210"
+    },
+    {
+      "doc_id": "invoice_large_with_no_buyer_named",
+      "doc_type": "invoice",
+      "layout": "classic",
+      "title": "A 214,000 invoice addressed to nobody in particular",
+      "demonstrates": "Above 100,000 and naming no buyer. Below that threshold this business does not care; above it, an invoice that does not say who owes the money is one to look at.",
+      "ground_truth": {
+        "invoice_number": "STS-2026-0701",
+        "invoice_date": "2026-07-31",
+        "due_date": "2026-08-30",
+        "vendor_name": "Siam Tech Supply Co., Ltd.",
+        "vendor_tax_id": "0105543000129",
+        "currency": "THB",
+        "purchase_order_ref": "PO-2026-0412",
+        "subtotal": 200000.0,
+        "tax_rate": 7.0,
+        "tax_amount": 14000.0,
+        "total_amount": 214000.0,
+        "payment_terms": "Net 30",
+        "bank_account": "1234567890"
+      },
+      "line_items": [
+        {
+          "description": "Data centre rack build-out",
+          "quantity": 1,
+          "unit_price": 200000.0,
+          "amount": 200000.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [
+        "large_invoice_names_a_buyer"
+      ],
+      "requires_posted": null,
+      "file": "50_invoice_large_with_no_buyer_named_True.pdf",
+      "arrival": "pdf",
+      "order": 50,
+      "posts": true,
+      "reference_text": "Siam Tech Supply Co., Ltd.\r\n199/22 Ratchadaphisek Road, Din Daeng, Bangkok 10400\r\nTax ID: 0105543000129\r\nTAX INVOICE\r\nInvoice No.: STS-2026-0701\r\nInvoice Date: 31 July 2026\r\nDue Date: 30 August 2026\r\nPO Reference: PO-2026-0412\r\nBill To\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nDescription Qty Unit Price Amount\r\nData centre rack build-out 1 200,000.00 200,000.00\r\nSubtotal 200,000.00 THB\r\nVAT 7% 14,000.00 THB\r\nAmount Due 214,000.00 THB\r\nPayment Terms: Net 30\r\nRemit to Account No: 1234567890"
+    },
+    {
+      "doc_id": "invoice_quoting_another_vendors_tax_id",
+      "doc_type": "invoice",
+      "layout": "classic",
+      "title": "Siam Tech invoice carrying Northwind's tax ID",
+      "demonstrates": "A valid Thai tax ID, correct checksum, registered - to a different supplier. `find_vendor` takes the tax ID as the strongest evidence there is and resolves to Northwind, so the bank account then belongs to the wrong vendor too. Both findings are correct and the second is the consequence of the first.",
+      "ground_truth": {
+        "invoice_number": "STS-2026-0733",
+        "invoice_date": "2026-07-31",
+        "due_date": "2026-08-30",
+        "vendor_name": "Siam Tech Supply Co., Ltd.",
+        "vendor_tax_id": "0105561071237",
+        "buyer_name": "Mirtphol Industries PCL",
+        "currency": "THB",
+        "subtotal": 15000.0,
+        "tax_rate": 7.0,
+        "tax_amount": 1050.0,
+        "total_amount": 16050.0,
+        "payment_terms": "Net 30",
+        "bank_account": "1234567890"
+      },
+      "line_items": [
+        {
+          "description": "Cable tray, 3m section",
+          "quantity": 30,
+          "unit_price": 500.0,
+          "amount": 15000.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [
+        "tax_id_belongs_to_this_vendor",
+        "bank_account_matches_vendor"
+      ],
+      "requires_posted": null,
+      "file": "51_invoice_quoting_another_vendors_tax_id_False.pdf",
+      "arrival": "pdf",
+      "order": 51,
+      "posts": false,
+      "reference_text": "Siam Tech Supply Co., Ltd.\r\n199/22 Ratchadaphisek Road, Din Daeng, Bangkok 10400\r\nTax ID: 0105561071237\r\nTAX INVOICE\r\nInvoice No.: STS-2026-0733\r\nInvoice Date: 31 July 2026\r\nDue Date: 30 August 2026\r\nBill To\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nDescription Qty Unit Price Amount\r\nCable tray, 3m section 30 500.00 15,000.00\r\nSubtotal 15,000.00 THB\r\nVAT 7% 1,050.00 THB\r\nAmount Due 16,050.00 THB\r\nPayment Terms: Net 30\r\nRemit to Account No: 1234567890"
     }
   ],
   "master_data": {
@@ -1538,6 +2347,36 @@
         "expiry_date": "2027-01-14",
         "value": 24000.0,
         "currency": "EUR"
+      },
+      {
+        "contract_number": "CT-2026-052",
+        "vendor_id": "V-1002",
+        "party_a": "Mirtphol Industries PCL",
+        "party_b": "Northwind Logistics Ltd.",
+        "effective_date": "2026-06-01",
+        "expiry_date": "2027-05-31",
+        "value": null,
+        "currency": "THB"
+      },
+      {
+        "contract_number": "CT-2026-041",
+        "vendor_id": "V-1009",
+        "party_a": "Mirtphol Industries PCL",
+        "party_b": "Meridian Consulting LLP",
+        "effective_date": "2027-04-30",
+        "expiry_date": "2027-09-01",
+        "value": 96000.0,
+        "currency": "USD"
+      },
+      {
+        "contract_number": "CT-2026-046",
+        "vendor_id": "V-1004",
+        "party_a": "Mirtphol Industries PCL",
+        "party_b": "Chao Phraya Facility Services Co., Ltd",
+        "effective_date": "2026-05-01",
+        "expiry_date": "2027-04-30",
+        "value": 210000.0,
+        "currency": "THB"
       },
       {
         "contract_number": "CT-2026-011",
