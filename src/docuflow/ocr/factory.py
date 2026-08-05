@@ -19,11 +19,30 @@ def build_provider(name: str, settings: Settings, model: str | None = None) -> O
     return plugin.build(settings, model)
 
 
+# Not an engine so much as a reader: the characters are already in the file.
+TEXT_LAYER = "pdftext"
+
+
 def provider_chain(settings: Settings) -> list[OcrProvider]:
     """Ordered engines to try for each page.
 
     The configured engine goes first; the rest are fallbacks so a missing model
     download or an expired key degrades the demo instead of breaking it.
+
+    Ahead of all of them, on a PDF that carries its own text, sits the text
+    layer. This is the cheapest correct answer available: the characters were
+    written into the file by whatever produced it, so recognition has nothing
+    to add and every model call spent on such a page buys nothing.
+
+    It is safe to put first because it removes itself. `PdfTextLayerOcr` raises
+    `OcrUnavailableError` on a page with no embedded text, and the chain skips
+    a provider that says it cannot help - so a photograph, a JPG, or a scan
+    reaches exactly the engine it would have reached before. Text that is
+    present but poor meets the same `score_page_text` gate as any other engine's
+    output and escalates when it fails.
+
+    `ocr_strict` still wins: a benchmark that names an engine must measure that
+    engine, and reading the file instead would score the PDF writer's work.
     """
     primary = settings.resolved_ocr_provider()
     if settings.ocr_strict:
@@ -31,6 +50,8 @@ def provider_chain(settings: Settings) -> list[OcrProvider]:
         order = [primary]
     else:
         order = [primary] + [key for key in fallback_order() if key != primary]
+        if settings.ocr_prefer_text_layer and primary != TEXT_LAYER:
+            order = [TEXT_LAYER] + [key for key in order if key != TEXT_LAYER]
 
     chain: list[OcrProvider] = []
     for key in order:

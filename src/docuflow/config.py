@@ -50,6 +50,17 @@ class Settings(BaseSettings):
     # degrade a run, not break it), but a benchmark must measure the engine it
     # names - otherwise a weak engine silently scores its fallback's accuracy.
     ocr_strict: bool = False
+    # Read a digital PDF's own text layer before asking a model to look at it.
+    #
+    # The characters are already in the file, exactly as the tool that made it
+    # wrote them - there is nothing for recognition to improve on and no reason
+    # to pay for it. A scanned page has no text layer, so the reader steps aside
+    # and the model runs as before; a text layer that comes back poor fails the
+    # same quality gate every engine faces and escalates.
+    #
+    # Off for a benchmark that means to measure a recognition engine, which is
+    # also why `ocr_strict` overrides it.
+    ocr_prefer_text_layer: bool = True
 
     # --- LLM ---------------------------------------------------------------
     llm_provider: LlmProviderName = "auto"
