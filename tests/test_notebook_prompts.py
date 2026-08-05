@@ -28,6 +28,7 @@ from docuflow.agents.prompts import (
     VERIFY_SYSTEM,
 )
 from docuflow.agents.rule_agent import RULE_AGENT_SYSTEM
+from docuflow.agents.tools import TOOL_HELP
 from docuflow.schemas.registry import DOCUMENT_SCHEMAS
 
 NOTEBOOK = Path(__file__).resolve().parents[1] / "notebooks" / "docuflow_live.ipynb"
@@ -103,3 +104,32 @@ class TestSchemaIsTheRealOne:
         """The notebook rebuilds `FieldSpec.prompt_line`, so its shape must match."""
         assert "labelled like: " in notebook_text
         assert "one of: " in notebook_text
+
+
+class TestToolboxIsTheRealOne:
+    """All eight tools, and the narrowing that means no agent ever gets eight."""
+
+    @pytest.mark.parametrize("name", sorted(TOOL_HELP))
+    def test_tool_is_implemented(self, notebook_text: str, name: str) -> None:
+        assert f'"{name}"' in notebook_text, (
+            f"the system has a {name} tool and the notebook does not"
+        )
+
+    def test_tool_help_is_embedded_verbatim(self, notebook_text: str) -> None:
+        for name, help_text in TOOL_HELP.items():
+            assert repr(help_text) in notebook_text, f"{name}'s description drifted"
+
+    def test_select_tools_narrows_rather_than_handing_over_everything(
+        self, notebook_text: str
+    ) -> None:
+        """A rule declaring its tools is the notebook's least-privilege story.
+
+        Without the narrowing the notebook would show an agent holding every
+        tool in the system, which is neither what happens nor what should.
+        """
+        assert "def select_tools(" in notebook_text
+        assert '"tools": [' in notebook_text
+
+    def test_arguments_are_checked_against_the_page(self, notebook_text: str) -> None:
+        """An invented argument returns a true answer to a question nobody asked."""
+        assert "argument_warning" in notebook_text

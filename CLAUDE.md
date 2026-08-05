@@ -118,12 +118,22 @@ taught to people learning the system as if it were the system.
 `tests/test_notebook_prompts.py` reads the built `.ipynb` and fails on a stale
 build or a hand edit.
 
+All eight tools are written out too, with `select_tools` narrowing them to the
+four the demo rule declares — the notebook would otherwise show an agent holding
+every tool in the system, which is neither what happens nor what should.
+
 Two things the notebook must keep doing because they are load-bearing, not
 cosmetic: **normalise before comparing the two channels** (agent 1 is told to
 emit `YYYY-MM-DD`, agent 2 to report the page verbatim — raw string comparison
 reports every document as a disagreement and buries the real ones), and **store
 the normalised value**, or `"7%"` reaches the arithmetic rules and
 `tax_rate_consistent` skips in silence.
+
+Two cells end in `display(HTML(...))` — the nine-stage map and the
+notebook-versus-production bands. `code()` takes an `html=` argument so those
+render in a notebook nobody has run; the capture harness stubs `IPython.display`
+to collect them. A diagram only visible after running the notebook is a diagram
+most readers never see.
 
 **Pin the rule set in any notebook that constructs `Settings`.** It fills any
 field it was not given from a `.env` in the working directory, so a notebook
