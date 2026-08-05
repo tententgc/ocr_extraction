@@ -8,6 +8,8 @@ page, and how good the recognition was.
 
 from __future__ import annotations
 
+import math
+
 from docuflow.models import ExtractedField, RuleFinding
 
 # Base scores by evidential situation, before penalties.
@@ -188,4 +190,20 @@ def document_confidence(
     if penalty:
         score *= max(MISREAD_FLOOR, 1.0 - penalty)
 
-    return round(max(0.0, min(1.0, score)), 3)
+    # Rounded **down**, not to nearest, and that is the whole point.
+    #
+    # This number is stored, displayed, and compared against
+    # `auto_post_min_confidence` in `routing.decide`. Rounding to nearest lets
+    # a document that scored 0.83951 present itself as 0.840 and clear a 0.840
+    # bar it did not actually reach - a presentation decision moving money.
+    #
+    # Half a thousandth is small, and it is not a hypothetical margin: the
+    # 2026-08-06 evaluation posted two documents at 0.840 and 0.843 against a
+    # 0.840 threshold, so the entire population near the bar sits inside the
+    # rounding error.
+    #
+    # Flooring makes the displayed value a *lower bound* on the true one, so
+    # `displayed >= threshold` implies `true >= threshold`. Rounding can then
+    # only ever send a document to a person, never past one, which is the
+    # direction this system is required to fail in.
+    return math.floor(max(0.0, min(1.0, score)) * 1000) / 1000

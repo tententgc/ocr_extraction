@@ -178,3 +178,48 @@ class TestTheCatalogueTellsTheTruth:
         for entry in describe_rules():
             assert entry["severity_means"], f"{entry['rule_id']} explains nothing"
             assert entry["affects_confidence"] == (entry["rule_id"] in MISREAD_SIGNALS)
+
+
+class TestRoundingCannotPromoteADocument:
+    """The score is stored, displayed, *and* compared against the auto-post
+    threshold. Rounding to nearest let a document that scored 0.83951 present
+    itself as 0.840 and clear a 0.840 bar it never reached - a presentation
+    decision moving money.
+
+    Half a thousandth is small and it is not a hypothetical margin: the
+    2026-08-06 evaluation posted two documents at 0.840 and 0.843 against a
+    0.840 threshold, so the whole population near the bar sits inside the
+    rounding error.
+    """
+
+    def _score_of(self, raw: float) -> float:
+        """Drive `document_confidence` to a chosen raw score.
+
+        A clean reading scores its mean field confidence, so setting every
+        field to `raw` sets the document score to `raw`.
+        """
+        fields = tuple(
+            ExtractedField(name=name, value="x", confidence=raw, grounded=True)
+            for name in ("total_amount", "invoice_number", "vendor_name")
+        )
+        return document_confidence(fields, (), REQUIRED, CRITICAL)
+
+    def test_a_score_below_the_bar_stays_below_it(self):
+        assert self._score_of(0.83951) < 0.84
+        assert self._score_of(0.83999) < 0.84
+
+    def test_a_score_that_reaches_the_bar_still_clears_it(self):
+        """Flooring must not hold documents that genuinely qualified."""
+        assert self._score_of(0.84) >= 0.84
+        assert self._score_of(0.8409) >= 0.84
+
+    def test_the_displayed_value_never_overstates_the_true_one(self):
+        """`displayed >= threshold` has to imply `true >= threshold`, or the
+        rounding is deciding the routing."""
+        for raw in (0.5001, 0.7499, 0.83951, 0.9009, 0.9999):
+            assert self._score_of(raw) <= raw + 1e-9, raw
+
+    def test_it_is_still_three_decimals(self):
+        """Flooring is not an excuse to leak float noise into the UI."""
+        value = self._score_of(0.834567)
+        assert value == round(value, 3)
