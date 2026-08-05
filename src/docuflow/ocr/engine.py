@@ -129,8 +129,21 @@ def run_ocr(pages: list[PageImage], settings: Settings) -> OcrResult:
             )
         )
 
+    # Pages the file has that nobody rendered. This is a reading failure of the
+    # worst kind — silent — so it degrades the run exactly as unreadable text
+    # does: an invoice read to page eight of twelve can produce an earlier
+    # subtotal that passes for the total, with arithmetic that agrees with
+    # itself, and no stage after this one can tell.
+    document_pages = pages[0].document_pages if pages else len(pages)
+    unread = max(0, document_pages - len(pages))
+
     report = score_document_text([page.text for page in ocr_pages])
-    degraded = not report.acceptable or bool(improvised)
+    degraded = not report.acceptable or bool(improvised) or bool(unread)
+    if unread:
+        all_notes.append(
+            f"only {len(pages)} of {document_pages} pages were read; "
+            f"{unread} page(s) were never seen (OCR_MAX_PAGES)"
+        )
     if improvised:
         all_notes.append(
             f"recognised with a general-purpose engine ({', '.join(sorted(improvised))}); "

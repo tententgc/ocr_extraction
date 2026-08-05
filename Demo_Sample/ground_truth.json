@@ -1,0 +1,583 @@
+{
+  "documents": [
+    {
+      "doc_id": "demo_invoice_clean",
+      "doc_type": "invoice",
+      "layout": "classic",
+      "title": "Siam Tech invoice against PO-2026-9101",
+      "demonstrates": "Nothing is wrong with it. The vendor is registered, the bank account matches the register, the arithmetic closes, and the amount sits inside the purchase order. Posts without a person.",
+      "ground_truth": {
+        "invoice_number": "STS-2026-0318",
+        "invoice_date": "2026-07-24",
+        "due_date": "2026-08-23",
+        "vendor_name": "Siam Tech Supply Co., Ltd.",
+        "vendor_tax_id": "0105543000129",
+        "buyer_name": "Mirtphol Industries PCL",
+        "purchase_order_ref": "PO-2026-9101",
+        "currency": "THB",
+        "subtotal": 135000.0,
+        "tax_rate": 7.0,
+        "tax_amount": 9450.0,
+        "total_amount": 144450.0,
+        "payment_terms": "Net 30",
+        "bank_account": "1234567890"
+      },
+      "line_items": [
+        {
+          "description": "UPS 3kVA rack mount",
+          "quantity": 12,
+          "unit_price": 9500.0,
+          "amount": 114000.0
+        },
+        {
+          "description": "Installation and commissioning",
+          "quantity": 1,
+          "unit_price": 21000.0,
+          "amount": 21000.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [],
+      "requires_posted": null,
+      "file": "01_PASS_invoice_clean.pdf",
+      "expected_post": true,
+      "arrival": "pdf",
+      "reference_text": "Siam Tech Supply Co., Ltd.\r\n199/22 Ratchadaphisek Road, Din Daeng, Bangkok 10400\r\nTax ID: 0105543000129\r\nTAX INVOICE\r\nInvoice No.: STS-2026-0318\r\nInvoice Date: 24 July 2026\r\nDue Date: 23 August 2026\r\nPO Reference: PO-2026-9101\r\nBill To\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nDescription Qty Unit Price Amount\r\nUPS 3kVA rack mount 12 9,500.00 114,000.00\r\nInstallation and commissioning 1 21,000.00 21,000.00\r\nSubtotal 135,000.00 THB\r\nVAT 7% 9,450.00 THB\r\nAmount Due 144,450.00 THB\r\nPayment Terms: Net 30\r\nRemit to Account No: 1234567890"
+    },
+    {
+      "doc_id": "demo_invoice_thai_correct",
+      "doc_type": "invoice",
+      "layout": "thai_modern",
+      "title": "ใบกำกับภาษี — ไทยพัฒนา วิศวกรรม",
+      "demonstrates": "Thai labels, a Buddhist-era date, and nothing wrong with it. This is the case that fails quietly when it fails: the digits are Arabic and come back from OCR perfectly, so the only question is whether anything understood that จำนวนเงินทั้งสิ้น is the total and that 2569 is 2026.",
+      "ground_truth": {
+        "invoice_number": "TPE-2569-0077",
+        "invoice_date": "2026-07-15",
+        "due_date": "2026-08-14",
+        "vendor_name": "บริษัท ไทยพัฒนา วิศวกรรม จำกัด",
+        "vendor_tax_id": "0105548000117",
+        "buyer_name": "Mirtphol Industries PCL",
+        "purchase_order_ref": "PO-2026-9104",
+        "currency": "THB",
+        "subtotal": 60000.0,
+        "tax_rate": 7.0,
+        "tax_amount": 4200.0,
+        "total_amount": 64200.0,
+        "payment_terms": "Net 30",
+        "bank_account": "4450091122"
+      },
+      "line_items": [
+        {
+          "description": "งานติดตั้งระบบไฟฟ้า อาคาร B",
+          "quantity": 1,
+          "unit_price": 45000.0,
+          "amount": 45000.0
+        },
+        {
+          "description": "ค่าแรงช่างเทคนิค",
+          "quantity": 5,
+          "unit_price": 3000.0,
+          "amount": 15000.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "th",
+      "expected_findings": [],
+      "requires_posted": null,
+      "file": "02_PASS_invoice_thai_correct.png",
+      "expected_post": true,
+      "arrival": "png",
+      "reference_text": "บริษัท ไทยพัฒนา วิศวกรรม จำกัด\r\nBangkok, Thailand\r\nเลขประจำตัวผู้เสียภาษี 0105548000117\r\nใบกำกับภาษี / ใบแจ้งหนี้\r\nTAX INVOICE (ORIGINAL)\r\nลูกค้า\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nเลขที่เอกสาร TPE-2569-0077\r\nวันที่ออก 15 กรกฎาคม 2569\r\nกำหนดชำระ 14 สิงหาคม 2569\r\nใบสั่งซื้อเลขที่ PO-2026-9104\r\nรายละเอียด จำนวน ราคา/หน่วย รวมเงิน\r\nงานติดตั้งระบบไฟฟ้า อาคาร B 1 45,000.00 45,000.00\r\nค่าแรงช่างเทคนิค 5 3,000.00 15,000.00\r\nมูลค่าสินค้า/บริการ 60,000.00\r\nภาษีมูลค่าเพิ่ม 7% 4,200.00\r\nจำนวนเงินทั้งสิ้น (บาท) 64,200.00\r\nเงื่อนไขการชำระเงิน Net 30\r\nชำระเข้าบัญชีเลขที่ 4450091122\r\nผู้รับเงิน ______________________"
+    },
+    {
+      "doc_id": "demo_invoice_no_purchase_order",
+      "doc_type": "invoice",
+      "layout": "two_column",
+      "title": "Chao Phraya Print invoice quoting no purchase order",
+      "demonstrates": "There is no PO reference anywhere on this page, and it posts. `critical` is about consequence, not presence: it means a wrong value here pays the wrong amount, not that the field must exist. Whether an order is *required* is business policy, answered by a threshold, and 42,000.00 is under it.",
+      "ground_truth": {
+        "invoice_number": "CPP-2026-0655",
+        "invoice_date": "2026-07-11",
+        "due_date": "2026-08-10",
+        "vendor_name": "Chao Phraya Print & Pack Co., Ltd.",
+        "vendor_tax_id": "0105559000188",
+        "buyer_name": "Mirtphol Industries PCL",
+        "currency": "THB",
+        "subtotal": 42000.0,
+        "tax_rate": 7.0,
+        "tax_amount": 2940.0,
+        "total_amount": 44940.0,
+        "payment_terms": "Net 30",
+        "bank_account": "6680033445"
+      },
+      "line_items": [
+        {
+          "description": "Printed carton, 3-ply, B-flute",
+          "quantity": 3000,
+          "unit_price": 12.0,
+          "amount": 36000.0
+        },
+        {
+          "description": "Label printing, 4-colour",
+          "quantity": 1,
+          "unit_price": 6000.0,
+          "amount": 6000.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [],
+      "requires_posted": null,
+      "file": "03_PASS_invoice_no_purchase_order.pdf",
+      "expected_post": true,
+      "arrival": "pdf",
+      "reference_text": "Chao Phraya Print & Pack Co., Ltd.\r\nBangkok, Thailand\r\nTax ID 0105559000188\r\nINVOICE\r\nCPP-2026-0655\r\nJul 11, 2026\r\nTerms Net 30\r\nBILL TO\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nSHIP TO\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nDescription Qty Unit Price Amount\r\nPrinted carton, 3-ply, B-flute 3000 12.00 36,000.00\r\nLabel printing, 4-colour 1 6,000.00 6,000.00\r\nSubtotal 42,000.00 THB\r\nVAT 7% 2,940.00 THB\r\nAmount Due 44,940.00 THB\r\nRemit to Account No: 6680033445"
+    },
+    {
+      "doc_id": "demo_receipt_fuel_correct",
+      "doc_type": "receipt",
+      "layout": "narrow",
+      "title": "PTT fuel receipt, nothing wrong with it",
+      "demonstrates": "A different document type, so the classifier has something to do. A till receipt has no purchase order, no payment terms and no bank account, and none of that holds it - the rules that need those fields abstain rather than fail, which is not the same thing.",
+      "ground_truth": {
+        "receipt_number": "PTT-880451",
+        "receipt_date": "2026-07-28",
+        "merchant_name": "บริษัท ปตท. น้ำมันและการค้าปลีก จำกัด",
+        "merchant_tax_id": "0105554000770",
+        "currency": "THB",
+        "subtotal": 2000.0,
+        "tax_amount": 140.0,
+        "total_amount": 2140.0,
+        "payment_method": "cash",
+        "expense_category": "fuel"
+      },
+      "line_items": [
+        {
+          "description": "Diesel B7",
+          "quantity": 50,
+          "unit_price": 40.0,
+          "amount": 2000.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [],
+      "requires_posted": null,
+      "file": "04_PASS_receipt_fuel_correct.png",
+      "expected_post": true,
+      "arrival": "png",
+      "reference_text": "บริษัท ปตท. น้ำมันและการค้าปลีก จำกัด\r\nRama IV Rd, Khlong Toei, Bangkok\r\nTAX ID 0105554000770\r\n- - - - - - - - - - - - - - - - - - - - - - - - - - \r\nRECEIPT PTT-880451\r\n28/07/2026 14:07\r\n- - - - - - - - - - - - - - - - - - - - - - - - - - \r\nDiesel B7\r\n50 L x 40.00 2,000.00\r\n- - - - - - - - - - - - - - - - - - - - - - - - - - \r\nSub-total 2,000.00\r\nVAT 7% 140.00\r\nTOTAL 2,140.00\r\nPAID BY VISA ****4412\r\nTHANK YOU / ขอบคุณค่ะ"
+    },
+    {
+      "doc_id": "demo_invoice_photographed",
+      "doc_type": "invoice",
+      "layout": "modern",
+      "title": "Northwind invoice photographed on a desk",
+      "demonstrates": "The same kind of correct invoice as document 1, arriving the way most documents actually arrive: a phone photograph, tilted and unevenly lit. Preprocessing has something to do here, and this is the only document in the set where it does.",
+      "ground_truth": {
+        "invoice_number": "NWL-2026-0518",
+        "invoice_date": "2026-07-26",
+        "due_date": "2026-09-09",
+        "vendor_name": "Northwind Logistics Ltd.",
+        "vendor_tax_id": "0105561071237",
+        "buyer_name": "Mirtphol Industries PCL",
+        "purchase_order_ref": "PO-2026-9106",
+        "currency": "THB",
+        "subtotal": 35000.0,
+        "tax_rate": 7.0,
+        "tax_amount": 2450.0,
+        "total_amount": 37450.0,
+        "payment_terms": "Net 45",
+        "bank_account": "9876543210"
+      },
+      "line_items": [
+        {
+          "description": "Inbound freight, Laem Chabang to Bangkok",
+          "quantity": 7,
+          "unit_price": 3500.0,
+          "amount": 24500.0
+        },
+        {
+          "description": "Customs clearance handling",
+          "quantity": 2,
+          "unit_price": 5250.0,
+          "amount": 10500.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [],
+      "requires_posted": null,
+      "file": "05_PASS_invoice_photographed.jpg",
+      "expected_post": true,
+      "arrival": "photo",
+      "reference_text": "Northwind Logistics Ltd.\r\n45 Bangna-Trad Km.19, Bang Phli, Samut Prakan 10540\r\nINVOICE\r\nBILLED TO\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nInvoice # NWL-2026-0518\r\nIssued Jul 26, 2026\r\nPayment Due Sep 9, 2026\r\nPO PO-2026-9106\r\nSupplier Tax ID 0105561071237\r\nDescription Qty Unit Price Amount\r\nInbound freight, Laem Chabang to Bangkok 7 3,500.00 24,500.00\r\nCustoms clearance handling 2 5,250.00 10,500.00\r\nSubtotal 35,000.00 THB\r\nVAT 7% 2,450.00 THB\r\nAmount Due 37,450.00 THB\r\nTerms: Net 45\r\nBank Account: 9876543210"
+    },
+    {
+      "doc_id": "demo_invoice_bank_account_changed",
+      "doc_type": "invoice",
+      "layout": "modern",
+      "title": "Rungruang Steel invoice paying to an account nobody registered",
+      "demonstrates": "Every number on this page is correct and it must still not be paid. The remittance account is 5590112233; the register holds 3120045678 for this vendor. Reading the document more carefully cannot catch it - only comparing it against something outside the page can.",
+      "ground_truth": {
+        "invoice_number": "RSW-2026-1188",
+        "invoice_date": "2026-07-18",
+        "due_date": "2026-09-16",
+        "vendor_name": "Rungruang Steel Works Co., Ltd.",
+        "vendor_tax_id": "0105552000110",
+        "buyer_name": "Mirtphol Industries PCL",
+        "purchase_order_ref": "PO-2026-9102",
+        "currency": "THB",
+        "subtotal": 96000.0,
+        "tax_rate": 7.0,
+        "tax_amount": 6720.0,
+        "total_amount": 102720.0,
+        "payment_terms": "Net 60",
+        "bank_account": "5590112233"
+      },
+      "line_items": [
+        {
+          "description": "Hot-rolled steel plate 12mm x 1500 x 6000",
+          "quantity": 4,
+          "unit_price": 18500.0,
+          "amount": 74000.0
+        },
+        {
+          "description": "Cutting and edge preparation",
+          "quantity": 4,
+          "unit_price": 5500.0,
+          "amount": 22000.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [
+        "bank_account_matches_vendor"
+      ],
+      "requires_posted": null,
+      "file": "06_FAIL_invoice_bank_account_changed.png",
+      "expected_post": false,
+      "arrival": "png",
+      "reference_text": "Rungruang Steel Works Co., Ltd.\r\nBangkok, Thailand\r\nINVOICE\r\nBILLED TO\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nInvoice # RSW-2026-1188\r\nIssued Jul 18, 2026\r\nPayment Due Sep 16, 2026\r\nPO PO-2026-9102\r\nSupplier Tax ID 0105552000110\r\nDescription Qty Unit Price Amount\r\nHot-rolled steel plate 12mm x 1500 x 6000 4 18,500.00 74,000.00\r\nCutting and edge preparation 4 5,500.00 22,000.00\r\nSubtotal 96,000.00 THB\r\nVAT 7% 6,720.00 THB\r\nAmount Due 102,720.00 THB\r\nTerms: Net 60\r\nBank Account: 5590112233"
+    },
+    {
+      "doc_id": "demo_invoice_vat_wrong",
+      "doc_type": "invoice",
+      "layout": "classic",
+      "title": "Northwind invoice whose VAT is not 7% of its own subtotal",
+      "demonstrates": "The page states 7%, a subtotal of 38,000.00 and tax of 3,420.00. Seven percent of 38,000 is 2,660. The document contradicts itself, and no lookup is needed to know it - the arithmetic is recomputed rather than read.",
+      "ground_truth": {
+        "invoice_number": "NWL-2026-0442",
+        "invoice_date": "2026-07-21",
+        "due_date": "2026-09-04",
+        "vendor_name": "Northwind Logistics Ltd.",
+        "vendor_tax_id": "0105561071237",
+        "buyer_name": "Mirtphol Industries PCL",
+        "purchase_order_ref": "PO-2026-9103",
+        "currency": "THB",
+        "subtotal": 38000.0,
+        "tax_rate": 7.0,
+        "tax_amount": 3420.0,
+        "total_amount": 41420.0,
+        "payment_terms": "Net 45",
+        "bank_account": "9876543210"
+      },
+      "line_items": [
+        {
+          "description": "Inbound freight, Laem Chabang to Bangkok",
+          "quantity": 8,
+          "unit_price": 3500.0,
+          "amount": 28000.0
+        },
+        {
+          "description": "Customs clearance handling",
+          "quantity": 2,
+          "unit_price": 5000.0,
+          "amount": 10000.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [
+        "tax_rate_consistent"
+      ],
+      "requires_posted": null,
+      "file": "07_FAIL_invoice_vat_wrong.pdf",
+      "expected_post": false,
+      "arrival": "pdf",
+      "reference_text": "Northwind Logistics Ltd.\r\n45 Bangna-Trad Km.19, Bang Phli, Samut Prakan 10540\r\nTax ID: 0105561071237\r\nTAX INVOICE\r\nInvoice No.: NWL-2026-0442\r\nInvoice Date: 21 July 2026\r\nDue Date: 4 September 2026\r\nPO Reference: PO-2026-9103\r\nBill To\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nDescription Qty Unit Price Amount\r\nInbound freight, Laem Chabang to Bangkok 8 3,500.00 28,000.00\r\nCustoms clearance handling 2 5,000.00 10,000.00\r\nSubtotal 38,000.00 THB\r\nVAT 7% 3,420.00 THB\r\nAmount Due 41,420.00 THB\r\nPayment Terms: Net 45\r\nRemit to Account No: 9876543210"
+    },
+    {
+      "doc_id": "demo_invoice_over_purchase_order",
+      "doc_type": "invoice",
+      "layout": "modern",
+      "title": "Siam Tech invoice billing more than PO-2026-9101 allows",
+      "demonstrates": "The invoice adds up, the vendor is registered and the bank account is right. It bills 168,000.00 against a purchase order for 135,000.00. Nothing on the page is wrong; the defect only exists once the order has been fetched and the two numbers compared, which is the one check here that needs an agent rather than a condition.",
+      "ground_truth": {
+        "invoice_number": "STS-2026-0402",
+        "invoice_date": "2026-07-29",
+        "due_date": "2026-08-28",
+        "vendor_name": "Siam Tech Supply Co., Ltd.",
+        "vendor_tax_id": "0105543000129",
+        "buyer_name": "Mirtphol Industries PCL",
+        "purchase_order_ref": "PO-2026-9101",
+        "currency": "THB",
+        "subtotal": 168000.0,
+        "tax_rate": 7.0,
+        "tax_amount": 11760.0,
+        "total_amount": 179760.0,
+        "payment_terms": "Net 30",
+        "bank_account": "1234567890"
+      },
+      "line_items": [
+        {
+          "description": "UPS 3kVA rack mount",
+          "quantity": 16,
+          "unit_price": 9500.0,
+          "amount": 152000.0
+        },
+        {
+          "description": "Installation and commissioning",
+          "quantity": 1,
+          "unit_price": 16000.0,
+          "amount": 16000.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [
+        "invoice_within_purchase_order"
+      ],
+      "requires_posted": null,
+      "file": "08_FAIL_invoice_over_purchase_order.pdf",
+      "expected_post": false,
+      "arrival": "pdf",
+      "reference_text": "Siam Tech Supply Co., Ltd.\r\n199/22 Ratchadaphisek Road, Din Daeng, Bangkok 10400\r\nINVOICE\r\nBILLED TO\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nInvoice # STS-2026-0402\r\nIssued Jul 29, 2026\r\nPayment Due Aug 28, 2026\r\nPO PO-2026-9101\r\nSupplier Tax ID 0105543000129\r\nDescription Qty Unit Price Amount\r\nUPS 3kVA rack mount 16 9,500.00 152,000.00\r\nInstallation and commissioning 1 16,000.00 16,000.00\r\nSubtotal 168,000.00 THB\r\nVAT 7% 11,760.00 THB\r\nAmount Due 179,760.00 THB\r\nTerms: Net 30\r\nBank Account: 1234567890"
+    },
+    {
+      "doc_id": "demo_invoice_unknown_vendor",
+      "doc_type": "invoice",
+      "layout": "classic",
+      "title": "Invoice from a company nobody has registered",
+      "demonstrates": "Every number adds up and the page is perfectly legible. Nobody in the register is Sathorn Metalworks, and its tax id belongs to no vendor either - so there is nothing to check the bank account against. An unrecognised counterparty is not a small problem; it is the shape most invoice fraud arrives in.",
+      "ground_truth": {
+        "invoice_number": "SMW-2026-0091",
+        "invoice_date": "2026-07-22",
+        "due_date": "2026-08-21",
+        "vendor_name": "Sathorn Metalworks Co., Ltd.",
+        "vendor_tax_id": "0105566000451",
+        "buyer_name": "Mirtphol Industries PCL",
+        "currency": "THB",
+        "subtotal": 42000.0,
+        "tax_rate": 7.0,
+        "tax_amount": 2940.0,
+        "total_amount": 44940.0,
+        "payment_terms": "Net 30",
+        "bank_account": "7730099001"
+      },
+      "line_items": [
+        {
+          "description": "Fabricated steel bracket, galvanised",
+          "quantity": 200,
+          "unit_price": 160.0,
+          "amount": 32000.0
+        },
+        {
+          "description": "Powder coating",
+          "quantity": 200,
+          "unit_price": 50.0,
+          "amount": 10000.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [
+        "vendor_known"
+      ],
+      "requires_posted": null,
+      "file": "09_FAIL_invoice_unknown_vendor.pdf",
+      "expected_post": false,
+      "arrival": "pdf",
+      "reference_text": "Sathorn Metalworks Co., Ltd.\r\nBangkok, Thailand\r\nTax ID: 0105566000451\r\nTAX INVOICE\r\nInvoice No.: SMW-2026-0091\r\nInvoice Date: 22 July 2026\r\nDue Date: 21 August 2026\r\nBill To\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nDescription Qty Unit Price Amount\r\nFabricated steel bracket, galvanised 200 160.00 32,000.00\r\nPowder coating 200 50.00 10,000.00\r\nSubtotal 42,000.00 THB\r\nVAT 7% 2,940.00 THB\r\nAmount Due 44,940.00 THB\r\nPayment Terms: Net 30\r\nRemit to Account No: 7730099001"
+    },
+    {
+      "doc_id": "demo_invoice_total_transposed",
+      "doc_type": "invoice",
+      "layout": "modern",
+      "title": "Chao Phraya Print invoice whose total has two digits swapped",
+      "demonstrates": "The line items, the subtotal and the VAT all agree on 128,000.00 and 8,960.00. The total should read 136,960.00 and reads 139,660.00. Three relations tie those numbers together, one value breaks all of them, and the others stand - which is how the finding can name the total rather than shrug at the page.",
+      "ground_truth": {
+        "invoice_number": "CPP-2026-0702",
+        "invoice_date": "2026-07-27",
+        "due_date": "2026-08-26",
+        "vendor_name": "Chao Phraya Print & Pack Co., Ltd.",
+        "vendor_tax_id": "0105559000188",
+        "buyer_name": "Mirtphol Industries PCL",
+        "purchase_order_ref": "PO-2026-9105",
+        "currency": "THB",
+        "subtotal": 128000.0,
+        "tax_rate": 7.0,
+        "tax_amount": 8960.0,
+        "total_amount": 139660.0,
+        "payment_terms": "Net 30",
+        "bank_account": "6680033445"
+      },
+      "line_items": [
+        {
+          "description": "Printed carton, 3-ply, B-flute",
+          "quantity": 8000,
+          "unit_price": 14.0,
+          "amount": 112000.0
+        },
+        {
+          "description": "Label printing, 4-colour",
+          "quantity": 1,
+          "unit_price": 16000.0,
+          "amount": 16000.0
+        }
+      ],
+      "body": [],
+      "degrade": 0.0,
+      "language": "en",
+      "expected_findings": [
+        "invoice_totals_consistent"
+      ],
+      "requires_posted": null,
+      "file": "10_FAIL_invoice_total_transposed.png",
+      "expected_post": false,
+      "arrival": "png",
+      "reference_text": "Chao Phraya Print & Pack Co., Ltd.\r\nBangkok, Thailand\r\nINVOICE\r\nBILLED TO\r\nMirtphol Industries PCL\r\n88/9 Rama IV Road, Khlong Toei, Bangkok 10110, Thailand\r\nInvoice # CPP-2026-0702\r\nIssued Jul 27, 2026\r\nPayment Due Aug 26, 2026\r\nPO PO-2026-9105\r\nSupplier Tax ID 0105559000188\r\nDescription Qty Unit Price Amount\r\nPrinted carton, 3-ply, B-flute 8000 14.00 112,000.00\r\nLabel printing, 4-colour 1 16,000.00 16,000.00\r\nSubtotal 128,000.00 THB\r\nVAT 7% 8,960.00 THB\r\nAmount Due 139,660.00 THB\r\nTerms: Net 30\r\nBank Account: 6680033445"
+    }
+  ],
+  "master_data": {
+    "vendors": [
+      {
+        "vendor_id": "V-9001",
+        "legal_name": "Siam Tech Supply Co., Ltd.",
+        "aliases": "Siam Tech;Siam Tech Supply;บริษัท สยามเทค ซัพพลาย จำกัด",
+        "tax_id": "0105543000129",
+        "bank_account": "1234567890",
+        "status": "active",
+        "payment_terms": "Net 30",
+        "currency": "THB"
+      },
+      {
+        "vendor_id": "V-9002",
+        "legal_name": "Rungruang Steel Works Co., Ltd.",
+        "aliases": "Rungruang Steel;บริษัท รุ่งเรือง สตีล เวิร์ค จำกัด",
+        "tax_id": "0105552000110",
+        "bank_account": "3120045678",
+        "status": "active",
+        "payment_terms": "Net 60",
+        "currency": "THB"
+      },
+      {
+        "vendor_id": "V-9003",
+        "legal_name": "บริษัท ไทยพัฒนา วิศวกรรม จำกัด",
+        "aliases": "Thai Pattana Engineering;ไทยพัฒนา วิศวกรรม",
+        "tax_id": "0105548000117",
+        "bank_account": "4450091122",
+        "status": "active",
+        "payment_terms": "Net 30",
+        "currency": "THB"
+      },
+      {
+        "vendor_id": "V-9004",
+        "legal_name": "Northwind Logistics Ltd.",
+        "aliases": "Northwind;Northwind Logistics",
+        "tax_id": "0105561071237",
+        "bank_account": "9876543210",
+        "status": "active",
+        "payment_terms": "Net 45",
+        "currency": "THB"
+      },
+      {
+        "vendor_id": "V-9005",
+        "legal_name": "บริษัท ปตท. น้ำมันและการค้าปลีก จำกัด",
+        "aliases": "PTT Oil and Retail;PTT OR;ปตท. น้ำมันและการค้าปลีก",
+        "tax_id": "0105554000770",
+        "bank_account": "2210556677",
+        "status": "active",
+        "payment_terms": "Immediate",
+        "currency": "THB"
+      },
+      {
+        "vendor_id": "V-9006",
+        "legal_name": "Chao Phraya Print & Pack Co., Ltd.",
+        "aliases": "Chao Phraya Print;CP Print & Pack",
+        "tax_id": "0105559000188",
+        "bank_account": "6680033445",
+        "status": "active",
+        "payment_terms": "Net 30",
+        "currency": "THB"
+      }
+    ],
+    "purchase_orders": [
+      {
+        "po_number": "PO-2026-9101",
+        "vendor_id": "V-9001",
+        "po_date": "2026-06-02",
+        "currency": "THB",
+        "amount": 135000.0,
+        "status": "open",
+        "description": "UPS units and installation"
+      },
+      {
+        "po_number": "PO-2026-9102",
+        "vendor_id": "V-9002",
+        "po_date": "2026-06-20",
+        "currency": "THB",
+        "amount": 96000.0,
+        "status": "open",
+        "description": "Steel plate, cut to size"
+      },
+      {
+        "po_number": "PO-2026-9103",
+        "vendor_id": "V-9004",
+        "po_date": "2026-07-01",
+        "currency": "THB",
+        "amount": 38000.0,
+        "status": "open",
+        "description": "Inbound freight, July"
+      },
+      {
+        "po_number": "PO-2026-9104",
+        "vendor_id": "V-9003",
+        "po_date": "2026-06-28",
+        "currency": "THB",
+        "amount": 60000.0,
+        "status": "open",
+        "description": "งานติดตั้งระบบไฟฟ้า อาคาร B"
+      },
+      {
+        "po_number": "PO-2026-9105",
+        "vendor_id": "V-9006",
+        "po_date": "2026-07-05",
+        "currency": "THB",
+        "amount": 128000.0,
+        "status": "open",
+        "description": "Printed cartons and labels"
+      },
+      {
+        "po_number": "PO-2026-9106",
+        "vendor_id": "V-9004",
+        "po_date": "2026-07-19",
+        "currency": "THB",
+        "amount": 35000.0,
+        "status": "open",
+        "description": "Inbound freight, late July"
+      }
+    ],
+    "contracts": []
+  }
+}

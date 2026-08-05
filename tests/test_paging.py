@@ -166,3 +166,85 @@ class TestSampleFormats:
     def test_an_unknown_format_is_rejected_by_the_route(self, client):
         response = client.post("/api/documents/sample/inv-clean-classic?format=fax")
         assert response.status_code == 422
+
+
+class TestPagesNeverRead:
+    """A file longer than `OCR_MAX_PAGES` is read short, and nothing after the
+    render stage can tell — extraction cannot miss a page it was never shown.
+
+    That is the worst shape of failure this system has: a twelve-page invoice
+    read to page eight yields an earlier subtotal taken for the total, the
+    arithmetic agrees with itself, and a wrong amount posts. So the shortfall
+    travels with the pages and degrades the run exactly as unreadable text does.
+    """
+
+    def _pdf(self, tmp_path, pages: int):
+        from docuflow.samples.catalog import SampleDoc
+        from docuflow.samples.generator import render_pdf
+
+        # Enough rows to spill onto the requested number of pages.
+        items = tuple({"description": f"Steel plate lot {i:02d}", "quantity": 4,
+                       "unit_price": 3_500.00, "amount": 14_000.00}
+                      for i in range(40 * pages))
+        subtotal = sum(item["amount"] for item in items)
+        doc = SampleDoc(
+            doc_id="long", doc_type="invoice", layout="classic",
+            title="long order", demonstrates="spills onto later pages",
+            ground_truth={"invoice_number": "RSW-2026-9001", "invoice_date": "2026-07-24",
+                          "vendor_name": "Rungruang Steel Works Co., Ltd.",
+                          "currency": "THB", "subtotal": subtotal, "tax_rate": 7.0,
+                          "tax_amount": round(subtotal * 0.07, 2),
+                          "total_amount": round(subtotal * 1.07, 2)},
+            line_items=items)
+        out = tmp_path / "long.pdf"
+        render_pdf(doc, out)
+        return out
+
+    def test_every_page_reports_how_long_the_file_is(self, tmp_path):
+        from docuflow.ocr.render import render_document
+
+        pdf = self._pdf(tmp_path, pages=2)
+        pages = render_document(pdf, tmp_path / "full", max_pages=8, target_dim=900)
+
+        assert len(pages) > 1, "the fixture did not actually spill onto a second page"
+        assert all(p.document_pages == len(pages) for p in pages)
+
+    def test_a_truncated_render_still_reports_the_true_length(self, tmp_path):
+        pdf = self._pdf(tmp_path, pages=2)
+        from docuflow.ocr.render import render_document
+
+        whole = len(render_document(pdf, tmp_path / "whole", max_pages=8, target_dim=900))
+        short = render_document(pdf, tmp_path / "short", max_pages=1, target_dim=900)
+
+        assert len(short) == 1
+        assert short[0].document_pages == whole, "the shortfall is invisible"
+
+    def test_pages_never_read_degrade_the_run(self, tmp_path, settings):
+        """Reusing `degraded` rather than inventing a signal: it already lowers
+        every field's confidence and reaches the routing decision."""
+        from docuflow.ocr.base import PageImage
+        from docuflow.ocr.engine import run_ocr
+
+        page = PageImage(page_number=1, path=tmp_path / "p.jpg", width=100, height=100,
+                         embedded_text="TAX INVOICE\nAmount Due 1,070.00 THB\n"
+                                       "Vendor Co Ltd\nInvoice No: A-1\n" * 4,
+                         document_pages=5)
+        (tmp_path / "p.jpg").write_bytes(b"x")
+
+        result = run_ocr([page], settings.model_copy(update={"ocr_provider": "pdftext"}))
+
+        assert result.degraded is True
+        assert any("of 5 pages" in note for note in result.notes), result.notes
+
+    def test_a_file_read_in_full_is_not_degraded_for_length(self, tmp_path, settings):
+        from docuflow.ocr.base import PageImage
+        from docuflow.ocr.engine import run_ocr
+
+        text = "TAX INVOICE\nAmount Due 1,070.00 THB\nVendor Co Ltd\nInvoice No: A-1\n" * 4
+        page = PageImage(page_number=1, path=tmp_path / "p.jpg", width=100, height=100,
+                         embedded_text=text, document_pages=1)
+        (tmp_path / "p.jpg").write_bytes(b"x")
+
+        result = run_ocr([page], settings.model_copy(update={"ocr_provider": "pdftext"}))
+
+        assert not any("pages were read" in note for note in result.notes)

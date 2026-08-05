@@ -64,6 +64,26 @@ class TestParseDate:
         # 25 cannot be a month, so this is 25 December regardless of day_first.
         assert parse_date("25/12/2024", day_first=False) == "2024-12-25"
 
+    @pytest.mark.parametrize(
+        ("raw", "expected"),
+        [
+            ("24 ก.ค. 69", "2026-07-24"),   # 69 -> 2569 BE -> 2026 CE
+            ("24/07/69", "2026-07-24"),
+            ("1 ม.ค. 68", "2025-01-01"),
+            ("12/03/24", "2024-03-12"),     # 24 is too low to be BE: 2024 CE
+        ],
+    )
+    def test_two_digit_years_are_expanded_before_the_era_is_decided(self, raw, expected):
+        """A two-digit year left unexpanded is wrong by two millennia, quietly.
+
+        Thai receipts print `24 ก.ค. 69` routinely. Read as-is that is the year
+        69, which is a perfectly valid date - no parser complains, no rule
+        fires, and the document is dated during the Roman empire. Which era the
+        expansion lands in is decided after it, not before: 69 is high enough to
+        be a Buddhist year, 24 is not.
+        """
+        assert parse_date(raw) == expected
+
     @pytest.mark.parametrize("raw", ["", "sometime soon", "N/A", None])
     def test_returns_none_rather_than_guessing(self, raw):
         assert parse_date(raw) is None

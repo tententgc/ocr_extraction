@@ -64,7 +64,16 @@ def _render_pdf_unlocked(path: Path, out_dir: Path, max_pages: int, target_dim: 
     pages: list[PageImage] = []
     document = pdfium.PdfDocument(str(path))
     try:
-        count = min(len(document), max_pages)
+        total = len(document)
+        count = min(total, max_pages)
+        if count < total:
+            # Said out loud, because the alternative is the worst failure this
+            # system has: a twelve-page invoice whose total sits on page ten is
+            # read to page eight, an earlier subtotal is taken for the total,
+            # the arithmetic may even agree with itself, and a wrong amount
+            # posts. Nothing downstream can notice a page it was never given.
+            logger.warning("%s has %d pages; reading the first %d (OCR_MAX_PAGES)",
+                           path.name, total, count)
         for index in range(count):
             page = document[index]
             # Render at a scale that lands near the target dimension directly,
@@ -90,6 +99,7 @@ def _render_pdf_unlocked(path: Path, out_dir: Path, max_pages: int, target_dim: 
                     width=width,
                     height=height,
                     embedded_text=embedded.strip(),
+                    document_pages=total,
                 )
             )
             page.close()
@@ -102,7 +112,8 @@ def _render_image(path: Path, out_dir: Path, target_dim: int) -> list[PageImage]
     with Image.open(path) as image:
         image.load()
         out_path, width, height = _save_page(image, out_dir / "page-001.jpg", target_dim)
-    return [PageImage(page_number=1, path=out_path, width=width, height=height)]
+    return [PageImage(page_number=1, path=out_path, width=width, height=height,
+                      document_pages=1)]
 
 
 def render_document(

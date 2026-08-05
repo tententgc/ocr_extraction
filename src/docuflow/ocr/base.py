@@ -23,6 +23,12 @@ class PageImage:
     # Text already embedded in the source PDF for this page, when it has a text
     # layer. Used as a cross-check against what the model reads.
     embedded_text: str = ""
+    # How many pages the source file actually has. Equal to the number rendered
+    # unless `OCR_MAX_PAGES` cut the document short — and that difference has to
+    # travel, because nothing downstream can notice a page it was never given.
+    # A twelve-page invoice read to page eight yields an earlier subtotal taken
+    # for the total, arithmetic that may agree with itself, and a wrong payment.
+    document_pages: int = 0
 
 
 class OcrProvider(ABC):

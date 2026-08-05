@@ -1,0 +1,7 @@
+vendor_id,legal_name,aliases,tax_id,bank_account,status,payment_terms,currency
+V-9001,"Siam Tech Supply Co., Ltd.",Siam Tech;Siam Tech Supply;บริษัท สยามเทค ซัพพลาย จำกัด,0105543000129,1234567890,active,Net 30,THB
+V-9002,"Rungruang Steel Works Co., Ltd.",Rungruang Steel;บริษัท รุ่งเรือง สตีล เวิร์ค จำกัด,0105552000110,3120045678,active,Net 60,THB
+V-9003,บริษัท ไทยพัฒนา วิศวกรรม จำกัด,Thai Pattana Engineering;ไทยพัฒนา วิศวกรรม,0105548000117,4450091122,active,Net 30,THB
+V-9004,Northwind Logistics Ltd.,Northwind;Northwind Logistics,0105561071237,9876543210,active,Net 45,THB
+V-9005,บริษัท ปตท. น้ำมันและการค้าปลีก จำกัด,PTT Oil and Retail;PTT OR;ปตท. น้ำมันและการค้าปลีก,0105554000770,2210556677,active,Immediate,THB
+V-9006,"Chao Phraya Print & Pack Co., Ltd.",Chao Phraya Print;CP Print & Pack,0105559000188,6680033445,active,Net 30,THB

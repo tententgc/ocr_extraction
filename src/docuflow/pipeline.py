@@ -190,13 +190,26 @@ class Pipeline:
                 [],
             )
 
+        # A file longer than OCR_MAX_PAGES is read short, and every stage after
+        # this one is blind to it: extraction cannot miss a page it was never
+        # shown, and the arithmetic can agree with itself on an earlier
+        # subtotal mistaken for the total. So it is reported here and it holds
+        # the document, rather than posting an amount nobody checked.
+        total = images[0].document_pages if images else len(images)
+        dropped = max(0, total - len(images))
+        summary = (f"Rendered {len(images)} page(s)" if not dropped else
+                   f"Rendered {len(images)} of {total} page(s) — "
+                   f"{dropped} not read (OCR_MAX_PAGES={self.settings.ocr_max_pages})")
+
         return (
             run.evolve(page_images=tuple(str(image.path) for image in images)).with_step(
                 TraceStep(
                     step="render",
-                    summary=f"Rendered {len(images)} page(s)",
+                    status="warning" if dropped else "ok",
+                    summary=summary,
                     duration_ms=int((time.perf_counter() - started) * 1000),
-                    detail={"pages": len(images)},
+                    detail={"pages": len(images), "document_pages": total,
+                            "pages_not_read": dropped},
                 )
             ),
             images,
