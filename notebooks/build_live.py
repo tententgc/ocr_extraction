@@ -2439,8 +2439,25 @@ def make_lookup_purchase_order(page):
             return {{"found": False,
                     "note": f"purchase order {{number}} is not in the system", **warning}}
         vendor = VENDORS.get(order["vendor_id"])
+        # ── ยอดใบสั่งซื้อเป็นยอด **ก่อน VAT** และ tool ต้องพูดออกมาเอง ────────
+        # ใบสั่งซื้อบันทึกสิ่งที่ตกลงกัน ภาษีบวกตอนวางบิล — agent ที่ได้ตัวเลข
+        # เปล่าๆ ไม่มีทางรู้ มันจึงเอา `total_amount` (รวม VAT) ไปเทียบ แล้ว
+        # รายงานว่าใบที่ถูกต้อง**ทุกใบ**เกินวงเงินประมาณอัตราภาษี
+        #
+        # เกิดขึ้นจริง: ใบ 01 สะอาดทั้งใบ PO 135,000 แต่ agent เทียบ 144,450
+        # (135,000 + VAT 9,450) แล้วตอบ fail → POST=False ทั้งที่ระบบจริงผ่าน
+        #
+        # บอกที่ tool ไม่ใช่ที่ข้อความของกฎ เพราะ tool เป็นเจ้าของตัวเลข ส่วนกฎ
+        # ใครเขียนก็ได้ — รวมถึงโมเดลที่ไม่เคยมีใครบอกเรื่องนี้
         return {{"found": True, **order,
-                "vendor_name": vendor["legal_name"] if vendor else None, **warning}}
+                "vendor_name": vendor["legal_name"] if vendor else None,
+                "amount_basis": "net of tax",
+                "comparison_note": (
+                    f"{{order['amount']}} excludes VAT. Compare it against the invoice "
+                    f"subtotal, never the total - the total includes tax and will "
+                    f"look over the order by the tax rate."
+                ),
+                **warning}}
     return run
 
 # ── ⑤ lookup_contract ─────────────────────────────────────────────────────
@@ -2726,9 +2743,17 @@ def authoring_request(sentence, doc_type):
 
     ส่ง *รายชื่อช่องที่มีจริง* ไปด้วย ไม่ใช่ปล่อยให้โมเดลนึกเอง เพราะกฎที่อ้าง
     ช่องที่ไม่มีอยู่ จะพังตอนเอกสารใบแรกมาถึง ไม่ใช่ตอนเขียน
+
+    และส่ง *ข้อเท็จจริงที่ดูจากชื่อช่องไม่ออก* ไปด้วย — ยอดใบสั่งซื้อไม่รวม VAT
+    โมเดลที่ไม่รู้เรื่องนี้จะเขียนแผนว่า "เทียบยอดรวมกับวงเงิน" ซึ่งอ่านแล้ว
+    สมเหตุสมผลทุกตัวอักษร แต่ทำให้ใบที่ถูกต้องทุกใบตก
     """
     return (f"Document types: {doc_type}\n\n"
             f"Fields available:\n{FIELD_CATALOGUE}\n\n"
+            f"Facts about this data that the field names do not show:\n"
+            f"- Purchase order amounts are recorded net of tax. An invoice total "
+            f"includes tax. Any step comparing an invoice against a purchase "
+            f"order must use `subtotal`, never `total_amount`.\n\n"
             f"The check to encode:\n{sentence}")
 
 def compile_rule(sentence, doc_type):

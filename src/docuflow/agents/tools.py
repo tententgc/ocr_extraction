@@ -213,6 +213,21 @@ def _lookup_purchase_order(
             "found": True,
             **order,
             "vendor_name": vendor["legal_name"] if vendor else None,
+            # A purchase order records what was agreed, before tax. An invoice
+            # total includes it. An agent handed a bare `amount` has no way to
+            # know that, compares the total against it, and reports every
+            # correct invoice as roughly the VAT rate over - which is what
+            # happened: a clean 135,000 order was failed for a 144,450 total.
+            #
+            # Said by the tool rather than left to each rule's wording, because
+            # the tool owns the number and a rule can be written by anyone,
+            # including a model that has never been told.
+            "amount_basis": "net of tax",
+            "comparison_note": (
+                f"{order['amount']} excludes VAT. Compare it against the invoice "
+                f"subtotal, never the total - the total includes tax and will "
+                f"look over the order by the tax rate."
+            ),
             **warning,
         }
 
