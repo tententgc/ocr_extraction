@@ -315,6 +315,37 @@ class TestRouting:
         run = self._run(make_run, GOOD_INVOICE).evolve(ocr=OcrResult())
         assert decide(run, get_schema("invoice"), 0.90).decision == "rejected"
 
+    def test_a_critical_field_the_document_never_printed_does_not_hold_it(self, make_run):
+        """`critical` is a statement about consequence, not about presence.
+
+        It means: if this value is here and it is wrong, somebody is paid the
+        wrong amount. It does not mean the document must carry it. Plenty of
+        ordinary invoices quote no purchase order — a small one, a subscription,
+        an expense reimbursement — and whether one is *required* is a business
+        policy question, answered by `purchase_order_required` against
+        `po_required_above`, not by a field's severity.
+        """
+        fields = {key: value for key, value in GOOD_INVOICE.items()
+                  if key != "purchase_order_ref"}
+        outcome = decide(self._run(make_run, fields), get_schema("invoice"), 0.90)
+
+        assert "purchase_order_ref" in {spec.name for spec in get_schema("invoice").critical_fields}
+        assert outcome.decision == "auto_post", outcome.reasons
+
+    def test_the_posting_reason_does_not_claim_more_than_was_checked(self, make_run):
+        """It used to read "all required and critical fields are present and
+        verified" on a document that had posted without a purchase order — a
+        critical field. The sentence a reviewer reads on every posted record
+        must describe the two checks that actually ran, or it teaches the wrong
+        model of the system to everyone who reads it."""
+        fields = {key: value for key, value in GOOD_INVOICE.items()
+                  if key != "purchase_order_ref"}
+        reason = " ".join(decide(self._run(make_run, fields), get_schema("invoice"), 0.90).reasons)
+
+        assert "present and verified" not in reason
+        assert "not printed on this document" in reason
+        assert "purchase_order_ref" in reason
+
 
 class TestUnknownVendorSeverity:
     """An unregistered counterparty means different things per document type."""

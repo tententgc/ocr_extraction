@@ -50,6 +50,15 @@ estimating skew. Skew is measured from an ink mask thresholded against the page'
 mean brightness, so on a page lit from one side the mask marks the shadow and the
 angle describes the gradient.
 
+**`critical` is about consequence, not presence.** It means: if this value is
+here and it is wrong, somebody is paid the wrong amount. It does **not** demand
+the field exist — an invoice with no `purchase_order_ref` posts, and whether one
+is *required* is answered by `purchase_order_required` against
+`po_required_above`, which is business policy and configurable. `routing.decide`
+has always tested `not field.is_empty and not field.grounded`; the bug was the
+sentence it printed, which claimed critical fields were "present and verified"
+on documents that had posted without them.
+
 **A suggestion that could name two fields names neither.** `rules/repair.py`
 blames a value only when exactly one field explains every broken relation. A
 wrong number wearing a suggestion's confidence is worse than no suggestion.
