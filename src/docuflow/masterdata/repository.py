@@ -62,6 +62,17 @@ def same_organisation(left: str | None, right: str | None) -> bool:
     ) >= NAME_MATCH_THRESHOLD
 
 
+def _vendor_names(vendor: dict[str, Any]) -> list[str]:
+    """Every name this vendor answers to: the legal name and its aliases.
+
+    Aliases are where the cross-language names live - a supplier registered in
+    English is named in Thai on a Thai invoice, and matching only the legal name
+    would report every one of those as an unknown counterparty.
+    """
+    names = [vendor["legal_name"], *(vendor.get("aliases") or "").split(";")]
+    return [name.strip() for name in names if name and name.strip()]
+
+
 @dataclass(frozen=True)
 class VendorMatch:
     """Result of resolving a document's vendor against the master file."""
@@ -70,6 +81,13 @@ class VendorMatch:
     score: float
     method: str
     candidates: tuple[dict[str, Any], ...] = ()
+    # *Which* of the vendor's names produced the match - the legal name, or one
+    # of its aliases. A vendor registered as "Siam Tech Supply Co., Ltd." with a
+    # Thai alias is matched through the alias on a Thai invoice, and anything
+    # comparing the document against `legal_name` would call a correct Thai page
+    # a misreading of an English name. `vendor_name_matches_register` needs the
+    # name that was actually compared, not the one at the top of the row.
+    matched_name: str | None = None
 
     @property
     def matched(self) -> bool:
@@ -337,40 +355,42 @@ class MasterDataRepository:
 
         # 2. Exact legal name or a registered alias.
         for vendor in vendors:
-            names = [vendor["legal_name"], *(vendor.get("aliases") or "").split(";")]
-            for candidate in names:
-                if candidate and normalize_for_match(candidate) == target_normalized:
-                    return VendorMatch(vendor, 1.0, "exact name")
+            for candidate in _vendor_names(vendor):
+                if normalize_for_match(candidate) == target_normalized:
+                    return VendorMatch(vendor, 1.0, "exact name", matched_name=candidate)
 
         # 3. Same name once legal-form noise is removed.
         for vendor in vendors:
-            names = [vendor["legal_name"], *(vendor.get("aliases") or "").split(";")]
-            if any(candidate and _core_name(candidate) == target_core for candidate in names):
-                return VendorMatch(vendor, 0.97, "name (ignoring legal form)")
+            for candidate in _vendor_names(vendor):
+                if _core_name(candidate) == target_core:
+                    return VendorMatch(
+                        vendor, 0.97, "name (ignoring legal form)", matched_name=candidate
+                    )
 
         # 4. Fuzzy - handles OCR damage such as "แฟชิลิตี้" for "แฟซิลิตี้".
-        scored: list[tuple[float, dict[str, Any]]] = []
+        scored: list[tuple[float, dict[str, Any], str | None]] = []
         for vendor in vendors:
-            names = [vendor["legal_name"], *(vendor.get("aliases") or "").split(";")]
-            best = max(
-                (
-                    max(
-                        fuzz.WRatio(target_normalized, normalize_for_match(candidate)),
-                        fuzz.WRatio(target_core, _core_name(candidate)),
-                    )
-                    for candidate in names
-                    if candidate
-                ),
-                default=0.0,
-            )
-            scored.append((best, vendor))
+            best_score_for_vendor, best_name = 0.0, None
+            for candidate in _vendor_names(vendor):
+                score = max(
+                    fuzz.WRatio(target_normalized, normalize_for_match(candidate)),
+                    fuzz.WRatio(target_core, _core_name(candidate)),
+                )
+                if score > best_score_for_vendor:
+                    best_score_for_vendor, best_name = score, candidate
+            scored.append((best_score_for_vendor, vendor, best_name))
 
         scored.sort(key=lambda item: item[0], reverse=True)
-        best_score, best_vendor = scored[0]
-        candidates = tuple(vendor for score, vendor in scored[:3] if score >= NAME_SUGGEST_THRESHOLD)
+        best_score, best_vendor, best_name = scored[0]
+        candidates = tuple(
+            vendor for score, vendor, _ in scored[:3] if score >= NAME_SUGGEST_THRESHOLD
+        )
 
         if best_score >= NAME_MATCH_THRESHOLD:
-            return VendorMatch(best_vendor, round(best_score / 100.0, 3), "fuzzy name", candidates)
+            return VendorMatch(
+                best_vendor, round(best_score / 100.0, 3), "fuzzy name", candidates,
+                matched_name=best_name,
+            )
         return VendorMatch(None, round(best_score / 100.0, 3), "no match", candidates)
 
     def vendor_for_bank_account(self, account: str | None) -> dict[str, Any] | None:

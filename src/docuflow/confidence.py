@@ -110,6 +110,13 @@ MISREAD_SIGNALS = frozenset({
     "dates_not_in_future",
     "due_date_after_issue",
     "contract_dates_ordered",
+    # The only one here that is about a *name* rather than a number, and the
+    # only signal in the system that can catch a character misread inside one.
+    # Every rule above works by arithmetic disagreeing with itself; this one
+    # works because an authoritative register spells the supplier differently
+    # from the page. It earned its place on two Thai documents that posted at
+    # 0.843 and 0.840 against a 0.840 bar with `ซ` read as `ช`.
+    "vendor_name_matches_register",
 })
 
 # How far a misread signal moves the score, by how serious the rule itself says

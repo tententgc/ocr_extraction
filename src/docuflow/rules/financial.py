@@ -16,6 +16,15 @@ from docuflow.rules.engine import failed, passed, rule
 from docuflow.rules.repair import Money, explain_difference, money_fixes, value_fix
 
 MONEY_DOCS = ("invoice", "receipt", "purchase_order")
+
+# `find_vendor` methods that mean the name itself was not in doubt. Everything
+# else resolved the supplier while disagreeing about how it is spelled, which
+# is what `vendor_name_matches_register` exists to report.
+_EXACT_VENDOR_METHODS = frozenset({
+    "tax id",                      # an exact identifier; the name was not used
+    "exact name",
+    "name (ignoring legal form)",  # "Co., Ltd." omitted is not a misread
+})
 # VAT rates and the purchase-order threshold are finance policy and come from
 # configuration via RuleContext, not from constants here.
 # Absolute currency units of slack when comparing computed and printed totals.
@@ -195,6 +204,89 @@ def line_items_sum_to_subtotal(context: RuleContext) -> RuleFinding | None:
         fields=["subtotal"],
         fixes=fixes,
         line_total=round(line_total, 2),
+    )
+
+
+@rule(*MONEY_DOCS, "form", severity="warning")
+def vendor_name_matches_register(context: RuleContext) -> RuleFinding | None:
+    """The name as read must be the name on file, once the vendor is resolved.
+
+    This exists because of two documents that posted while wrong, and it is the
+    only signal in the system that could have caught them.
+
+    A Thai invoice read `บริษัท สยามชัพพลาย จำกัด` where the page says
+    `สยามซัพพลาย` - **ซ** and **ช** differ by a single loop. Everything held.
+    The arithmetic closed, the account matched, `vendor_known` passed, and
+    confidence landed on 0.843 against a bar of 0.840. Nothing else in the
+    system can see it: grounding cannot catch an OCR misread, because the span
+    exists in the OCR output and the OCR output is what was wrong, and two
+    channels reading that same output both read `ชัพพลาย`.
+
+    But the register holds the answer. `find_vendor` resolved the document to
+    the right supplier *by fuzzy match* and recorded how far it had to stretch
+    to do it. **A vendor that only matched fuzzily is a statement that the name
+    on the page is not the name on file**, and against an authoritative
+    register that is direct evidence of a misread on a critical field.
+
+    A `warning`, not a block, and both halves of that are deliberate. The
+    payment is not at risk - money follows the registered bank account, not the
+    spelling - so holding every one-stroke difference would be a blocking rule
+    wearing a warning's name. What it does instead is join `MISREAD_SIGNALS`,
+    where a warning costs a twentieth of the confidence score. That is enough
+    to take a document sitting on the threshold below it and no more: three
+    unrelated warnings still post, which is the shape a warning is required to
+    have.
+    """
+    name = (
+        context.value("vendor_name")
+        or context.value("merchant_name")
+        or context.value("applicant_name")
+    )
+    match = context.vendor_match
+    if not name or not match.matched:
+        # An unresolved vendor is `vendor_known`'s business, not this rule's.
+        return None
+
+    # The name the register actually matched on, which is not always the legal
+    # name: a supplier registered in English carries a Thai alias, and a Thai
+    # invoice matches through the alias. Suggesting `legal_name` there would
+    # tell a reviewer that a correct Thai page misread an English name.
+    registered = match.matched_name or match.vendor["legal_name"]
+    # Anything the register itself would call the same name is the same name.
+    # `_core_name` strips the legal form, so "Siam Tech Co., Ltd." against
+    # "Siam Tech" is not a misread - it is an invoice omitting a suffix, which
+    # is ordinary and must not cost a document its confidence.
+    if match.method in _EXACT_VENDOR_METHODS:
+        return passed(
+            "vendor_name_matches_register",
+            f"Vendor name matches the register ({registered}) by {match.method}.",
+            method=match.method,
+        )
+
+    field = next(
+        (key for key in ("vendor_name", "merchant_name", "applicant_name")
+         if context.value(key) == name),
+        "vendor_name",
+    )
+    return failed(
+        "vendor_name_matches_register",
+        f"Read the vendor as {name!r}, but the register spells it {registered!r} "
+        f"({match.score:.0%} similar). The document resolved to the right supplier, "
+        f"so the payment is not at risk - but a name that only matches this far is "
+        f"usually a character misread, and the ledger would record the misreading.",
+        severity="warning",
+        fields=[field],
+        # High confidence for once: the register is authoritative about its own
+        # supplier's name, and this fix cannot name a second field.
+        fixes=value_fix(
+            field, name, registered,
+            f"the registered spelling for {match.vendor['vendor_id']}",
+            source="master_data", confidence=0.9,
+        ),
+        registered=registered,
+        extracted=str(name),
+        score=match.score,
+        method=match.method,
     )
 
 
