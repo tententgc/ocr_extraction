@@ -88,6 +88,14 @@ function decisionOf(doc) {
   return DECISION[doc.decision] || { label: doc.decision, icon: '•', chip: '' };
 }
 
+/* The three severities have to look as different as they behave: `blocking`
+   stops the document, `warning` is recorded and holds nothing, `info` is a
+   note. This was `severity === 'blocking' ? 'bad' : 'warn'`, which painted
+   every info note in warning amber - the one colour that says "something is
+   wrong here" about the one severity that means nothing is. */
+const SEVERITY_CHIP = { blocking: 'bad', warning: 'warn', info: 'info' };
+const severityChip = (severity) => SEVERITY_CHIP[severity] ?? '';
+
 function toast(message, kind = '') {
   const node = document.createElement('div');
   node.className = `toast ${kind}`;
@@ -204,7 +212,14 @@ $('#llm-picker').addEventListener('change', (event) => selectModel('llm', event.
 
 function updateBadges(stats) {
   if (!stats) return;
-  $('#queue-badge').textContent = stats.by_decision?.needs_review ?? 0;
+  const waiting = stats.by_decision?.needs_review ?? 0;
+  const queueBadge = $('#queue-badge');
+  queueBadge.textContent = waiting;
+  // The queue badge is the one number on the page that is asking for someone's
+  // time, so it carries the review colour while it is non-zero and drops back
+  // to the neutral pill at zero. A count nobody has to act on should not look
+  // like one that is waiting.
+  queueBadge.classList.toggle('attention', waiting > 0);
   // Entries in the ledger, not documents that once produced one. Deleting a
   // record leaves its document behind on purpose, and counting those here made
   // the tab claim 15 records over an empty page.
@@ -630,13 +645,18 @@ function renderAgentWork(detail) {
     </div></details>`;
 }
 
+/* Both of these pass by definition, so either would hide inside the collapsed
+   "checks passed" list - exactly where nobody looks. They are modes, not
+   results: they say the document was not fully checked, which is the single
+   most important thing on the page when it is true. Free mode was already
+   pulled out; switching off only the built-ins produces the same kind of
+   notice and was left to collapse with the rest. */
+const POLICY_NOTICES = ['business_rules_disabled', 'builtin_rules_disabled'];
+
 function renderFindings(findings = []) {
   if (!findings.length) return '<p class="muted">No rules were evaluated.</p>';
-  // Free mode passes by definition, so it would hide inside the collapsed
-  // "checks passed" list - exactly where nobody looks. It is a mode, not a
-  // result, so it is pulled out and shown as a standing warning instead.
-  const freeMode = findings.find((f) => f.rule_id === 'business_rules_disabled');
-  const rest = findings.filter((f) => f !== freeMode);
+  const notices = findings.filter((f) => POLICY_NOTICES.includes(f.rule_id));
+  const rest = findings.filter((f) => !notices.includes(f));
   const failed = rest.filter((f) => !f.passed);
   const passed = rest.filter((f) => f.passed);
   const render = (finding) => `
@@ -646,8 +666,8 @@ function renderFindings(findings = []) {
         ${renderFixes(finding.fixes)}
         ${renderAgentWork(finding.detail)}</div>
     </div>`;
-  return `${freeMode ? `<div class="finding warning"><span>⚠</span>
-      <div>${esc(freeMode.message)}<span class="rid">${esc(freeMode.rule_id)}</span></div></div>` : ''}
+  return `${notices.map((notice) => `<div class="finding warning"><span>⚠</span>
+      <div>${esc(notice.message)}<span class="rid">${esc(notice.rule_id)}</span></div></div>`).join('')}
     ${failed.map(render).join('')}
     ${passed.length ? `<details style="margin-top:8px"><summary class="muted" style="cursor:pointer;font-size:12.5px">
       ${passed.length} check${passed.length === 1 ? '' : 's'} passed</summary>
@@ -1270,7 +1290,7 @@ function renderTypeDetail(insights) {
   })).sort((a, b) => (b.severity === 'blocking') - (a.severity === 'blocking') || b.count - a.count);
 
   $('#type-rules').innerHTML = bars(rules, 'Nothing failed — every rule passed on these documents.',
-    (row) => `<span class="chip ${row.severity === 'blocking' ? 'bad' : 'warn'}">${esc(row.severity)}</span>`);
+    (row) => `<span class="chip ${severityChip(row.severity)}">${esc(row.severity)}</span>`);
 
   const fields = flatten(scope, 'field_gaps', (gap) => ({
     label: gap.label || gap.field_name,
@@ -1880,7 +1900,7 @@ function renderCustomRules() {
         <input type="checkbox" data-custom="${esc(rule.rule_id)}" ${rule.enabled ? 'checked' : ''} />
         <span class="grow">
           <b class="rid">${esc(rule.rule_id)}</b>
-          <span class="chip ${rule.severity === 'blocking' ? 'bad' : 'warn'}">${esc(rule.severity)}</span>
+          <span class="chip ${severityChip(rule.severity)}">${esc(rule.severity)}</span>
           ${rule.kind === 'agent' ? '<span class="chip agent">agent</span>' : ''}
           <span class="desc">${esc(rule.explanation)}</span>
           ${rule.prompt ? `<span class="said">you wrote: “${esc(rule.prompt)}”</span>` : ''}
@@ -1927,7 +1947,7 @@ function renderDraft(draft) {
 
   $('#rule-draft').innerHTML = `
     <div class="draft">
-      <h4>${esc(rule.title)} <span class="chip ${rule.severity === 'blocking' ? 'bad' : 'warn'}">${esc(rule.severity)}</span>
+      <h4>${esc(rule.title)} <span class="chip ${severityChip(rule.severity)}">${esc(rule.severity)}</span>
         ${rule.kind === 'agent' ? '<span class="chip agent">agent</span>' : ''}</h4>
       <div class="reads">${esc(rule.explanation)}</div>
       <p class="muted">Reviewers will see: “${esc(rule.message)}”</p>

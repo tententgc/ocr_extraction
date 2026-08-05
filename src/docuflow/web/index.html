@@ -8,34 +8,41 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📄</text></svg>" />
 </head>
 <body>
-<header class="topbar">
-  <div class="brand">
-    <span class="logo">◈</span>
-    <div>
-      <h1>DocuFlow</h1>
-      <p>Unstructured documents in, validated records out</p>
+<!-- The bar and the tabs stick as one block. They used to stick separately,
+     with the tabs pinned at a hard-coded `top: 63px` that had to equal the
+     height of the bar above them - and did not: the bar renders 106px tall
+     once the model names wrap, so on scroll the tabs slid up underneath it.
+     Sticking the container instead means nothing has to know that height. -->
+<div class="appbar">
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">◈</span>
+      <div>
+        <h1>DocuFlow</h1>
+        <p>Unstructured documents in, validated records out</p>
+      </div>
     </div>
-  </div>
-  <div class="engines">
-    <label class="picker">
-      <span>OCR</span>
-      <select id="ocr-picker" title="Model used to read the page"></select>
-    </label>
-    <label class="picker">
-      <span>Agent</span>
-      <select id="llm-picker" title="Model used to classify, extract and reconcile"></select>
-    </label>
-    <span class="engine" id="threshold-chip"></span>
-  </div>
-</header>
+    <div class="engines">
+      <label class="picker">
+        <span>OCR</span>
+        <select id="ocr-picker" title="Model used to read the page"></select>
+      </label>
+      <label class="picker">
+        <span>Agent</span>
+        <select id="llm-picker" title="Model used to classify, extract and reconcile"></select>
+      </label>
+      <span class="engine" id="threshold-chip"></span>
+    </div>
+  </header>
 
-<nav class="tabs" id="tabs">
-  <button class="tab active" data-view="process">Process</button>
-  <button class="tab" data-view="queue">Review queue <span class="badge" id="queue-badge">0</span></button>
-  <button class="tab" data-view="records">Records <span class="badge" id="records-badge">0</span></button>
-  <button class="tab" data-view="insights">Insights</button>
-  <button class="tab" data-view="settings">Settings</button>
-</nav>
+  <nav class="tabs" id="tabs">
+    <button class="tab active" data-view="process">Process</button>
+    <button class="tab" data-view="queue">Review queue <span class="badge" id="queue-badge">0</span></button>
+    <button class="tab" data-view="records">Records <span class="badge" id="records-badge">0</span></button>
+    <button class="tab" data-view="insights">Insights</button>
+    <button class="tab" data-view="settings">Settings</button>
+  </nav>
+</div>
 
 <main>
   <!-- ================= PROCESS ================= -->

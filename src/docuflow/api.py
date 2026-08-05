@@ -169,19 +169,36 @@ def _serialize_result(result: PipelineResult) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
+# The UI ships as three unversioned files. Without Cache-Control a browser is
+# free to reuse them without asking, and it does: an edited stylesheet kept
+# rendering the old one until a manual hard reload, which reads as "the fix did
+# nothing" rather than "the file is stale".
+#
+# `no-cache` means "ask before reusing", not "do not store". These responses do
+# carry an ETag, but Starlette's FileResponse does not answer conditional
+# requests, so each load re-sends the file rather than a 304. That is ~50 KB of
+# localhost traffic for the whole UI, which is a good trade against showing
+# someone yesterday's stylesheet.
+STATIC_CACHE = {"Cache-Control": "no-cache"}
+
+
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
 def index() -> HTMLResponse:
-    return HTMLResponse((WEB_DIR / "index.html").read_text(encoding="utf-8"))
+    return HTMLResponse(
+        (WEB_DIR / "index.html").read_text(encoding="utf-8"), headers=STATIC_CACHE
+    )
 
 
 @app.get("/app.js", include_in_schema=False)
 def app_js() -> FileResponse:
-    return FileResponse(WEB_DIR / "app.js", media_type="application/javascript")
+    return FileResponse(
+        WEB_DIR / "app.js", media_type="application/javascript", headers=STATIC_CACHE
+    )
 
 
 @app.get("/styles.css", include_in_schema=False)
 def styles_css() -> FileResponse:
-    return FileResponse(WEB_DIR / "styles.css", media_type="text/css")
+    return FileResponse(WEB_DIR / "styles.css", media_type="text/css", headers=STATIC_CACHE)
 
 
 # ---------------------------------------------------------------------------
